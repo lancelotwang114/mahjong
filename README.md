@@ -1,6 +1,5 @@
 # 🀇 台灣麻將 Online
 
-
 純前端 P2P 多人麻將遊戲，可部署到 GitHub Pages。
 
 ## 🚀 部署到 GitHub Pages

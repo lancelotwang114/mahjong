@@ -2,46 +2,28 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
 <title>台灣麻將 Online</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;700&family=Ma+Shan+Zheng&display=swap');
-
 :root {
-  --felt: #1a6b3c;
-  --felt-dark: #0f4225;
-  --felt-light: #2a8a52;
-  --gold: #d4a843;
-  --gold-light: #f0c96a;
-  --tile-bg: #f8f0dc;
-  --tile-border: #c8a060;
-  --tile-shadow: rgba(0,0,0,0.5);
-  --red: #c0392b;
-  --blue: #2471a3;
-  --green: #1e8449;
-  --text-light: #f5ecd7;
-  --panel-bg: rgba(0,0,0,0.45);
-  --panel-border: rgba(212,168,67,0.4);
-  --man-color: #c0241a;
-  --pin-color: #1a5fa8;
-  --sou-color: #157a3a;
-  --honor-color: #7b2d8b;
-  --tile-bg: #fdf6e3;
-  --tile-bg2: #f5e6c0;
-  --tile-border: #b89050;
-  --tile-border-light: #e8c878;
-  --tile-shadow: rgba(60,30,0,0.45);
+  --felt: #1a6b3c; --felt-dark: #0f4225;
+  --gold: #d4a843; --gold-light: #f0c96a;
+  --tile-bg: #fdf6e3; --tile-border: #b89050; --tile-shadow: rgba(60,30,0,0.45);
+  --man: #c0241a; --pin: #1a5fa8; --sou: #157a3a; --honor: #7b2d8b;
+  --text-light: #f5ecd7; --panel-bg: rgba(0,0,0,0.5); --panel-border: rgba(212,168,67,0.35);
+  --red: #e74c3c; --green-bright: #2ecc71;
 }
-
 * { margin:0; padding:0; box-sizing:border-box; }
-
+html { font-size: 16px; }
 body {
   font-family: 'Noto Sans TC', sans-serif;
   background: var(--felt-dark);
   color: var(--text-light);
   min-height: 100vh;
   overflow: hidden;
+  /* Natural scaling - don't prevent zoom */
 }
 
 /* ===== LOBBY ===== */
@@ -49,537 +31,337 @@ body {
   display: flex; align-items: center; justify-content: center;
   min-height: 100vh;
   background: radial-gradient(ellipse at center, #1a5c35 0%, #0a2e1a 70%);
-  position: relative;
+  overflow-y: auto;
+  padding: 20px;
 }
-#lobby::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: repeating-linear-gradient(
-    45deg, transparent, transparent 40px,
-    rgba(255,255,255,0.01) 40px, rgba(255,255,255,0.01) 80px
-  );
-}
-
 .lobby-card {
-  background: rgba(10,20,12,0.92);
+  background: rgba(8,18,10,0.95);
   border: 2px solid var(--gold);
-  border-radius: 16px;
-  padding: 40px;
-  width: 420px;
-  max-width: 95vw;
+  border-radius: 18px;
+  padding: 36px;
+  width: 460px; max-width: 100%;
   text-align: center;
-  box-shadow: 0 0 60px rgba(212,168,67,0.2), inset 0 0 40px rgba(0,0,0,0.5);
-  position: relative;
-  z-index: 1;
+  box-shadow: 0 0 80px rgba(212,168,67,0.2), inset 0 0 40px rgba(0,0,0,0.4);
 }
+.lobby-title { font-family:'Noto Serif TC',serif; font-size:3rem; font-weight:900; color:var(--gold); text-shadow:0 0 25px rgba(212,168,67,0.6); letter-spacing:0.15em; }
+.lobby-subtitle { color:rgba(212,168,67,0.5); font-size:0.8rem; margin-bottom:28px; letter-spacing:0.25em; }
+.tile-deco { font-size:2rem; margin-bottom:20px; animation: bounce 3s ease-in-out infinite; }
+@keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
 
-.lobby-title {
-  font-family: 'Noto Serif TC', serif;
-  font-size: 2.8rem;
-  font-weight: 900;
-  color: var(--gold);
-  text-shadow: 0 0 20px rgba(212,168,67,0.6);
-  letter-spacing: 0.1em;
-  margin-bottom: 4px;
-}
-.lobby-subtitle {
-  color: rgba(212,168,67,0.6);
-  font-size: 0.85rem;
-  margin-bottom: 32px;
-  letter-spacing: 0.2em;
-}
-
-.tile-deco {
-  font-size: 2rem;
-  margin-bottom: 24px;
-  opacity: 0.7;
-  animation: tileBounce 3s ease-in-out infinite;
-}
-@keyframes tileBounce {
-  0%,100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-.form-group { margin-bottom: 16px; text-align: left; }
-.form-label { display: block; font-size: 0.8rem; color: var(--gold); margin-bottom: 6px; letter-spacing: 0.1em; }
-
+.form-group { margin-bottom:14px; text-align:left; }
+.form-label { display:block; font-size:0.78rem; color:var(--gold); margin-bottom:5px; letter-spacing:0.12em; }
 .form-input {
-  width: 100%;
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(212,168,67,0.4);
-  border-radius: 8px;
-  padding: 10px 14px;
-  color: var(--text-light);
-  font-family: inherit;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.2s;
+  width:100%; background:rgba(255,255,255,0.07); border:1px solid rgba(212,168,67,0.35);
+  border-radius:8px; padding:10px 14px; color:var(--text-light);
+  font-family:inherit; font-size:0.95rem; outline:none; transition:border-color 0.2s;
 }
-.form-input:focus { border-color: var(--gold); }
+.form-input:focus { border-color:var(--gold); }
+select.form-input { cursor:pointer; }
 
 .btn {
-  width: 100%;
-  padding: 12px;
-  border: none;
-  border-radius: 8px;
-  font-family: 'Noto Serif TC', serif;
-  font-size: 1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  letter-spacing: 0.1em;
-  margin-bottom: 10px;
+  width:100%; padding:12px; border:none; border-radius:8px;
+  font-family:'Noto Serif TC',serif; font-size:1rem; font-weight:700;
+  cursor:pointer; transition:all 0.2s; letter-spacing:0.1em; margin-bottom:10px;
 }
-.btn-primary {
-  background: linear-gradient(135deg, var(--gold), #b8860b);
-  color: #1a0a00;
-  box-shadow: 0 4px 15px rgba(212,168,67,0.3);
-}
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(212,168,67,0.4); }
-.btn-secondary {
-  background: rgba(255,255,255,0.1);
-  color: var(--text-light);
-  border: 1px solid rgba(255,255,255,0.2);
-}
-.btn-secondary:hover { background: rgba(255,255,255,0.18); }
+.btn-primary { background:linear-gradient(135deg,var(--gold),#b8860b); color:#1a0a00; box-shadow:0 4px 15px rgba(212,168,67,0.3); }
+.btn-primary:hover { transform:translateY(-2px); box-shadow:0 6px 22px rgba(212,168,67,0.45); }
+.btn-secondary { background:rgba(255,255,255,0.09); color:var(--text-light); border:1px solid rgba(255,255,255,0.18); }
+.btn-secondary:hover { background:rgba(255,255,255,0.16); }
 
-.divider {
-  display: flex; align-items: center; gap: 12px;
-  margin: 20px 0; color: rgba(255,255,255,0.3); font-size: 0.85rem;
-}
-.divider::before, .divider::after {
-  content: ''; flex: 1;
-  height: 1px; background: rgba(255,255,255,0.15);
-}
+.divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:rgba(255,255,255,0.28); font-size:0.82rem; }
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.12); }
 
-#status-msg {
-  font-size: 0.85rem; color: var(--gold); min-height: 20px;
-  margin-top: 10px; text-align: center;
-}
+#status-msg { font-size:0.82rem; color:var(--gold); min-height:20px; margin-top:8px; text-align:center; }
 
-.room-info {
-  background: rgba(212,168,67,0.1);
-  border: 1px solid rgba(212,168,67,0.3);
-  border-radius: 8px; padding: 16px; margin-top: 20px;
-}
-.room-code {
-  font-family: 'Noto Serif TC', serif;
-  font-size: 2rem; font-weight: 900;
-  color: var(--gold); letter-spacing: 0.3em;
-}
-.player-list { margin-top: 12px; text-align: left; }
-.player-slot {
-  padding: 6px 10px; border-radius: 6px;
-  margin: 4px 0; font-size: 0.9rem;
-  display: flex; align-items: center; gap: 8px;
-}
-.player-slot.filled { background: rgba(30,132,73,0.3); color: #7dcea0; }
-.player-slot.empty { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.3); }
-.player-slot.ai { background: rgba(106,52,131,0.3); color: #c39bd3; }
+.room-info { background:rgba(212,168,67,0.08); border:1px solid rgba(212,168,67,0.25); border-radius:10px; padding:16px; margin-top:16px; }
+.room-code { font-family:'Noto Serif TC',serif; font-size:2.2rem; font-weight:900; color:var(--gold); letter-spacing:0.3em; }
+.player-slot { padding:7px 12px; border-radius:7px; margin:5px 0; font-size:0.88rem; display:flex; align-items:center; gap:8px; }
+.player-slot.filled { background:rgba(30,132,73,0.28); color:#7dcea0; }
+.player-slot.empty { background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.28); }
+.player-slot.ai { background:rgba(106,52,131,0.28); color:#c39bd3; }
+
+/* Settings grid */
+.settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
 
 /* ===== GAME BOARD ===== */
 #game {
-  display: none;
-  width: 100vw; height: 100vh;
-  background: radial-gradient(ellipse at center, #1a6b3c 0%, #0f4225 60%, #081a10 100%);
-  position: relative;
-  overflow: hidden;
+  display:none; width:100vw; height:100vh;
+  background:radial-gradient(ellipse at center, #1d7040 0%, #115030 50%, #081a10 100%);
+  position:relative; overflow:hidden;
 }
-
-/* Board felt texture */
 #game::before {
-  content: '';
-  position: absolute; inset: 0;
-  background-image: 
-    repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0,0,0,0.04) 20px, rgba(0,0,0,0.04) 21px),
-    repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(0,0,0,0.04) 20px, rgba(0,0,0,0.04) 21px);
-  pointer-events: none;
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(0,0,0,0.035) 28px,rgba(0,0,0,0.035) 29px),
+    repeating-linear-gradient(90deg,transparent,transparent 28px,rgba(0,0,0,0.035) 28px,rgba(0,0,0,0.035) 29px);
 }
 
-/* Center info panel */
+/* ===== CENTER TABLE INFO ===== */
 .center-panel {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  padding: 16px 20px;
-  text-align: center;
-  min-width: 160px;
-  backdrop-filter: blur(4px);
-  z-index: 10;
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(4,14,7,0.88);
+  border:1.5px solid rgba(212,168,67,0.5);
+  border-radius:14px;
+  padding:14px 18px;
+  min-width:180px;
+  text-align:center;
+  backdrop-filter:blur(6px);
+  z-index:20;
+  box-shadow:0 0 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,0,0,0.3);
 }
-.round-wind { font-family: 'Noto Serif TC'; font-size: 1.4rem; color: var(--gold); font-weight: 900; }
-.deck-count { font-size: 0.8rem; color: rgba(255,255,255,0.6); margin-top: 4px; }
-.scores-mini { margin-top: 8px; font-size: 0.75rem; }
+.center-wind { font-family:'Noto Serif TC'; font-size:1.6rem; font-weight:900; color:var(--gold); text-shadow:0 0 15px rgba(212,168,67,0.5); }
+.center-sub { font-size:0.7rem; color:rgba(212,168,67,0.5); letter-spacing:0.15em; margin-top:-2px; margin-bottom:6px; }
+.deck-display { display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.78rem; margin-bottom:8px; }
+.deck-bar { flex:1; height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; }
+.deck-bar-fill { height:100%; background:linear-gradient(90deg,#e74c3c,#e67e22,#f1c40f); border-radius:3px; transition:width 0.5s; }
+.dice-display { font-size:1.3rem; letter-spacing:0.1em; min-height:28px; }
+.scores-table { font-size:0.75rem; width:100%; border-collapse:collapse; margin-top:6px; }
+.scores-table td { padding:2px 4px; }
+.scores-table .sname { color:rgba(255,255,255,0.7); text-align:left; max-width:60px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.scores-table .smoney { color:var(--gold); text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+.scores-table .smoney.negative { color:#e74c3c; }
+.current-turn-label {
+  background:rgba(212,168,67,0.18); border:1px solid rgba(212,168,67,0.4);
+  border-radius:6px; padding:4px 8px; font-size:0.78rem; color:var(--gold);
+  margin-top:8px; font-weight:700;
+}
 
-/* Player areas */
-.player-area {
-  position: absolute;
-  display: flex; flex-direction: column; align-items: center;
-}
-
-/* Bottom = me */
-.player-area.bottom {
-  bottom: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 100%; max-width: 900px;
-  flex-direction: column-reverse;
-}
-/* Top */
-.player-area.top {
-  top: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 100%; max-width: 900px;
-}
-/* Left */
-.player-area.left {
-  left: 0; top: 50%;
-  transform: translateY(-50%);
-  flex-direction: row;
-}
-/* Right */
-.player-area.right {
-  right: 0; top: 50%;
-  transform: translateY(-50%);
-  flex-direction: row-reverse;
-}
+/* ===== PLAYER AREAS ===== */
+.player-area { position:absolute; display:flex; flex-direction:column; align-items:center; }
+.player-area.bottom { bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:1000px; flex-direction:column-reverse; }
+.player-area.top { top:0; left:50%; transform:translateX(-50%); width:100%; max-width:1000px; }
+.player-area.left { left:0; top:50%; transform:translateY(-50%); flex-direction:row; }
+.player-area.right { right:0; top:50%; transform:translateY(-50%); flex-direction:row-reverse; }
 
 .player-info-bar {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 14px;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  font-size: 0.85rem;
-  white-space: nowrap;
+  display:flex; align-items:center; gap:8px; padding:5px 12px;
+  background:var(--panel-bg); border:1.5px solid var(--panel-border);
+  border-radius:10px; font-size:0.82rem; white-space:nowrap;
+  backdrop-filter:blur(4px); transition:border-color 0.3s, box-shadow 0.3s;
 }
 .player-wind-badge {
-  background: var(--gold);
-  color: #1a0a00;
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Noto Serif TC'; font-weight: 900; font-size: 0.9rem;
+  background:var(--gold); color:#1a0a00;
+  width:26px; height:26px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Noto Serif TC'; font-weight:900; font-size:0.9rem; flex-shrink:0;
 }
-.player-name-label { font-weight: 700; color: var(--text-light); }
-.player-score-label { color: var(--gold); font-size: 0.8rem; }
-.player-active .player-info-bar { border-color: var(--gold); box-shadow: 0 0 10px rgba(212,168,67,0.4); }
+.player-name-label { font-weight:700; color:var(--text-light); max-width:80px; overflow:hidden; text-overflow:ellipsis; }
+.player-money-label { color:var(--gold); font-size:0.8rem; font-variant-numeric:tabular-nums; }
+.player-money-label.negative { color:#e74c3c; }
+.player-tenpai-badge {
+  background:linear-gradient(135deg,#e74c3c,#c0392b);
+  color:white; font-size:0.65rem; font-weight:900;
+  padding:2px 6px; border-radius:4px; letter-spacing:0.05em;
+  animation:tenpaiPulse 1s infinite alternate;
+}
+@keyframes tenpaiPulse {
+  from{box-shadow:0 0 4px rgba(231,76,60,0.6)} to{box-shadow:0 0 12px rgba(231,76,60,1)}
+}
+.player-area.active-turn .player-info-bar {
+  border-color:var(--gold);
+  box-shadow:0 0 16px rgba(212,168,67,0.6), 0 0 4px rgba(212,168,67,0.3);
+}
+.player-timer-bar { height:3px; border-radius:2px; background:rgba(255,255,255,0.1); margin-top:2px; overflow:hidden; }
+.player-timer-fill { height:100%; background:linear-gradient(90deg,#2ecc71,#f1c40f,#e74c3c); transition:width 1s linear; }
 
-/* Hand tiles container */
+/* ===== TILES ===== */
 .hand-tiles {
-  display: flex; flex-wrap: nowrap;
-  gap: 4px; padding: 10px 8px;
-  align-items: flex-end;
+  display:flex; flex-wrap:nowrap; gap:4px; padding:10px 8px;
+  align-items:flex-end; overflow-x:auto;
 }
-.player-area.top .hand-tiles { align-items: flex-start; }
-.player-area.left .hand-tiles { flex-direction: column; align-items: flex-end; margin: 4px; }
-.player-area.right .hand-tiles { flex-direction: column; align-items: flex-start; margin: 4px; }
+.hand-tiles::-webkit-scrollbar { display:none; }
+.player-area.top .hand-tiles { align-items:flex-start; }
+.player-area.left .hand-tiles { flex-direction:column; align-items:flex-end; margin:4px; max-height:70vh; overflow-y:auto; }
+.player-area.right .hand-tiles { flex-direction:column; align-items:flex-start; margin:4px; max-height:70vh; overflow-y:auto; }
 
-/* Individual tile - 3D ivory look */
 .tile {
-  width: 52px; height: 72px;
-  background: linear-gradient(160deg, #fffdf5 0%, #fdf0cc 40%, #f5e4b0 100%);
-  border: 1.5px solid var(--tile-border);
-  border-radius: 6px 6px 7px 7px;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  font-family: 'Ma Shan Zheng', 'Noto Serif TC', serif;
-  font-size: 1.5rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.18s cubic-bezier(.34,1.5,.64,1), box-shadow 0.18s;
-  position: relative;
-  box-shadow:
-    0 1px 0 #fff8e8 inset,
-    1px 0 0 #fff0d0 inset,
-    -1px 0 0 #e8cc88 inset,
-    0 -3px 0 #c8a040 inset,
-    3px 6px 10px var(--tile-shadow),
-    0 2px 4px rgba(0,0,0,0.3);
-  user-select: none;
-  flex-shrink: 0;
-  overflow: hidden;
+  width:52px; height:72px;
+  background:linear-gradient(160deg,#fffdf5 0%,#fdf0cc 40%,#f5e4b0 100%);
+  border:1.5px solid var(--tile-border);
+  border-radius:6px 6px 7px 7px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-family:'Ma Shan Zheng','Noto Serif TC',serif;
+  font-size:1.5rem; font-weight:700;
+  cursor:pointer;
+  transition:transform 0.16s cubic-bezier(.34,1.5,.64,1), box-shadow 0.16s;
+  position:relative;
+  box-shadow:0 1px 0 #fff8e8 inset,1px 0 0 #fff0d0 inset,-1px 0 0 #e8cc88 inset,0 -3px 0 #c8a040 inset,3px 6px 10px var(--tile-shadow),0 2px 4px rgba(0,0,0,0.3);
+  user-select:none; flex-shrink:0;
 }
 .tile::before {
-  content: '';
-  position: absolute;
-  inset: 3px;
-  border: 1px solid rgba(180,140,60,0.25);
-  border-radius: 3px;
-  pointer-events: none;
-  z-index: 0;
+  content:''; position:absolute; inset:3px;
+  border:1px solid rgba(180,140,60,0.22); border-radius:3px; pointer-events:none; z-index:0;
 }
-.tile > * { position: relative; z-index: 1; }
-
-.tile:hover {
-  transform: translateY(-14px) scale(1.1);
-  box-shadow:
-    0 1px 0 #fff8e8 inset,
-    1px 0 0 #fff0d0 inset,
-    -1px 0 0 #e8cc88 inset,
-    0 -3px 0 #c8a040 inset,
-    5px 18px 22px rgba(0,0,0,0.55),
-    0 6px 10px rgba(0,0,0,0.4);
-}
-.tile.selected {
-  transform: translateY(-18px) scale(1.12);
-  background: linear-gradient(160deg, #fffff0 0%, #fffce0 40%, #fff0c0 100%);
-  border-color: var(--gold);
-  box-shadow:
-    0 1px 0 #fffef0 inset,
-    0 -3px 0 #d4a830 inset,
-    5px 20px 24px rgba(0,0,0,0.55),
-    0 0 20px rgba(212,168,67,0.8),
-    0 0 40px rgba(212,168,67,0.35);
-}
-
-.tile.man   { color: var(--man-color); }
-.tile.pin   { color: var(--pin-color); }
-.tile.sou   { color: var(--sou-color); }
-.tile.honor { color: var(--honor-color); }
-.tile.flower {
-  color: #9a6010;
-  background: linear-gradient(160deg, #fffef0 0%, #fff8d0 40%, #f8e8a0 100%);
-}
-
-.tile.back {
-  background: linear-gradient(135deg, #1e6b40 0%, #2a8a52 30%, #1a5c35 60%, #0f4225 100%);
-  border-color: #0a2e1a;
-  cursor: default;
-}
-.tile.back::before {
-  inset: 0;
-  border: none;
-  border-radius: 0;
-  background: repeating-linear-gradient(
-    45deg, transparent, transparent 5px,
-    rgba(255,255,255,0.04) 5px, rgba(255,255,255,0.04) 10px
-  );
-}
-.tile.back::after { content: '🀫'; font-size: 1.4rem; opacity: 0.45; position: relative; z-index: 1; }
-
-.tile.small {
-  width: 38px; height: 52px;
-  font-size: 1rem; font-weight: 700;
-  border-radius: 4px 4px 5px 5px;
-}
-.tile.small::before { inset: 2px; }
-.tile.tiny {
-  width: 28px; height: 38px;
-  font-size: 0.72rem; font-weight: 700;
-  border-radius: 3px 3px 4px 4px;
-  box-shadow: 2px 3px 5px var(--tile-shadow);
-}
-.tile.tiny::before { display: none; }
-
-.tile.highlighted { animation: tileGlow 0.8s infinite alternate; }
+.tile > * { position:relative; z-index:1; }
+.tile:hover { transform:translateY(-14px) scale(1.1); box-shadow:0 1px 0 #fff8e8 inset,1px 0 0 #fff0d0 inset,-1px 0 0 #e8cc88 inset,0 -3px 0 #c8a040 inset,5px 18px 22px rgba(0,0,0,0.55),0 6px 10px rgba(0,0,0,0.4); }
+.tile.selected { transform:translateY(-18px) scale(1.12); background:linear-gradient(160deg,#fffff0 0%,#fffce0 40%,#fff0c0 100%); border-color:var(--gold); box-shadow:0 1px 0 #fffef0 inset,0 -3px 0 #d4a830 inset,5px 20px 24px rgba(0,0,0,0.55),0 0 22px rgba(212,168,67,0.85),0 0 45px rgba(212,168,67,0.35); }
+.tile.man { color:var(--man); } .tile.pin { color:var(--pin); } .tile.sou { color:var(--sou); } .tile.honor { color:var(--honor); }
+.tile.flower { color:#9a6010; background:linear-gradient(160deg,#fffef0 0%,#fff8d0 40%,#f8e8a0 100%); }
+.tile.back { background:linear-gradient(135deg,#1e6b40,#2a8a52 40%,#0f4225); border-color:#0a2e1a; cursor:default; }
+.tile.back::before { inset:0; border:none; background:repeating-linear-gradient(45deg,transparent,transparent 5px,rgba(255,255,255,0.04) 5px,rgba(255,255,255,0.04) 10px); border-radius:0; }
+.tile.back::after { content:'🀫'; font-size:1.4rem; opacity:0.42; position:relative; z-index:1; }
+.tile.small { width:36px; height:50px; font-size:0.9rem; border-radius:4px 4px 5px 5px; }
+.tile.small::before { inset:2px; }
+.tile.tiny { width:26px; height:36px; font-size:0.65rem; border-radius:3px; box-shadow:2px 3px 5px var(--tile-shadow); }
+.tile.tiny::before { display:none; }
+.tile.just-drawn { box-shadow:0 1px 0 #fff8e8 inset,1px 0 0 #fff0d0 inset,-1px 0 0 #e8cc88 inset,0 -3px 0 #c8a040 inset,3px 6px 10px var(--tile-shadow),0 0 14px rgba(212,168,67,0.7); }
+.tile.highlighted { animation:tileGlow 0.75s infinite alternate; }
 @keyframes tileGlow {
-  from { box-shadow: 3px 6px 10px var(--tile-shadow), 0 0 8px rgba(212,168,67,0.5); border-color: var(--tile-border); }
-  to   { box-shadow: 3px 6px 10px var(--tile-shadow), 0 0 22px rgba(212,168,67,1); border-color: var(--gold-light); }
+  from{border-color:var(--tile-border);box-shadow:3px 6px 10px var(--tile-shadow),0 0 8px rgba(212,168,67,0.4)}
+  to{border-color:var(--gold-light);box-shadow:3px 6px 10px var(--tile-shadow),0 0 22px rgba(212,168,67,1)}
 }
+.tile-separator { width:3px; height:64px; background:linear-gradient(to bottom,transparent,rgba(212,168,67,0.8),transparent); border-radius:2px; flex-shrink:0; align-self:center; margin:0 4px; }
 
-/* Discard area */
-.discard-area {
-  position: absolute;
-  display: flex; flex-wrap: wrap;
-  gap: 3px;
-}
-.discard-area.bottom { bottom: 130px; left: 50%; transform: translateX(-50%); justify-content: center; max-width: 300px; }
-.discard-area.top { top: 110px; left: 50%; transform: translateX(-50%); justify-content: center; max-width: 300px; }
-.discard-area.left { left: 100px; top: 50%; transform: translateY(-50%); flex-direction: column; max-height: 280px; }
-.discard-area.right { right: 100px; top: 50%; transform: translateY(-50%); flex-direction: column; max-height: 280px; }
+/* Melds */
+.melds-area { display:flex; gap:6px; padding:4px; flex-wrap:wrap; }
+.meld-group { display:flex; gap:2px; background:rgba(0,0,0,0.22); border-radius:6px; padding:3px; border:1px solid rgba(212,168,67,0.18); }
 
-/* Melds display */
-.melds-area {
-  display: flex; gap: 6px; padding: 4px;
-  flex-wrap: wrap;
-}
-.meld-group {
-  display: flex; gap: 2px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 6px; padding: 3px;
-  border: 1px solid rgba(212,168,67,0.2);
-}
+/* Discard piles */
+.discard-area { position:absolute; display:flex; flex-wrap:wrap; gap:3px; }
+.discard-area.bottom { bottom:160px; left:50%; transform:translateX(-50%); justify-content:center; max-width:340px; }
+.discard-area.top { top:120px; left:50%; transform:translateX(-50%); justify-content:center; max-width:340px; }
+.discard-area.left { left:110px; top:50%; transform:translateY(-50%); flex-direction:column; max-height:300px; }
+.discard-area.right { right:110px; top:50%; transform:translateY(-50%); flex-direction:column; max-height:300px; }
 
-/* Action buttons */
+/* ===== ACTION PANEL ===== */
 #action-panel {
-  position: fixed;
-  bottom: 160px; left: 50%;
-  transform: translateX(-50%);
-  display: flex; gap: 10px;
-  z-index: 100;
+  position:fixed; bottom:170px; left:50%; transform:translateX(-50%);
+  display:flex; gap:10px; z-index:200; align-items:center; flex-wrap:wrap; justify-content:center;
 }
 .action-btn {
-  padding: 10px 20px;
-  border: 2px solid var(--gold);
-  border-radius: 8px;
-  background: rgba(10,20,12,0.95);
-  color: var(--gold);
-  font-family: 'Noto Serif TC';
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s;
-  animation: actionPop 0.3s ease-out;
+  padding:12px 24px; border:2.5px solid var(--gold); border-radius:10px;
+  background:rgba(6,16,8,0.97); color:var(--gold);
+  font-family:'Noto Serif TC'; font-size:1.2rem; font-weight:900;
+  cursor:pointer; transition:all 0.18s;
+  animation:actionPop 0.25s cubic-bezier(.34,1.5,.64,1);
+  letter-spacing:0.05em; white-space:nowrap;
 }
-@keyframes actionPop {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-.action-btn:hover { background: var(--gold); color: #1a0a00; transform: scale(1.05); }
-.action-btn.win { border-color: #e74c3c; color: #e74c3c; }
-.action-btn.win:hover { background: #e74c3c; color: white; }
-.action-btn.skip { border-color: rgba(255,255,255,0.3); color: rgba(255,255,255,0.5); }
+@keyframes actionPop { from{transform:scale(0.7) translateY(10px);opacity:0} to{transform:scale(1) translateY(0);opacity:1} }
+.action-btn:hover { background:var(--gold); color:#1a0a00; transform:scale(1.07); }
+.action-btn.win { border-color:#e74c3c; color:#e74c3c; font-size:1.4rem; }
+.action-btn.win:hover { background:#e74c3c; color:#fff; }
+.action-btn.pong-btn { border-color:#e67e22; color:#e67e22; }
+.action-btn.pong-btn:hover { background:#e67e22; color:#fff; }
+.action-btn.chi-btn { border-color:#3498db; color:#3498db; }
+.action-btn.chi-btn:hover { background:#3498db; color:#fff; }
+.action-btn.kong-btn { border-color:#9b59b6; color:#9b59b6; }
+.action-btn.kong-btn:hover { background:#9b59b6; color:#fff; }
+.action-btn.skip-btn { border-color:rgba(255,255,255,0.25); color:rgba(255,255,255,0.45); font-size:0.9rem; padding:10px 16px; }
+.action-btn.skip-btn:hover { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); border-color:rgba(255,255,255,0.4); }
+.action-btn.discard-btn { border-color:var(--gold); background:linear-gradient(135deg,rgba(212,168,67,0.2),rgba(212,168,67,0.05)); }
 
-/* Chat panel */
-#chat-panel {
-  position: fixed;
-  right: 12px; bottom: 12px;
-  width: 260px;
-  z-index: 200;
+/* ===== ACTION ANNOUNCEMENT ===== */
+#action-announce {
+  position:fixed; top:50%; left:50%;
+  transform:translate(-50%,-50%) scale(0.6);
+  opacity:0; pointer-events:none; z-index:400;
+  font-family:'Noto Serif TC'; font-weight:900;
+  font-size:5rem; color:var(--gold);
+  text-shadow:0 0 40px rgba(212,168,67,0.9), 2px 2px 0 rgba(0,0,0,0.6);
+  transition:transform 0.2s cubic-bezier(.34,1.5,.64,1), opacity 0.2s;
+  white-space:nowrap;
 }
-#chat-toggle {
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 8px 8px 0 0;
-  padding: 8px 12px;
-  cursor: pointer;
-  display: flex; justify-content: space-between; align-items: center;
-  font-size: 0.85rem;
-  backdrop-filter: blur(4px);
-}
-#chat-body {
-  background: rgba(5,15,8,0.95);
-  border: 1px solid var(--panel-border);
-  border-top: none;
-  border-radius: 0 0 8px 8px;
-  display: none;
-  flex-direction: column;
-  height: 220px;
-  backdrop-filter: blur(4px);
-}
-#chat-body.open { display: flex; }
-#chat-messages {
-  flex: 1; overflow-y: auto; padding: 8px;
-  font-size: 0.78rem; line-height: 1.5;
-}
-#chat-messages::-webkit-scrollbar { width: 4px; }
-#chat-messages::-webkit-scrollbar-thumb { background: rgba(212,168,67,0.3); border-radius: 2px; }
-.chat-msg { margin-bottom: 4px; }
-.chat-msg .sender { color: var(--gold); font-weight: 700; }
-.chat-msg .system { color: rgba(255,255,255,0.4); font-style: italic; }
-#chat-input-row { display: flex; padding: 6px; gap: 6px; }
-#chat-input {
-  flex: 1; background: rgba(255,255,255,0.1);
-  border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;
-  color: white; padding: 4px 8px; font-size: 0.8rem;
-  font-family: inherit; outline: none;
-}
-#chat-send {
-  background: var(--gold); color: #1a0a00;
-  border: none; border-radius: 4px; padding: 4px 10px;
-  cursor: pointer; font-weight: 700; font-size: 0.8rem;
-}
+#action-announce.show { transform:translate(-50%,-50%) scale(1); opacity:1; }
+#action-announce.pong-ann { color:#e67e22; text-shadow:0 0 40px rgba(230,126,34,0.9),2px 2px 0 rgba(0,0,0,0.6); }
+#action-announce.chi-ann { color:#3498db; text-shadow:0 0 40px rgba(52,152,219,0.9),2px 2px 0 rgba(0,0,0,0.6); }
+#action-announce.kong-ann { color:#9b59b6; text-shadow:0 0 40px rgba(155,89,182,0.9),2px 2px 0 rgba(0,0,0,0.6); }
+#action-announce.win-ann { color:#e74c3c; text-shadow:0 0 60px rgba(231,76,60,1),2px 2px 0 rgba(0,0,0,0.6); font-size:6rem; }
+#action-announce.tenpai-ann { color:#2ecc71; text-shadow:0 0 40px rgba(46,204,113,0.9),2px 2px 0 rgba(0,0,0,0.6); }
 
-/* Game log */
-#game-log {
-  position: fixed;
-  left: 12px; bottom: 12px;
-  width: 220px;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 8px;
-  padding: 8px;
-  font-size: 0.75rem;
-  max-height: 160px;
-  overflow-y: auto;
-  backdrop-filter: blur(4px);
-  z-index: 100;
+/* ===== TENPAI PANEL ===== */
+#tenpai-panel {
+  position:fixed; left:12px; top:50%; transform:translateY(-50%);
+  background:rgba(4,14,7,0.94); border:1.5px solid #2ecc71;
+  border-radius:12px; padding:12px; min-width:140px;
+  z-index:150; box-shadow:0 0 20px rgba(46,204,113,0.3);
+  display:none;
 }
-#game-log .log-item { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05); color: rgba(255,255,255,0.75); }
+#tenpai-panel .tp-title { color:#2ecc71; font-weight:900; font-size:0.9rem; margin-bottom:8px; letter-spacing:0.1em; text-align:center; }
+#tenpai-tiles { display:flex; flex-wrap:wrap; gap:4px; justify-content:center; }
+.tenpai-tile-entry { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.tenpai-count { font-size:0.65rem; color:rgba(255,255,255,0.5); }
+.tenpai-count.zero { color:#e74c3c; text-decoration:line-through; }
 
-/* Win overlay */
-#win-overlay {
-  display: none;
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.8);
-  z-index: 1000;
-  align-items: center; justify-content: center;
+/* ===== TURN BANNER ===== */
+#turn-banner {
+  position:fixed; top:30%; left:50%;
+  transform:translate(-50%,-50%) scale(0.5);
+  background:rgba(4,14,7,0.97); border:2px solid var(--gold);
+  border-radius:14px; padding:16px 40px;
+  font-family:'Noto Serif TC'; font-size:1.7rem; font-weight:900; color:var(--gold);
+  text-align:center; z-index:300; pointer-events:none; opacity:0;
+  box-shadow:0 0 50px rgba(212,168,67,0.45);
+  transition:transform 0.22s cubic-bezier(.34,1.5,.64,1),opacity 0.22s;
 }
-.win-card {
-  background: linear-gradient(135deg, #0a2e1a, #1a5c35);
-  border: 3px solid var(--gold);
-  border-radius: 20px;
-  padding: 40px 60px;
-  text-align: center;
-  box-shadow: 0 0 80px rgba(212,168,67,0.5);
-  animation: winAppear 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-@keyframes winAppear {
-  from { transform: scale(0.5) rotate(-5deg); opacity: 0; }
-  to { transform: scale(1) rotate(0); opacity: 1; }
-}
-.win-title { font-family: 'Noto Serif TC'; font-size: 3rem; font-weight: 900; color: var(--gold); text-shadow: 0 0 30px rgba(212,168,67,0.8); }
-.win-detail { color: var(--text-light); margin: 16px 0; font-size: 1.1rem; }
-.win-tiles { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
-.win-actions { display: flex; gap: 12px; justify-content: center; margin-top: 24px; }
+#turn-banner.show { transform:translate(-50%,-50%) scale(1); opacity:1; }
+#turn-banner .banner-sub { font-size:0.78rem; color:rgba(212,168,67,0.55); margin-top:4px; font-weight:400; letter-spacing:0.18em; }
 
-/* Flower display */
-.flowers-area { display: flex; gap: 2px; flex-wrap: wrap; }
-
-/* Notification toast */
-#toast {
-  position: fixed;
-  top: 20px; left: 50%;
-  transform: translateX(-50%) translateY(-100px);
-  background: rgba(10,20,12,0.95);
-  border: 1px solid var(--gold);
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-family: 'Noto Serif TC';
-  font-size: 1rem;
-  color: var(--gold);
-  z-index: 500;
-  transition: transform 0.3s;
-  pointer-events: none;
+/* ===== TIMER COUNTDOWN ===== */
+#timer-ring {
+  position:fixed; top:16px; right:16px;
+  width:64px; height:64px; z-index:200; display:none;
 }
-#toast.show { transform: translateX(-50%) translateY(0); }
+#timer-ring svg { transform:rotate(-90deg); }
+#timer-ring .ring-bg { fill:none; stroke:rgba(255,255,255,0.1); stroke-width:5; }
+#timer-ring .ring-fg { fill:none; stroke:var(--gold); stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset 1s linear,stroke 0.5s; stroke-dasharray:175.9; stroke-dashoffset:0; }
+#timer-num { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-family:'Noto Serif TC'; font-size:1.1rem; font-weight:900; color:var(--gold); }
+
+/* ===== CHAT ===== */
+#chat-panel { position:fixed; right:12px; bottom:12px; width:240px; z-index:200; }
+#chat-toggle { background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:8px 8px 0 0; padding:7px 12px; cursor:pointer; display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; backdrop-filter:blur(4px); }
+#chat-body { background:rgba(3,12,5,0.97); border:1px solid var(--panel-border); border-top:none; border-radius:0 0 8px 8px; display:none; flex-direction:column; height:200px; }
+#chat-body.open { display:flex; }
+#chat-messages { flex:1; overflow-y:auto; padding:8px; font-size:0.76rem; line-height:1.5; }
+#chat-messages::-webkit-scrollbar { width:3px; } #chat-messages::-webkit-scrollbar-thumb { background:rgba(212,168,67,0.3); }
+.chat-msg .sender { color:var(--gold); font-weight:700; }
+.chat-msg .system-msg { color:rgba(255,255,255,0.38); font-style:italic; }
+#chat-input-row { display:flex; padding:6px; gap:5px; }
+#chat-input { flex:1; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.18); border-radius:4px; color:white; padding:4px 8px; font-size:0.78rem; font-family:inherit; outline:none; }
+#chat-send { background:var(--gold); color:#1a0a00; border:none; border-radius:4px; padding:4px 10px; cursor:pointer; font-weight:700; font-size:0.78rem; }
+
+/* ===== GAME LOG ===== */
+#game-log { position:fixed; left:12px; bottom:12px; width:200px; background:var(--panel-bg); border:1px solid var(--panel-border); border-radius:10px; padding:8px; font-size:0.72rem; max-height:150px; overflow-y:auto; backdrop-filter:blur(4px); z-index:100; }
+#game-log .log-title { color:var(--gold); font-weight:700; margin-bottom:4px; font-size:0.76rem; }
+#game-log .log-item { padding:2px 0; border-bottom:1px solid rgba(255,255,255,0.04); color:rgba(255,255,255,0.7); }
+
+/* ===== WIN OVERLAY ===== */
+#win-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:1000; align-items:flex-start; justify-content:center; overflow-y:auto; padding:20px; }
+.win-card { background:linear-gradient(135deg,#08180c,#14401e); border:2.5px solid var(--gold); border-radius:20px; padding:32px 40px; text-align:center; box-shadow:0 0 100px rgba(212,168,67,0.5); animation:winPop 0.4s cubic-bezier(.34,1.5,.64,1); max-width:700px; width:100%; margin:auto; }
+@keyframes winPop { from{transform:scale(0.5) rotate(-4deg);opacity:0} to{transform:scale(1) rotate(0);opacity:1} }
+.win-title { font-family:'Noto Serif TC'; font-size:2.8rem; font-weight:900; color:var(--gold); text-shadow:0 0 30px rgba(212,168,67,0.8); }
+.win-tai { font-family:'Noto Serif TC'; font-size:2rem; font-weight:900; color:var(--gold); margin:10px 0; }
+.win-bonuses { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:12px 0; }
+.win-bonus-chip { background:rgba(212,168,67,0.14); border:1px solid rgba(212,168,67,0.4); border-radius:8px; padding:4px 12px; font-size:0.85rem; }
+.win-money-change { font-size:1.1rem; margin:10px 0; }
+.win-hands { margin:16px 0; }
+.win-hands .hand-section { margin-bottom:16px; }
+.win-hands .hand-label { font-size:0.78rem; color:rgba(212,168,67,0.65); margin-bottom:6px; letter-spacing:0.1em; }
+.win-hands .hand-row { display:flex; flex-wrap:wrap; gap:4px; justify-content:center; align-items:flex-end; }
+.win-actions { display:flex; gap:12px; justify-content:center; margin-top:20px; }
+
+/* ===== DICE OVERLAY ===== */
+#dice-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:800; align-items:center; justify-content:center; }
+.dice-card { background:rgba(8,20,10,0.97); border:2px solid var(--gold); border-radius:16px; padding:40px 60px; text-align:center; }
+.dice-card h2 { font-family:'Noto Serif TC'; color:var(--gold); font-size:1.4rem; margin-bottom:20px; }
+.dice-big { font-size:5rem; letter-spacing:0.2em; display:block; margin:10px 0; animation:diceRoll 0.4s; }
+@keyframes diceRoll { 0%{transform:rotate(0)} 25%{transform:rotate(15deg)} 75%{transform:rotate(-15deg)} 100%{transform:rotate(0)} }
+.dice-result-text { color:rgba(255,255,255,0.7); font-size:0.9rem; margin-top:10px; }
+
+/* ===== TOAST ===== */
+#toast { position:fixed; top:20px; left:50%; transform:translateX(-50%) translateY(-100px); background:rgba(6,16,8,0.97); border:1px solid var(--gold); border-radius:8px; padding:10px 22px; font-family:'Noto Serif TC'; font-size:1rem; color:var(--gold); z-index:500; transition:transform 0.28s cubic-bezier(.34,1.5,.64,1); pointer-events:none; }
+#toast.show { transform:translateX(-50%) translateY(0); }
+
+/* Flowers display */
+.flowers-area { display:flex; gap:2px; flex-wrap:wrap; }
 
 /* Responsive */
-@media (max-width: 600px) {
-  .tile { width: 34px; height: 48px; font-size: 0.85rem; }
-  .tile.small { width: 24px; height: 34px; font-size: 0.65rem; }
-  .lobby-card { padding: 24px 20px; }
-  .lobby-title { font-size: 2rem; }
-  #chat-panel { width: 200px; }
-  #game-log { display: none; }
-}
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); }
-::-webkit-scrollbar-thumb { background: rgba(212,168,67,0.3); border-radius: 3px; }
-
-/* Draw turn indicator */
-.turn-arrow {
-  position: absolute;
-  width: 0; height: 0;
-  z-index: 5;
-}
-.turn-indicator {
-  position: absolute;
-  background: rgba(212,168,67,0.9);
-  color: #1a0a00;
-  font-family: 'Noto Serif TC';
-  font-weight: 900;
-  font-size: 0.8rem;
-  padding: 3px 8px;
-  border-radius: 4px;
-  white-space: nowrap;
-  pointer-events: none;
-  z-index: 50;
+@media (max-width:600px) {
+  .tile { width:38px; height:54px; font-size:1.1rem; }
+  .tile.small { width:28px; height:38px; font-size:0.75rem; }
+  .tile.tiny { width:20px; height:28px; font-size:0.55rem; }
+  #game-log { display:none; }
+  #tenpai-panel { left:4px; }
+  .action-btn { font-size:1rem; padding:10px 16px; }
 }
 </style>
 </head>
@@ -591,30 +373,75 @@ body {
     <div class="tile-deco">🀇🀙🀀</div>
     <div class="lobby-title">麻將</div>
     <div class="lobby-subtitle">TAIWAN MAHJONG ONLINE</div>
-    
+
     <div id="lobby-main">
       <div class="form-group">
-        <label class="form-label">你的名字</label>
-        <input class="form-input" id="player-name" placeholder="輸入暱稱..." maxlength="12" value="玩家">
+        <label class="form-label">你的暱稱</label>
+        <input class="form-input" id="player-name" placeholder="輸入暱稱..." maxlength="8" value="玩家">
       </div>
-      <button class="btn btn-primary" onclick="App.createRoom()">建立新房間</button>
-      <div class="divider">或</div>
+      <button class="btn btn-primary" onclick="App.createRoom()">🏠 建立新房間</button>
+      <div class="divider">或加入朋友的房間</div>
       <div class="form-group">
-        <label class="form-label">加入房間代碼</label>
-        <input class="form-input" id="room-code-input" placeholder="例如: AB12CD" maxlength="10" style="text-transform:uppercase;letter-spacing:0.2em;">
+        <label class="form-label">房間代碼</label>
+        <input class="form-input" id="room-code-input" placeholder="輸入代碼..." maxlength="12" style="text-transform:uppercase;letter-spacing:0.2em">
       </div>
-      <button class="btn btn-secondary" onclick="App.joinRoom()">加入房間</button>
+      <button class="btn btn-secondary" onclick="App.joinRoom()">🚪 加入房間</button>
       <div id="status-msg"></div>
     </div>
 
-    <div id="lobby-room" style="display:none;">
+    <!-- Room waiting lobby -->
+    <div id="lobby-room" style="display:none">
       <div class="room-info">
-        <div style="font-size:0.8rem;color:rgba(255,255,255,0.5);margin-bottom:4px;">房間代碼（分享給朋友）</div>
+        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:4px">房間代碼 — 分享給朋友</div>
         <div class="room-code" id="room-code-display">------</div>
-        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-top:4px;" id="peer-id-display"></div>
-        <div class="player-list" id="player-list"></div>
+        <div id="peer-id-display" style="margin-top:6px;font-size:0.72rem;color:rgba(255,255,255,0.35)"></div>
+        <div class="player-list" id="player-list" style="margin-top:12px"></div>
       </div>
-      <button class="btn btn-primary" style="margin-top:16px;" onclick="App.startGame()">開始遊戲（可加入AI補位）</button>
+
+      <!-- Host settings -->
+      <div id="host-settings" style="display:none;margin-top:16px;text-align:left">
+        <div style="color:var(--gold);font-size:0.8rem;font-weight:700;margin-bottom:8px;letter-spacing:0.1em">▸ 遊戲設定（房主）</div>
+        <div class="settings-grid">
+          <div class="form-group" style="margin:0">
+            <label class="form-label">底</label>
+            <select class="form-input" id="set-base">
+              <option value="1">1台底</option>
+              <option value="2">2台底</option>
+              <option value="3">3台底</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">每台金額</label>
+            <select class="form-input" id="set-tai">
+              <option value="50">$50/台</option>
+              <option value="100" selected>$100/台</option>
+              <option value="200">$200/台</option>
+              <option value="500">$500/台</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">起始籌碼</label>
+            <select class="form-input" id="set-money">
+              <option value="5000">$5,000</option>
+              <option value="10000" selected>$10,000</option>
+              <option value="20000">$20,000</option>
+              <option value="50000">$50,000</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label">出牌時限</label>
+            <select class="form-input" id="set-time">
+              <option value="0">無限制</option>
+              <option value="15">15秒</option>
+              <option value="20" selected>20秒</option>
+              <option value="30">30秒</option>
+              <option value="45">45秒</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:16px" onclick="App.startGame()">▶ 開始遊戲（AI補位）</button>
       <button class="btn btn-secondary" onclick="App.leaveRoom()">離開房間</button>
       <div id="status-msg2"></div>
     </div>
@@ -623,56 +450,67 @@ body {
 
 <!-- ===== GAME BOARD ===== -->
 <div id="game">
-  <!-- Center info -->
+  <!-- Center info panel -->
   <div class="center-panel">
-    <div class="round-wind" id="round-wind">東風</div>
-    <div class="deck-count">牌堆: <span id="deck-count">0</span></div>
-    <div class="scores-mini" id="scores-mini"></div>
+    <div class="center-wind" id="round-wind">東風</div>
+    <div class="center-sub">ROUND WIND</div>
+    <div class="dice-display" id="dice-display">🎲🎲</div>
+    <div class="deck-display">
+      <span style="color:rgba(255,255,255,0.5)">牌堆</span>
+      <div class="deck-bar"><div class="deck-bar-fill" id="deck-bar" style="width:100%"></div></div>
+      <span id="deck-count" style="color:var(--gold);font-variant-numeric:tabular-nums;font-size:0.85rem;font-weight:700">144</span>
+    </div>
+    <table class="scores-table" id="scores-table"></table>
+    <div class="current-turn-label" id="current-turn-label">等待開始...</div>
   </div>
 
-  <!-- Player areas: 0=bottom(me), 1=right, 2=top, 3=left -->
-  <!-- Bottom player (me) -->
+  <!-- Player 0: Bottom (me) -->
   <div class="player-area bottom" id="area-0">
     <div class="player-info-bar" id="info-0">
       <div class="player-wind-badge" id="wind-0">東</div>
       <span class="player-name-label" id="name-0">我</span>
-      <span class="player-score-label" id="score-0">0分</span>
+      <span class="player-money-label" id="money-0">$10,000</span>
+      <span id="tenpai-badge-0" class="player-tenpai-badge" style="display:none">聽</span>
       <span id="flowers-display-0" class="flowers-area"></span>
     </div>
+    <div class="player-timer-bar" style="width:100%;max-width:600px"><div class="player-timer-fill" id="timer-0" style="width:100%"></div></div>
     <div class="melds-area" id="melds-0"></div>
     <div class="hand-tiles" id="hand-0"></div>
   </div>
 
-  <!-- Right player -->
+  <!-- Player 1: Right -->
   <div class="player-area right" id="area-1">
     <div class="player-info-bar" id="info-1">
       <div class="player-wind-badge" id="wind-1">南</div>
-      <span class="player-name-label" id="name-1">玩家2</span>
-      <span class="player-score-label" id="score-1">0分</span>
+      <span class="player-name-label" id="name-1">P2</span>
+      <span class="player-money-label" id="money-1">$10,000</span>
+      <span id="tenpai-badge-1" class="player-tenpai-badge" style="display:none">聽</span>
     </div>
-    <div class="melds-area" id="melds-1" style="flex-direction:column;"></div>
+    <div class="melds-area" id="melds-1" style="flex-direction:column"></div>
     <div class="hand-tiles" id="hand-1"></div>
   </div>
 
-  <!-- Top player -->
+  <!-- Player 2: Top -->
   <div class="player-area top" id="area-2">
     <div class="player-info-bar" id="info-2">
       <div class="player-wind-badge" id="wind-2">西</div>
-      <span class="player-name-label" id="name-2">玩家3</span>
-      <span class="player-score-label" id="score-2">0分</span>
+      <span class="player-name-label" id="name-2">P3</span>
+      <span class="player-money-label" id="money-2">$10,000</span>
+      <span id="tenpai-badge-2" class="player-tenpai-badge" style="display:none">聽</span>
     </div>
     <div class="melds-area" id="melds-2"></div>
     <div class="hand-tiles" id="hand-2"></div>
   </div>
 
-  <!-- Left player -->
+  <!-- Player 3: Left -->
   <div class="player-area left" id="area-3">
     <div class="player-info-bar" id="info-3">
       <div class="player-wind-badge" id="wind-3">北</div>
-      <span class="player-name-label" id="name-3">玩家4</span>
-      <span class="player-score-label" id="score-3">0分</span>
+      <span class="player-name-label" id="name-3">P4</span>
+      <span class="player-money-label" id="money-3">$10,000</span>
+      <span id="tenpai-badge-3" class="player-tenpai-badge" style="display:none">聽</span>
     </div>
-    <div class="melds-area" id="melds-3" style="flex-direction:column;"></div>
+    <div class="melds-area" id="melds-3" style="flex-direction:column"></div>
     <div class="hand-tiles" id="hand-3"></div>
   </div>
 
@@ -682,24 +520,39 @@ body {
   <div class="discard-area top" id="discards-2"></div>
   <div class="discard-area left" id="discards-3"></div>
 
-  <!-- Action buttons -->
+  <!-- Action panel -->
   <div id="action-panel"></div>
 
   <!-- Game log -->
-  <div id="game-log"><div style="color:var(--gold);font-weight:700;margin-bottom:4px;">遊戲記錄</div></div>
+  <div id="game-log"><div class="log-title">遊戲記錄</div></div>
+</div>
+
+<!-- Tenpai panel -->
+<div id="tenpai-panel">
+  <div class="tp-title">🀇 聽牌！</div>
+  <div id="tenpai-tiles"></div>
+</div>
+
+<!-- Timer ring -->
+<div id="timer-ring">
+  <svg width="64" height="64" viewBox="0 0 64 64">
+    <circle class="ring-bg" cx="32" cy="32" r="28"/>
+    <circle class="ring-fg" id="timer-ring-fg" cx="32" cy="32" r="28"/>
+  </svg>
+  <div id="timer-num">--</div>
 </div>
 
 <!-- Chat -->
-<div id="chat-panel" style="display:none;">
+<div id="chat-panel" style="display:none">
   <div id="chat-toggle" onclick="App.toggleChat()">
     <span>💬 聊天</span>
-    <span id="chat-badge" style="background:#e74c3c;color:white;border-radius:10px;padding:1px 6px;font-size:0.7rem;display:none;">0</span>
+    <span id="chat-badge" style="background:#e74c3c;color:white;border-radius:10px;padding:1px 6px;font-size:0.68rem;display:none">0</span>
     <span id="chat-arrow">▲</span>
   </div>
   <div id="chat-body">
     <div id="chat-messages"></div>
     <div id="chat-input-row">
-      <input id="chat-input" placeholder="說話..." maxlength="50" onkeydown="if(event.key==='Enter') App.sendChat()">
+      <input id="chat-input" placeholder="說話..." maxlength="40" onkeydown="if(event.key==='Enter')App.sendChat()">
       <button id="chat-send" onclick="App.sendChat()">送</button>
     </div>
   </div>
@@ -709,15 +562,31 @@ body {
 <div id="win-overlay">
   <div class="win-card">
     <div class="win-title" id="win-title">🎉 胡牌！</div>
-    <div class="win-detail" id="win-detail"></div>
-    <div class="win-tiles" id="win-tiles"></div>
+    <div class="win-tai" id="win-tai"></div>
+    <div class="win-bonuses" id="win-bonuses"></div>
+    <div class="win-money-change" id="win-money"></div>
+    <div class="win-hands" id="win-hands"></div>
     <div class="win-actions">
-      <button class="btn btn-primary" onclick="App.newRound()" style="width:auto;padding:10px 30px;">下一局</button>
-      <button class="btn btn-secondary" onclick="App.returnLobby()" style="width:auto;padding:10px 20px;">返回大廳</button>
+      <button class="btn btn-primary" onclick="App.newRound()" style="width:auto;padding:10px 30px">下一局</button>
+      <button class="btn btn-secondary" onclick="App.returnLobby()" style="width:auto;padding:10px 22px">返回大廳</button>
     </div>
   </div>
 </div>
 
+<!-- Dice overlay -->
+<div id="dice-overlay">
+  <div class="dice-card">
+    <h2>🎲 擲骰補花</h2>
+    <span class="dice-big" id="dice-big">🎲🎲</span>
+    <div class="dice-result-text" id="dice-result-text">擲骰中...</div>
+    <button class="btn btn-primary" id="dice-ok" style="width:auto;padding:8px 30px;margin-top:16px;display:none" onclick="App.closeDiceOverlay()">確認</button>
+  </div>
+</div>
+
+<!-- Action announce -->
+<div id="action-announce"></div>
+<!-- Turn banner -->
+<div id="turn-banner"><span id="turn-banner-text"></span><div class="banner-sub" id="turn-banner-sub"></div></div>
 <!-- Toast -->
 <div id="toast"></div>
 
@@ -726,657 +595,661 @@ body {
 <script src="js/network.js"></script>
 <script src="js/game.js"></script>
 <script>
-// ===== MAIN APP =====
+// ===== MAIN APP v2 =====
 const App = {
-  myIndex: 0,
-  state: null,
+  myIndex: 0, isHost: false,
+  peers: [],
+  aiPlayers: [],
   selectedTile: null,
-  isHost: false,
+  state: null,          // local copy for non-host
   chatOpen: false,
   unreadChat: 0,
-  peers: [], // [peerId, playerName] for each seat
-  gameStarted: false,
-  aiPlayers: [], // indices of AI players
-  pendingDraw: false, // waiting to draw after meld
-  
+  meldTimeout: null,
+  timerInterval: null,
+  timerSeconds: 0,
+  gameSettings: {},
+
   // === LOBBY ===
   async createRoom() {
-    const name = document.getElementById('player-name').value.trim() || '玩家1';
+    const name = (document.getElementById('player-name').value.trim() || '玩家').substring(0,8);
     const statusEl = document.getElementById('status-msg');
     statusEl.textContent = '連線中...';
-    
     try {
       const id = await MahjongNetwork.init(name);
-      const roomId = MahjongNetwork.createRoom();
-      this.isHost = true;
-      this.myIndex = 0;
-      this.peers = [{ id, name, isAI: false }];
-      
+      MahjongNetwork.createRoom();
+      this.isHost = true; this.myIndex = 0;
+      this.peers = [{id, name, isAI:false}];
       MahjongNetwork.onPlayerJoin = (peerId, peerName) => {
         if (this.peers.length >= 4) return;
-        this.peers.push({ id: peerId, name: peerName, isAI: false });
+        this.peers.push({id:peerId, name:peerName.substring(0,8), isAI:false});
         this.updateLobbyPlayerList();
-        // Broadcast updated player list to all
-        MahjongNetwork.broadcast({ type: 'player_list', peers: this.peers.map(p => ({ name: p.name, isAI: p.isAI })) });
+        MahjongNetwork.broadcast({type:'player_list', peers:this.peers.map(p=>({name:p.name,isAI:p.isAI}))});
       };
       MahjongNetwork.onPlayerLeave = (peerId) => {
-        this.peers = this.peers.filter(p => p.id !== peerId);
+        this.peers = this.peers.filter(p=>p.id!==peerId);
         this.updateLobbyPlayerList();
       };
       MahjongNetwork.onMessage = (peerId, data) => this.handleMessage(peerId, data);
-      
       document.getElementById('lobby-main').style.display = 'none';
       document.getElementById('lobby-room').style.display = 'block';
-      document.getElementById('room-code-display').textContent = roomId;
-      document.getElementById('peer-id-display').textContent = `ID: ${id} (分享此代碼+ID)`;
-      
-      // Make shareable link
-      const url = `${location.origin}${location.pathname}?room=${roomId}&host=${id}`;
-      document.getElementById('peer-id-display').innerHTML = 
-        `<a href="${url}" style="color:var(--gold);font-size:0.7rem;word-break:break-all;" onclick="navigator.clipboard.writeText(this.href);return false;">📋 複製連結</a>`;
-      
+      document.getElementById('host-settings').style.display = 'block';
+      document.getElementById('room-code-display').textContent = MahjongNetwork.roomId;
+      const url = `${location.origin}${location.pathname}?room=${MahjongNetwork.roomId}&host=${id}`;
+      document.getElementById('peer-id-display').innerHTML =
+        `<a href="${url}" style="color:var(--gold)" onclick="navigator.clipboard.writeText(this.href);App.showToast('連結已複製！');return false">📋 點此複製邀請連結</a>`;
       this.updateLobbyPlayerList();
       statusEl.textContent = '';
-    } catch(e) {
-      statusEl.textContent = '連線失敗，請重試';
-      console.error(e);
-    }
+    } catch(e) { statusEl.textContent = '連線失敗，請重試'; console.error(e); }
   },
 
   async joinRoom() {
-    const name = document.getElementById('player-name').value.trim() || '玩家';
+    const name = (document.getElementById('player-name').value.trim() || '玩家').substring(0,8);
     const code = document.getElementById('room-code-input').value.trim().toUpperCase();
     const statusEl = document.getElementById('status-msg');
-    
     if (!code) { statusEl.textContent = '請輸入房間代碼'; return; }
     statusEl.textContent = '搜尋房間中...';
-    
-    // Extract host ID from URL param or prompt
     let hostId = new URLSearchParams(location.search).get('host');
-    if (!hostId) {
-      hostId = prompt('請輸入房主的 Peer ID（房主畫面有顯示）:');
-      if (!hostId) return;
-    }
-    
+    if (!hostId) { hostId = prompt('請輸入房主的 Peer ID:'); if (!hostId) return; }
     try {
       await MahjongNetwork.init(name);
       await MahjongNetwork.joinRoom(code, hostId.trim());
       this.isHost = false;
-      
       MahjongNetwork.onMessage = (peerId, data) => this.handleMessage(peerId, data);
-      MahjongNetwork.onPlayerLeave = () => {
-        this.showToast('有玩家離線了');
-      };
-      
+      MahjongNetwork.onPlayerLeave = () => this.showToast('有玩家離線');
       document.getElementById('lobby-main').style.display = 'none';
       document.getElementById('lobby-room').style.display = 'block';
       document.getElementById('room-code-display').textContent = code;
       document.getElementById('peer-id-display').textContent = '等待房主開始...';
       statusEl.textContent = '';
-      
-      MahjongNetwork.broadcast({ type: 'join', name });
-    } catch(e) {
-      statusEl.textContent = '加入失敗：' + e.message;
-      console.error(e);
-    }
+    } catch(e) { statusEl.textContent = '加入失敗: ' + e.message; console.error(e); }
   },
 
   updateLobbyPlayerList() {
     const list = document.getElementById('player-list');
-    const slots = ['東(房主)', '南', '西', '北'];
+    const seats = ['東（房主）','南','西','北'];
     list.innerHTML = '';
-    for (let i = 0; i < 4; i++) {
+    for (let i=0; i<4; i++) {
       const p = this.peers[i];
       const div = document.createElement('div');
       if (p) {
-        div.className = `player-slot ${p.isAI ? 'ai' : 'filled'}`;
-        div.textContent = `${slots[i]}: ${p.name}${p.isAI ? ' 🤖' : ''}`;
+        div.className = `player-slot ${p.isAI?'ai':'filled'}`;
+        div.textContent = `${seats[i]}: ${p.name}${p.isAI?' 🤖':''}`;
       } else {
         div.className = 'player-slot empty';
-        div.textContent = `${slots[i]}: 等待中...`;
+        div.textContent = `${seats[i]}: 等待中...`;
       }
       list.appendChild(div);
     }
   },
 
+  getSettings() {
+    return {
+      base: parseInt(document.getElementById('set-base')?.value||1),
+      taiValue: parseInt(document.getElementById('set-tai')?.value||100),
+      startMoney: parseInt(document.getElementById('set-money')?.value||10000),
+      turnTime: parseInt(document.getElementById('set-time')?.value||20),
+    };
+  },
+
   startGame() {
     if (!this.isHost) return;
-    // Fill empty seats with AI
     while (this.peers.length < 4) {
-      const aiNames = ['小東AI', '小南AI', '小西AI', '小北AI'];
-      this.peers.push({ id: null, name: aiNames[this.peers.length], isAI: true });
+      const aiNames = ['小東AI','小南AI','小西AI','小北AI'];
+      this.peers.push({id:null, name:aiNames[this.peers.length], isAI:true});
     }
-    const aiIndices = this.peers.map((p,i) => p.isAI ? i : null).filter(i => i !== null);
-    this.aiPlayers = aiIndices;
-    
-    const playerNames = this.peers.map(p => p.name);
-    const gameState = MahjongGame.initGame(playerNames);
+    this.aiPlayers = this.peers.map((p,i)=>p.isAI?i:null).filter(i=>i!==null);
+    const playerNames = this.peers.map(p=>p.name);
+    const settings = this.getSettings();
+    this.gameSettings = settings;
+    const gameState = MahjongGame.initGame(playerNames, settings);
     this.state = gameState;
-    
-    // Tell all peers their index and the initial state
-    this.peers.forEach((p, i) => {
-      if (i === 0 || p.isAI) return;
-      MahjongNetwork.sendTo(p.id, {
-        type: 'game_start',
-        playerIndex: i,
-        aiPlayers: aiIndices,
-        playerNames
-      });
+    // Tell peers
+    this.peers.forEach((p,i) => {
+      if (i===0||p.isAI||!p.id) return;
+      MahjongNetwork.sendTo(p.id, {type:'game_start', playerIndex:i, aiPlayers:this.aiPlayers, playerNames, settings});
     });
-    
-    this.enterGame(0, playerNames, aiIndices);
-    
-    // Broadcast game state
-    setTimeout(() => this.broadcastGameState(), 100);
-    // Start first turn
-    setTimeout(() => this.doTurn(), 200);
+    this.enterGame(0, playerNames, this.aiPlayers, settings);
+    setTimeout(() => this.showDiceAndStart(), 300);
   },
 
-  leaveRoom() {
-    MahjongNetwork.disconnect();
-    location.reload();
-  },
+  leaveRoom() { MahjongNetwork.disconnect(); location.reload(); },
 
-  // === MESSAGE HANDLING ===
+  // === MESSAGES ===
   handleMessage(peerId, data) {
     switch(data.type) {
-      case 'join':
-        break;
       case 'player_list':
-        if (!this.isHost) {
-          this.peers = data.peers.map((p,i) => ({ ...p, id: null }));
-          this.updateLobbyPlayerList();
-        }
-        break;
+        if (!this.isHost) { this.peers = data.peers; this.updateLobbyPlayerList(); } break;
       case 'game_start':
-        this.myIndex = data.playerIndex;
-        this.aiPlayers = data.aiPlayers || [];
-        this.enterGame(data.playerIndex, data.playerNames, data.aiPlayers);
+        this.myIndex = data.playerIndex; this.aiPlayers = data.aiPlayers||[];
+        this.gameSettings = data.settings||{};
+        this.enterGame(data.playerIndex, data.playerNames, data.aiPlayers, data.settings);
         break;
       case 'game_state':
-        if (!this.isHost) {
-          this.receiveGameState(data.state);
-        }
-        break;
+        if (!this.isHost) { this.state = data.state; this.renderGame(data.state); } break;
       case 'action':
-        if (this.isHost) this.handleRemoteAction(peerId, data);
-        break;
+        if (this.isHost) this.handleRemoteAction(peerId, data); break;
+      case 'win_event':
+        setTimeout(() => this.showWinOverlay(data.playerIndex, data.winData), 400); break;
+      case 'dice_event':
+        this.showDiceResult(data.dice, false); break;
       case 'chat':
-        this.receiveChat(data.name, data.msg);
-        break;
+        this.receiveChat(data.name, data.msg); break;
     }
   },
 
   handleRemoteAction(peerId, data) {
-    const peerIndex = this.peers.findIndex(p => p.id === peerId);
-    if (peerIndex === -1) return;
-    
-    const s = this.state;
+    const peerIndex = this.peers.findIndex(p=>p.id===peerId);
+    if (peerIndex===-1) return;
+    const s = MahjongGame.state;
     switch(data.action) {
       case 'discard':
-        if (s.turn === peerIndex) {
-          this.doDiscard(peerIndex, data.tileId);
-        }
-        break;
+        if (s.turn===peerIndex) this.doDiscard(peerIndex, data.tileId); break;
       case 'meld':
-        this.doMeld(peerIndex, data.meldType, data.tiles);
-        break;
+        this.doMeld(peerIndex, data.meldType, data.tiles); break;
+      case 'selfkong':
+        this.doSelfKong(peerIndex, data.tiles); break;
       case 'win':
-        this.doWin(peerIndex, data.isSelfDraw);
-        break;
+        this.doWin(peerIndex, data.isSelfDraw); break;
       case 'skip':
-        // Player chose to skip meld opportunity
-        this.checkNextAction();
-        break;
+        this.checkNextAction(); break;
     }
   },
 
   // === GAME SETUP ===
-  enterGame(myIndex, playerNames, aiIndices) {
+  enterGame(myIndex, playerNames, aiIndices, settings) {
     this.myIndex = myIndex;
-    this.gameStarted = true;
     document.getElementById('lobby').style.display = 'none';
     document.getElementById('game').style.display = 'block';
     document.getElementById('chat-panel').style.display = 'block';
-    
-    const winds = ['東', '南', '西', '北'];
-    for (let i = 0; i < 4; i++) {
-      const relI = (i - myIndex + 4) % 4;
-      const positions = ['bottom', 'right', 'top', 'left'];
-      document.getElementById(`area-${relI}`).querySelector('.player-info-bar').style.display = 'flex';
-      document.getElementById(`name-${relI}`).textContent = playerNames[i] + (aiIndices.includes(i) ? ' 🤖' : '');
-      document.getElementById(`wind-${relI}`).textContent = winds[i];
+    const winds = ['東','南','西','北'];
+    for (let i=0; i<4; i++) {
+      const rel = (i-myIndex+4)%4;
+      document.getElementById(`name-${rel}`).textContent = playerNames[i]+(aiIndices.includes(i)?' 🤖':'');
+      document.getElementById(`wind-${rel}`).textContent = winds[i];
+      const money = settings?.startMoney||10000;
+      document.getElementById(`money-${rel}`).textContent = `$${money.toLocaleString()}`;
     }
-    this.addChatMsg('系統', '遊戲開始！', true);
+    this.addChatMsg('系統','遊戲開始！',true);
+  },
+
+  showDiceAndStart() {
+    if (!this.isHost) return;
+    const dice = MahjongGame.rollDice();
+    this.peers.forEach((p,i) => { if(i===0||p.isAI||!p.id) return; MahjongNetwork.sendTo(p.id,{type:'dice_event',dice}); });
+    this.showDiceResult(dice, true);
+  },
+
+  showDiceResult(dice, startAfter) {
+    const overlay = document.getElementById('dice-overlay');
+    const diceBig = document.getElementById('dice-big');
+    const diceText = document.getElementById('dice-result-text');
+    const diceOk = document.getElementById('dice-ok');
+    const nums = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
+    overlay.style.display = 'flex';
+    diceBig.textContent = '🎲🎲';
+    diceText.textContent = '擲骰中...';
+    diceOk.style.display = 'none';
+    setTimeout(() => {
+      diceBig.textContent = nums[dice[0]] + nums[dice[1]];
+      const total = dice[0]+dice[1];
+      diceText.textContent = `骰子點數: ${dice[0]} + ${dice[1]} = ${total}　補花完成！`;
+      // Process flower replacements
+      if (this.isHost) {
+        const s = MahjongGame.state;
+        for (let p=0;p<4;p++) {
+          while (s.pendingReplace[p]>0) MahjongGame.giveFlowerReplacement(p);
+        }
+        MahjongGame.startPlayPhase();
+        this.broadcastGameState();
+      }
+      if (startAfter) {
+        diceOk.style.display = 'inline-block';
+      } else {
+        setTimeout(() => { overlay.style.display='none'; }, 2500);
+      }
+    }, 1200);
+  },
+
+  closeDiceOverlay() {
+    document.getElementById('dice-overlay').style.display = 'none';
+    if (this.isHost) setTimeout(() => this.doTurn(), 200);
   },
 
   broadcastGameState() {
     if (!this.isHost) return;
-    this.peers.forEach((p, i) => {
-      if (i === 0 || p.isAI || !p.id) return;
-      const publicState = MahjongGame.getPublicState(i);
-      MahjongNetwork.sendTo(p.id, { type: 'game_state', state: publicState });
+    this.peers.forEach((p,i) => {
+      if (i===0||p.isAI||!p.id) return;
+      MahjongNetwork.sendTo(p.id, {type:'game_state', state:MahjongGame.getPublicState(i)});
     });
-    // Always render for the host (host is always player 0)
     this.renderGame(MahjongGame.getPublicState(this.myIndex));
-  },
-
-  receiveGameState(state) {
-    this.state = state; // Store for non-host
-    this.renderGame(state);
   },
 
   // === GAME LOOP ===
   doTurn() {
     if (!this.isHost) return;
-    const s = this.state;
+    const s = MahjongGame.state;
     if (s.phase !== 'playing') return;
-    
-    const currentPlayer = s.turn;
-    const isAI = this.aiPlayers.includes(currentPlayer);
-    
-    // Draw tile
-    const tile = MahjongGame.drawTile(currentPlayer);
-    if (!tile) {
-      // Draw game
-      this.broadcastGameState();
-      this.showWinOverlay(-1, null, false);
-      return;
-    }
-    
-    s.hands[currentPlayer].push(tile);
-    s.hands[currentPlayer] = MahjongEngine.sortTiles(s.hands[currentPlayer]);
-    
+    const cur = s.turn;
+    const isAI = this.aiPlayers.includes(cur);
+
+    const tile = MahjongGame.drawTile(cur);
+    if (!tile) { this.broadcastGameState(); this.showWinOverlay(-1, null); return; }
+
     // Check self-draw win
-    const winCheck = MahjongEngine.analyzeHand(s.hands[currentPlayer].filter(t=>!t.isFlower));
-    
+    const winCheck = MahjongEngine.analyzeHand(s.hands[cur].filter(t=>!t.isFlower));
+    // Check tenpai
+    MahjongGame.checkTenpai(cur);
+
     this.broadcastGameState();
-    
+    this.showTurnBanner(s.playerNames[cur], cur===this.myIndex);
+
     if (isAI) {
-      setTimeout(() => this.doAITurn(currentPlayer, winCheck.win), 800 + Math.random() * 600);
+      setTimeout(() => this.doAITurn(cur, winCheck.win), 900+Math.random()*700);
     } else {
-      // Check for self-draw kong
-      const kongTiles = MahjongAI.checkSelfKong(s.hands[currentPlayer], s.melds[currentPlayer]);
-      if (winCheck.win) {
-        this.showActionButtons([{ type: 'win', label: '自摸！' }, { type: 'skip', label: '跳過' }]);
-      }
-      // Human player's turn - wait for discard
-      this.highlightMyTurn(true);
+      this.startTimer(cur);
+      const btns = [];
+      if (winCheck.win) btns.push({type:'win', label:'🀄 自摸！'});
+      const kongTiles = MahjongAI.checkSelfKong(s.hands[cur], s.melds[cur]);
+      if (kongTiles) btns.push({type:'selfkong', label:'暗槓', tiles:kongTiles});
+      if (btns.length) { btns.push({type:'skip',label:'跳過'}); this.showActionButtons(btns); }
+      if (s.tenpai[cur] && s.tenpaiTiles[cur]) this.showTenpaiPanel(s.tenpaiTiles[cur], s.discards);
+      else this.hideTenpaiPanel();
     }
   },
 
-  doAITurn(playerIndex, canWin) {
-    const s = this.state;
-    
-    if (canWin && Math.random() > 0.1) {
-      this.doWin(playerIndex, true);
-      return;
-    }
-    
-    // Check self-draw kong
-    const kongTiles = MahjongAI.checkSelfKong(s.hands[playerIndex], s.melds[playerIndex]);
-    if (kongTiles && Math.random() > 0.5) {
-      // Do kong
-      kongTiles.forEach(t => {
-        const idx = s.hands[playerIndex].findIndex(h => h.id === t.id);
-        if (idx !== -1) s.hands[playerIndex].splice(idx, 1);
-      });
-      s.melds[playerIndex].push({ type: 'kong', tiles: kongTiles });
-      s.gameLog.push(`${s.playerNames[playerIndex]} 暗槓`);
-      this.broadcastGameState();
-      setTimeout(() => this.doTurn(), 600);
-      return;
-    }
-    
-    const discard = MahjongAI.chooseDiscard(s.hands[playerIndex], s.melds[playerIndex], s);
-    setTimeout(() => this.doDiscard(playerIndex, discard.id), 400);
+  doAITurn(pi, canWin) {
+    const s = MahjongGame.state;
+    if (canWin && Math.random()>0.08) { this.doWin(pi, true); return; }
+    const kong = MahjongAI.checkSelfKong(s.hands[pi], s.melds[pi]);
+    if (kong && Math.random()>0.5) { this.doSelfKong(pi, kong); return; }
+    const discard = MahjongAI.chooseDiscard(s.hands[pi], s.melds[pi], s);
+    setTimeout(() => this.doDiscard(pi, discard.id), 400);
   },
 
   doDiscard(playerIndex, tileId) {
-    if (!this.isHost) {
-      MahjongNetwork.broadcast({ type: 'action', action: 'discard', tileId });
-      return;
-    }
+    if (!this.isHost) { MahjongNetwork.broadcast({type:'action',action:'discard',tileId}); return; }
+    this.stopTimer();
     const tile = MahjongGame.discard(playerIndex, tileId);
     if (!tile) return;
-    
     this.selectedTile = null;
     this.clearActionButtons();
+    this.hideTenpaiPanel();
     this.broadcastGameState();
-    
-    // Check if any other player can meld
     this.checkDiscardReactions(tile, playerIndex);
   },
 
   checkDiscardReactions(tile, discardPlayer) {
-    const s = this.state;
+    const s = MahjongGame.state;
     const reactions = [];
-
-    for (let p = 0; p < 4; p++) {
-      if (p === discardPlayer) continue;
-      const opts = MahjongEngine.checkMeldOptions(
-        s.hands[p].filter(t => !t.isFlower), tile, p, discardPlayer
-      );
-      if (opts.length > 0) reactions.push({ player: p, opts });
+    for (let p=0; p<4; p++) {
+      if (p===discardPlayer) continue;
+      const opts = MahjongEngine.checkMeldOptions(s.hands[p].filter(t=>!t.isFlower), tile, p, discardPlayer);
+      if (opts.length>0) reactions.push({player:p, opts});
     }
+    if (!reactions.length) { setTimeout(()=>this.doTurn(),280); return; }
 
-    if (reactions.length === 0) {
-      setTimeout(() => this.doTurn(), 300);
-      return;
-    }
-
-    // Priority: any win first (human or AI)
+    // Win priority first
     for (const r of reactions) {
-      const winOpt = r.opts.find(o => o.type === 'win');
-      if (winOpt) {
-        if (this.aiPlayers.includes(r.player)) {
-          setTimeout(() => this.doWin(r.player, false), 500);
-        } else {
-          // Show win option to human - highest priority
-          this.showActionButtons(r.opts.map(o => ({ ...o, tileId: tile.id })));
-          this.meldTimeout = setTimeout(() => {
-            this.clearActionButtons();
-            setTimeout(() => this.doTurn(), 100);
-          }, 15000);
-        }
+      if (r.opts.find(o=>o.type==='win')) {
+        if (this.aiPlayers.includes(r.player)) { setTimeout(()=>this.doWin(r.player,false),500); return; }
+        // Human win offer
+        this.showMeldOffer(r.player, r.opts, tile);
         return;
       }
     }
-
-    // Then AI non-win melds (only pick the FIRST one to avoid conflict)
+    // AI non-win melds
     for (const r of reactions) {
       if (this.aiPlayers.includes(r.player)) {
-        const decision = MahjongAI.decideMeld(r.opts, s.hands[r.player], s.melds[r.player]);
-        if (decision) {
-          const meldTiles = r.opts.find(o => o.type === decision.type)?.tiles || [];
-          setTimeout(() => {
-            s.turn = r.player;
-            this.doMeld(r.player, decision.type, meldTiles.map(t => ({ id: t.id })));
-          }, 700);
+        const dec = MahjongAI.decideMeld(r.opts, s.hands[r.player], s.melds[r.player]);
+        if (dec) {
+          const meldTiles = r.opts.find(o=>o.type===dec.type)?.tiles||[];
+          setTimeout(()=>{ MahjongGame.state.turn=r.player; this.doMeld(r.player,dec.type,meldTiles.map(t=>({id:t.id}))); }, 700);
           return;
         }
       }
     }
+    // Human reaction
+    const hr = reactions.find(r=>r.player===this.myIndex&&!this.aiPlayers.includes(r.player));
+    if (hr) this.showMeldOffer(hr.player, hr.opts, tile);
+    else setTimeout(()=>this.doTurn(),280);
+  },
 
-    // Human player reactions (non-win)
-    const humanReaction = reactions.find(r => r.player === this.myIndex && !this.aiPlayers.includes(r.player));
-    if (humanReaction) {
-      this.showActionButtons(humanReaction.opts.map(o => ({ ...o, tileId: tile.id })));
-      this.meldTimeout = setTimeout(() => {
-        this.clearActionButtons();
-        setTimeout(() => this.doTurn(), 100);
-      }, 15000);
-    } else {
-      setTimeout(() => this.doTurn(), 300);
+  showMeldOffer(playerIndex, opts, tile) {
+    this.showTurnBanner('你可以吃碰槓！', true, true);
+    const btns = opts.map(o => ({...o, tileId:tile.id}));
+    btns.push({type:'skip', label:'不要'});
+    this.showActionButtons(btns);
+    const turnTime = this.gameSettings.turnTime||20;
+    if (turnTime > 0) {
+      this.meldTimeout = setTimeout(() => { this.clearActionButtons(); this.checkNextAction(); }, turnTime*1000);
     }
   },
 
   doMeld(playerIndex, meldType, tileDefs) {
-    if (!this.isHost) {
-      MahjongNetwork.broadcast({ type: 'action', action: 'meld', meldType, tiles: tileDefs });
-      return;
-    }
-    const s = this.state;
-    const hand = s.hands[playerIndex];
-    const tiles = tileDefs.map(def => hand.find(t => t.id === def.id)).filter(Boolean);
-    if (tiles.length === 0 && meldType !== 'win') return;
-
-    clearTimeout(this.meldTimeout);
-    this.clearActionButtons();
-
+    if (!this.isHost) { MahjongNetwork.broadcast({type:'action',action:'meld',meldType,tiles:tileDefs}); return; }
+    const s = MahjongGame.state;
+    const tiles = tileDefs.map(def=>s.hands[playerIndex].find(t=>t.id===def.id)).filter(Boolean);
+    clearTimeout(this.meldTimeout); this.clearActionButtons(); this.stopTimer();
     const result = MahjongGame.performMeld(playerIndex, meldType, tiles, s.lastDiscard);
-    s.turn = playerIndex;
+    this.showActionAnnounce(meldType, s.playerNames[playerIndex]);
     this.broadcastGameState();
-
-    if (result === 'draw_extra') {
-      setTimeout(() => this.doTurn(), 400);
-    } else {
-      // Player must now discard
+    if (result==='draw_extra') { setTimeout(()=>this.doTurn(),600); }
+    else {
       if (this.aiPlayers.includes(playerIndex)) {
-        const discard = MahjongAI.chooseDiscard(s.hands[playerIndex], s.melds[playerIndex], s);
-        setTimeout(() => this.doDiscard(playerIndex, discard.id), 700);
+        const dis = MahjongAI.chooseDiscard(s.hands[playerIndex],s.melds[playerIndex],s);
+        setTimeout(()=>this.doDiscard(playerIndex,dis.id),700);
       } else {
-        // Human needs to discard — show a reminder toast
-        this.showToast('請選一張牌打出！', 3000);
-        this.highlightMyTurn(true);
+        this.showToast('請選一張牌打出！',3000);
+        this.startTimer(playerIndex);
       }
     }
   },
 
-  doWin(playerIndex, isSelfDraw) {
-    if (!this.isHost) {
-      MahjongNetwork.broadcast({ type: 'action', action: 'win', isSelfDraw });
-      return;
-    }
-    clearTimeout(this.meldTimeout);
-    this.clearActionButtons();
-    const result = MahjongGame.declareWin(playerIndex, isSelfDraw);
+  doSelfKong(playerIndex, tiles) {
+    if (!this.isHost) { MahjongNetwork.broadcast({type:'action',action:'selfkong',tiles}); return; }
+    const s = MahjongGame.state;
+    tiles.forEach(t=>{ const i=s.hands[playerIndex].findIndex(h=>h.id===t.id); if(i!==-1) s.hands[playerIndex].splice(i,1); });
+    s.melds[playerIndex].push({type:'kong',tiles:[...tiles]});
+    s.gameLog.push(`${s.playerNames[playerIndex]} 暗槓`);
+    s.turn=playerIndex; s.drawnTileId=null;
+    this.showActionAnnounce('kong', s.playerNames[playerIndex]);
+    clearTimeout(this.meldTimeout); this.clearActionButtons(); this.stopTimer();
     this.broadcastGameState();
-    setTimeout(() => {
-      this.showWinOverlay(playerIndex, this.state.hands[playerIndex], isSelfDraw);
-    }, 300);
+    setTimeout(()=>this.doTurn(),500);
+  },
+
+  doWin(playerIndex, isSelfDraw) {
+    if (!this.isHost) { MahjongNetwork.broadcast({type:'action',action:'win',isSelfDraw}); return; }
+    clearTimeout(this.meldTimeout); this.clearActionButtons(); this.stopTimer();
+    const winData = MahjongGame.declareWin(playerIndex, isSelfDraw);
+    this.showActionAnnounce('win', MahjongGame.state.playerNames[playerIndex]);
+    this.broadcastGameState();
+    this.peers.forEach((p,i)=>{ if(i===0||p.isAI||!p.id) return; MahjongNetwork.sendTo(p.id,{type:'win_event',playerIndex,winData}); });
+    setTimeout(()=>this.showWinOverlay(playerIndex, winData), 1200);
   },
 
   checkNextAction() {
-    clearTimeout(this.meldTimeout);
-    this.clearActionButtons();
-    setTimeout(() => this.doTurn(), 200);
+    clearTimeout(this.meldTimeout); this.clearActionButtons(); this.stopTimer();
+    setTimeout(()=>this.doTurn(),200);
+  },
+
+  // === TIMER ===
+  startTimer(playerIndex) {
+    const turnTime = this.gameSettings.turnTime||0;
+    if (!turnTime) return;
+    this.stopTimer();
+    this.timerSeconds = turnTime;
+    const ring = document.getElementById('timer-ring');
+    const ringFg = document.getElementById('timer-ring-fg');
+    const num = document.getElementById('timer-num');
+    const circumference = 175.9;
+    ring.style.display = 'block';
+    ringFg.style.stroke = 'var(--gold)';
+    const tick = () => {
+      num.textContent = this.timerSeconds;
+      const pct = this.timerSeconds/turnTime;
+      ringFg.style.strokeDashoffset = circumference*(1-pct);
+      ringFg.style.stroke = pct>0.5?'var(--gold)':pct>0.25?'#e67e22':'#e74c3c';
+      // Timer bar for current player
+      const bar = document.getElementById(`timer-${(playerIndex-this.myIndex+4)%4}`);
+      if(bar) bar.style.width = (pct*100)+'%';
+    };
+    tick();
+    this.timerInterval = setInterval(()=>{
+      this.timerSeconds--;
+      tick();
+      if (this.timerSeconds<=0) {
+        this.stopTimer();
+        // Auto-discard drawn tile or first tile
+        const s = this.isHost ? MahjongGame.state : this.state;
+        if (s && s.turn===this.myIndex) {
+          const hand = s.myHand||s.hands?.[this.myIndex]||[];
+          if (hand.length>0) {
+            const tileToDiscard = s.drawnTileId ? hand.find(t=>t.id===s.drawnTileId)||hand[0] : hand[0];
+            this.doDiscard(this.myIndex, tileToDiscard.id);
+          }
+        }
+      }
+    }, 1000);
+  },
+
+  stopTimer() {
+    clearInterval(this.timerInterval); this.timerInterval=null;
+    document.getElementById('timer-ring').style.display = 'none';
+    for(let i=0;i<4;i++) { const b=document.getElementById(`timer-${i}`); if(b) b.style.width='100%'; }
+  },
+
+  // === ACTION ANNOUNCE ===
+  showActionAnnounce(type, playerName) {
+    const el = document.getElementById('action-announce');
+    const texts = {pong:'碰！', chi:'吃！', kong:'槓！', win:'胡牌！', tenpai:'聽牌！'};
+    const classes = {pong:'pong-ann',chi:'chi-ann',kong:'kong-ann',win:'win-ann',tenpai:'tenpai-ann'};
+    el.textContent = texts[type]||type;
+    el.className = classes[type]||'';
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'), type==='win'?2000:1000);
+  },
+
+  showTurnBanner(text, isMe, isMeldOffer=false) {
+    const banner = document.getElementById('turn-banner');
+    document.getElementById('turn-banner-text').textContent = text;
+    document.getElementById('turn-banner-sub').textContent = isMeldOffer ? '請選擇動作或點「不要」跳過' : (isMe?'請選一張牌打出':'');
+    banner.classList.add('show');
+    setTimeout(()=>banner.classList.remove('show'), isMeldOffer?2500:(isMe?1800:1200));
+  },
+
+  // === TENPAI PANEL ===
+  showTenpaiPanel(waitingTiles, discards) {
+    const panel = document.getElementById('tenpai-panel');
+    const container = document.getElementById('tenpai-tiles');
+    container.innerHTML = '';
+    waitingTiles.forEach(wt => {
+      const remaining = MahjongEngine.countTileInPiles(wt, discards||[]);
+      const entry = document.createElement('div');
+      entry.className = 'tenpai-tile-entry';
+      const tileEl = this.createTileEl(wt, false, 0);
+      tileEl.classList.add('tiny');
+      tileEl.style.cursor = 'default';
+      const countEl = document.createElement('div');
+      countEl.className = `tenpai-count${remaining===0?' zero':''}`;
+      countEl.textContent = `剩${remaining}`;
+      entry.appendChild(tileEl);
+      entry.appendChild(countEl);
+      container.appendChild(entry);
+    });
+    panel.style.display = 'block';
+    this.showActionAnnounce('tenpai', '');
+  },
+
+  hideTenpaiPanel() {
+    document.getElementById('tenpai-panel').style.display = 'none';
   },
 
   // === RENDERING ===
   renderGame(state) {
-    const s = state || this.state;
+    const s = state;
     if (!s) return;
+
+    // Deck bar
+    const maxDeck = 144;
+    const pct = Math.max(0, s.deckCount/maxDeck*100);
+    document.getElementById('deck-bar').style.width = pct+'%';
     document.getElementById('deck-count').textContent = s.deckCount;
-    document.getElementById('round-wind').textContent = s.roundWind + '風';
-    
-    // Update scores
-    const scoreHtml = s.playerNames.map((n,i) => 
-      `<div style="color:${s.scores[i]>=0?'#7dcea0':'#e74c3c'}">${n.substring(0,4)}: ${s.scores[i]}</div>`
-    ).join('');
-    document.getElementById('scores-mini').innerHTML = scoreHtml;
-    
-    // Update each player area
-    for (let relI = 0; relI < 4; relI++) {
-      const absI = (relI + this.myIndex) % 4;
-      const isActive = s.turn === absI;
-      const area = document.getElementById(`area-${relI}`);
-      
-      if (isActive) area.classList.add('player-active');
-      else area.classList.remove('player-active');
-      
-      document.getElementById(`score-${relI}`).textContent = s.scores[absI] + '分';
-      
-      // Render hand
-      const handEl = document.getElementById(`hand-${relI}`);
+    document.getElementById('round-wind').textContent = s.roundWind+'風';
+
+    // Dice display
+    if (s.diceResult) {
+      const nums=['','⚀','⚁','⚂','⚃','⚄','⚅'];
+      document.getElementById('dice-display').textContent = nums[s.diceResult[0]]+nums[s.diceResult[1]];
+    }
+
+    // Score table
+    const tbl = document.getElementById('scores-table');
+    tbl.innerHTML = s.playerNames.map((n,i) => {
+      const rel = (i-this.myIndex+4)%4;
+      const m = s.money?.[i]??0;
+      return `<tr><td class="sname">${n.substring(0,5)}</td><td class="smoney${m<0?' negative':''}">${m>=0?'$':'-$'}${Math.abs(m).toLocaleString()}</td></tr>`;
+    }).join('');
+
+    // Current turn label
+    const turnName = s.playerNames?.[s.turn]||'?';
+    const isMyTurn = s.turn===this.myIndex;
+    document.getElementById('current-turn-label').textContent = isMyTurn ? '👉 你的回合' : `⟳ ${turnName} 出牌中`;
+    document.getElementById('current-turn-label').style.color = isMyTurn ? '#f1c40f' : 'var(--gold)';
+
+    // Player areas
+    for (let rel=0; rel<4; rel++) {
+      const abs = (rel+this.myIndex)%4;
+      const area = document.getElementById(`area-${rel}`);
+      const isActive = s.turn===abs && s.phase==='playing';
+      if (isActive) area.classList.add('active-turn'); else area.classList.remove('active-turn');
+
+      // Money
+      const m = s.money?.[abs]??0;
+      const moneyEl = document.getElementById(`money-${rel}`);
+      moneyEl.textContent = `${m>=0?'$':'-$'}${Math.abs(m).toLocaleString()}`;
+      moneyEl.className = `player-money-label${m<0?' negative':''}`;
+
+      // Tenpai badge
+      const tBadge = document.getElementById(`tenpai-badge-${rel}`);
+      if (tBadge) tBadge.style.display = s.tenpai?.[abs] ? 'inline-block' : 'none';
+
+      // Hand
+      const handEl = document.getElementById(`hand-${rel}`);
       handEl.innerHTML = '';
-      
-      if (relI === 0) {
-        // My hand - show actual tiles
-        const myHand = s.myHand || [];
-        myHand.forEach(tile => {
-          const el = this.createTileEl(tile, true, relI);
+      if (rel===0) {
+        const myHand = s.myHand||[];
+        const drawnId = s.drawnTileId;
+        const normal = drawnId ? myHand.filter(t=>t.id!==drawnId) : myHand;
+        const drawn = drawnId ? myHand.find(t=>t.id===drawnId) : null;
+        normal.forEach(tile => {
+          const el = this.createTileEl(tile, true, rel);
           el.onclick = () => this.onTileClick(tile);
-          if (this.selectedTile?.id === tile.id) el.classList.add('selected');
+          if (this.selectedTile?.id===tile.id) el.classList.add('selected');
           handEl.appendChild(el);
         });
-        // Flower display
+        if (drawn) {
+          const sep = document.createElement('div'); sep.className='tile-separator'; handEl.appendChild(sep);
+          const el = this.createTileEl(drawn, true, rel);
+          el.classList.add('just-drawn');
+          el.onclick = () => this.onTileClick(drawn);
+          if (this.selectedTile?.id===drawn.id) el.classList.add('selected');
+          handEl.appendChild(el);
+        }
+        // Flowers
         const flowersEl = document.getElementById('flowers-display-0');
-        if (flowersEl && s.myFlowers) {
-          flowersEl.innerHTML = s.myFlowers.map(f => `<span class="tile tiny flower">${f.name}</span>`).join('');
-        }
+        if (flowersEl) flowersEl.innerHTML = (s.myFlowers||[]).map(f=>`<span class="tile tiny flower" style="cursor:default">${this.getTileDisplay(f)}</span>`).join('');
       } else {
-        // Other players - show backs
-        const count = s.opponentHandCounts?.[absI] || 13;
-        for (let k = 0; k < count; k++) {
-          const el = document.createElement('div');
-          el.className = 'tile back' + (relI === 1 || relI === 3 ? ' small' : ' small');
+        const count = s.opponentHandCounts?.[abs]||0;
+        for (let k=0; k<count; k++) {
+          const el=document.createElement('div');
+          el.className='tile back small';
           handEl.appendChild(el);
         }
       }
-      
-      // Render melds
-      const meldsEl = document.getElementById(`melds-${relI}`);
+
+      // Melds
+      const meldsEl = document.getElementById(`melds-${rel}`);
       meldsEl.innerHTML = '';
-      const melds = s.opponentMelds?.[absI] || (relI === 0 ? s.myMelds : []);
-      if (melds) {
-        melds.forEach(meld => {
-          const grp = document.createElement('div');
-          grp.className = 'meld-group';
-          meld.tiles.forEach(t => {
-            const el = this.createTileEl(t, false, relI);
-            el.classList.add('small');
-            el.style.cursor = 'default';
-            grp.appendChild(el);
-          });
-          meldsEl.appendChild(grp);
-        });
-      }
-      
-      // Render discards
-      const discardEl = document.getElementById(`discards-${relI}`);
+      const melds = s.opponentMelds?.[abs]||[];
+      melds.forEach(meld => {
+        const grp=document.createElement('div'); grp.className='meld-group';
+        meld.tiles.forEach(t => { const e=this.createTileEl(t,false,rel); e.classList.add('small'); e.style.cursor='default'; grp.appendChild(e); });
+        meldsEl.appendChild(grp);
+      });
+
+      // Discards
+      const discardEl = document.getElementById(`discards-${rel}`);
       discardEl.innerHTML = '';
-      const discards = s.discards?.[absI] || [];
-      discards.slice(-20).forEach((tile, idx) => {
-        const el = this.createTileEl(tile, false, relI);
-        el.classList.add('tiny');
-        el.style.cursor = 'default';
-        // Highlight last discard
-        if (idx === discards.length - 1 && absI === s.lastDiscardPlayer) {
-          el.classList.add('highlighted');
-        }
+      (s.discards?.[abs]||[]).slice(-24).forEach((tile,idx,arr) => {
+        const el=this.createTileEl(tile,false,rel); el.classList.add('tiny'); el.style.cursor='default';
+        if (idx===arr.length-1&&abs===s.lastDiscardPlayer) el.classList.add('highlighted');
         discardEl.appendChild(el);
       });
     }
-    
-    // Update game log
+
+    // Game log
     if (s.gameLog) {
       const logEl = document.getElementById('game-log');
-      const existing = logEl.children[0];
-      logEl.innerHTML = '<div style="color:var(--gold);font-weight:700;margin-bottom:4px;">遊戲記錄</div>';
-      s.gameLog.forEach(msg => {
-        const d = document.createElement('div');
-        d.className = 'log-item';
-        d.textContent = msg;
-        logEl.appendChild(d);
-      });
-      logEl.scrollTop = logEl.scrollHeight;
+      logEl.innerHTML = '<div class="log-title">遊戲記錄</div>';
+      s.gameLog.forEach(msg=>{ const d=document.createElement('div'); d.className='log-item'; d.textContent=msg; logEl.appendChild(d); });
+      logEl.scrollTop=logEl.scrollHeight;
     }
   },
 
   createTileEl(tile, interactive, position) {
     const el = document.createElement('div');
-    el.className = `tile ${tile.suit}`;
-    if (tile.isFlower) el.classList.add('flower');
+    el.className = `tile ${tile.suit}${tile.isFlower?' flower':''}`;
     if (tile.name) el.dataset.name = tile.name;
-    const display = this.getTileDisplay(tile);
-    el.innerHTML = display;
+    el.innerHTML = this.getTileDisplay(tile);
     el.dataset.id = tile.id;
-    if (!interactive) el.style.cursor = 'default';
+    if (!interactive) el.style.cursor='default';
     return el;
   },
 
   getTileDisplay(tile) {
-    const numChinese = ['','一','二','三','四','五','六','七','八','九'];
-
-    if (tile.suit === 'man') {
-      return `<span style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;gap:1px">
-        <span style="font-size:1.3em;font-weight:900;letter-spacing:-0.02em">${numChinese[tile.value]}</span>
-        <span style="font-size:0.48em;font-weight:700;color:rgba(150,80,20,0.85);font-family:'Noto Serif TC'">萬</span>
-      </span>`;
+    const numChinese=['','一','二','三','四','五','六','七','八','九'];
+    if (tile.suit==='man') return `<span style="display:flex;flex-direction:column;align-items:center;line-height:1.05;gap:1px"><span style="font-size:1.2em;font-weight:900">${numChinese[tile.value]}</span><span style="font-size:0.46em;font-weight:700;color:rgba(150,80,20,0.85);font-family:'Noto Serif TC'">萬</span></span>`;
+    if (tile.suit==='pin') {
+      const svgs={1:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="12" fill="none" stroke="currentColor" stroke-width="3.5"/><circle cx="17" cy="17" r="5.5" fill="currentColor"/></svg>`,2:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="9" r="7.5" fill="none" stroke="currentColor" stroke-width="2.8"/><circle cx="17" cy="9" r="3.2" fill="currentColor"/><circle cx="17" cy="25" r="7.5" fill="none" stroke="currentColor" stroke-width="2.8"/><circle cx="17" cy="25" r="3.2" fill="currentColor"/></svg>`,3:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="6" r="5.5" fill="none" stroke="currentColor" stroke-width="2.3"/><circle cx="17" cy="6" r="2.4" fill="currentColor"/><circle cx="17" cy="17" r="5.5" fill="none" stroke="currentColor" stroke-width="2.3"/><circle cx="17" cy="17" r="2.4" fill="currentColor"/><circle cx="17" cy="28" r="5.5" fill="none" stroke="currentColor" stroke-width="2.3"/><circle cx="17" cy="28" r="2.4" fill="currentColor"/></svg>`,4:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="9" cy="9" r="2.4" fill="currentColor"/><circle cx="25" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="25" cy="9" r="2.4" fill="currentColor"/><circle cx="9" cy="25" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="9" cy="25" r="2.4" fill="currentColor"/><circle cx="25" cy="25" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="25" cy="25" r="2.4" fill="currentColor"/></svg>`,5:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="9" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="currentColor"/><circle cx="25" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="9" r="2.2" fill="currentColor"/><circle cx="17" cy="17" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="17" r="2.2" fill="currentColor"/><circle cx="9" cy="25" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="25" r="2.2" fill="currentColor"/><circle cx="25" cy="25" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="25" r="2.2" fill="currentColor"/></svg>`,6:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="9" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="7" r="2" fill="currentColor"/><circle cx="25" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="7" r="2" fill="currentColor"/><circle cx="9" cy="17" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="17" r="2" fill="currentColor"/><circle cx="25" cy="17" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="17" r="2" fill="currentColor"/><circle cx="9" cy="27" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="27" r="2" fill="currentColor"/><circle cx="25" cy="27" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="25" cy="27" r="2" fill="currentColor"/></svg>`,7:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="9" cy="5" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="5" r="1.8" fill="currentColor"/><circle cx="25" cy="5" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="25" cy="5" r="1.8" fill="currentColor"/><circle cx="9" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="14" r="1.8" fill="currentColor"/><circle cx="25" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="25" cy="14" r="1.8" fill="currentColor"/><circle cx="17" cy="20" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="20" r="1.8" fill="currentColor"/><circle cx="9" cy="29" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="29" r="1.8" fill="currentColor"/><circle cx="25" cy="29" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="25" cy="29" r="1.8" fill="currentColor"/></svg>`,8:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="9" cy="5" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="5" r="1.7" fill="currentColor"/><circle cx="25" cy="5" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="25" cy="5" r="1.7" fill="currentColor"/><circle cx="9" cy="13" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="13" r="1.7" fill="currentColor"/><circle cx="25" cy="13" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="25" cy="13" r="1.7" fill="currentColor"/><circle cx="9" cy="21" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="21" r="1.7" fill="currentColor"/><circle cx="25" cy="21" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="25" cy="21" r="1.7" fill="currentColor"/><circle cx="9" cy="29" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="29" r="1.7" fill="currentColor"/><circle cx="25" cy="29" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="25" cy="29" r="1.7" fill="currentColor"/></svg>`,9:`<svg width="34" height="34" viewBox="0 0 34 34"><circle cx="9" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="5" r="1.6" fill="currentColor"/><circle cx="25" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="25" cy="5" r="1.6" fill="currentColor"/><circle cx="9" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="12" r="1.6" fill="currentColor"/><circle cx="25" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="25" cy="12" r="1.6" fill="currentColor"/><circle cx="17" cy="17" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="17" r="1.6" fill="currentColor"/><circle cx="9" cy="22" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="22" r="1.6" fill="currentColor"/><circle cx="25" cy="22" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="25" cy="22" r="1.6" fill="currentColor"/><circle cx="9" cy="29" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="29" r="1.6" fill="currentColor"/><circle cx="25" cy="29" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="25" cy="29" r="1.6" fill="currentColor"/></svg>`};
+      return `<span style="display:flex;align-items:center;justify-content:center;width:40px;height:40px">${svgs[tile.value]||''}</span>`;
     }
-
-    if (tile.suit === 'pin') {
-      // SVG-based circles - classic mahjong pin look
-      const pinSVGs = {
-        1: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="16" cy="16" r="5" fill="currentColor"/></svg>`,
-        2: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="9" r="3" fill="currentColor"/><circle cx="16" cy="23" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="23" r="3" fill="currentColor"/></svg>`,
-        3: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="6" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="16" cy="6" r="2.5" fill="currentColor"/><circle cx="16" cy="16" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="16" cy="16" r="2.5" fill="currentColor"/><circle cx="16" cy="26" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="16" cy="26" r="2.5" fill="currentColor"/></svg>`,
-        4: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="9" cy="9" r="2.5" fill="currentColor"/><circle cx="23" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="23" cy="9" r="2.5" fill="currentColor"/><circle cx="9" cy="23" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="9" cy="23" r="2.5" fill="currentColor"/><circle cx="23" cy="23" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="23" cy="23" r="2.5" fill="currentColor"/></svg>`,
-        5: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="currentColor"/><circle cx="23" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="9" r="2.2" fill="currentColor"/><circle cx="16" cy="16" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="2.2" fill="currentColor"/><circle cx="9" cy="23" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="23" r="2.2" fill="currentColor"/><circle cx="23" cy="23" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="23" r="2.2" fill="currentColor"/></svg>`,
-        6: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="7" r="2" fill="currentColor"/><circle cx="23" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="7" r="2" fill="currentColor"/><circle cx="9" cy="16" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="16" r="2" fill="currentColor"/><circle cx="23" cy="16" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="16" r="2" fill="currentColor"/><circle cx="9" cy="25" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="25" r="2" fill="currentColor"/><circle cx="23" cy="25" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="25" r="2" fill="currentColor"/></svg>`,
-        7: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="6" r="1.8" fill="currentColor"/><circle cx="23" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="23" cy="6" r="1.8" fill="currentColor"/><circle cx="9" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="14" r="1.8" fill="currentColor"/><circle cx="23" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="23" cy="14" r="1.8" fill="currentColor"/><circle cx="16" cy="20" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16" cy="20" r="1.8" fill="currentColor"/><circle cx="9" cy="26" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="26" r="1.8" fill="currentColor"/><circle cx="23" cy="26" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="23" cy="26" r="1.8" fill="currentColor"/></svg>`,
-        8: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="6" r="1.7" fill="currentColor"/><circle cx="23" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="23" cy="6" r="1.7" fill="currentColor"/><circle cx="9" cy="13" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="13" r="1.7" fill="currentColor"/><circle cx="23" cy="13" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="23" cy="13" r="1.7" fill="currentColor"/><circle cx="9" cy="20" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="20" r="1.7" fill="currentColor"/><circle cx="23" cy="20" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="23" cy="20" r="1.7" fill="currentColor"/><circle cx="9" cy="27" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="27" r="1.7" fill="currentColor"/><circle cx="23" cy="27" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="23" cy="27" r="1.7" fill="currentColor"/></svg>`,
-        9: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="5" r="1.6" fill="currentColor"/><circle cx="23" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="5" r="1.6" fill="currentColor"/><circle cx="9" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="12" r="1.6" fill="currentColor"/><circle cx="23" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="12" r="1.6" fill="currentColor"/><circle cx="16" cy="16" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="16" r="1.6" fill="currentColor"/><circle cx="9" cy="20" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="20" r="1.6" fill="currentColor"/><circle cx="23" cy="20" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="20" r="1.6" fill="currentColor"/><circle cx="9" cy="27" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="27" r="1.6" fill="currentColor"/><circle cx="23" cy="27" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="27" r="1.6" fill="currentColor"/></svg>`
-      };
-      return `<span style="display:flex;align-items:center;justify-content:center;width:38px;height:38px">${pinSVGs[tile.value] || ''}</span>`;
-    }
-
-    if (tile.suit === 'sou') {
-      // SVG bamboo sticks - classic look
-      const bambooColor = ['','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48'];
-      const v = tile.value;
-      // Draw v bamboo sticks using SVG
-      const stickW = v <= 3 ? 6 : v <= 6 ? 5 : 4;
-      const cols = v <= 3 ? v : v <= 6 ? 2 : 3;
-      const rows = Math.ceil(v / cols);
-      const spacing = cols === 1 ? 0 : (28 / (cols - 1 || 1));
-      const rowSpacing = rows === 1 ? 0 : (38 / (rows + 1));
-      let sticks = '';
-      let count = 0;
-      for (let r = 0; r < rows && count < v; r++) {
-        const colsThisRow = (count + cols <= v) ? cols : v - count;
-        const startX = (32 - (colsThisRow - 1) * (stickW + 3)) / 2;
-        for (let c = 0; c < colsThisRow; c++) {
-          const x = startX + c * (stickW + 3);
-          const y = rowSpacing + r * rowSpacing;
-          const h = rowSpacing > 0 ? rowSpacing - 3 : 38;
-          sticks += `<rect x="${x-stickW/2}" y="${y}" width="${stickW}" height="${Math.max(h,8)}" rx="2" fill="#157a3a"/>`;
-          sticks += `<rect x="${x-stickW/2}" y="${y+2}" width="${stickW}" height="3" rx="1" fill="#1fa84a" opacity="0.6"/>`;
-          sticks += `<ellipse cx="${x}" cy="${y}" rx="${stickW/2}" ry="${stickW/2+1}" fill="#e8c84a"/>`;
-          sticks += `<ellipse cx="${x}" cy="${y+Math.max(h,8)}" rx="${stickW/2}" ry="${stickW/2+1}" fill="#e8c84a"/>`;
-          count++;
+    if (tile.suit==='sou') {
+      const v=tile.value;
+      const cols=v<=3?v:v<=6?2:3;
+      const rows=Math.ceil(v/cols);
+      const sw=v<=3?7:v<=6?6:5;
+      let sticks='';
+      let cnt=0;
+      const totalH=44;
+      const rowH=totalH/(rows+1);
+      for(let r=0;r<rows&&cnt<v;r++){
+        const cr=Math.min(cols,v-cnt);
+        const startX=(36-(cr-1)*(sw+4))/2;
+        for(let c=0;c<cr;c++){
+          const x=startX+c*(sw+4);
+          const y=rowH*(r+1);
+          const h=rowH-4;
+          sticks+=`<rect x="${x-sw/2}" y="${y-h/2}" width="${sw}" height="${h}" rx="2.5" fill="#157a3a"/>`;
+          sticks+=`<rect x="${x-sw/2}" y="${y-h/2+2}" width="${sw}" height="3" rx="1" fill="#1fa84a" opacity="0.5"/>`;
+          sticks+=`<ellipse cx="${x}" cy="${y-h/2}" rx="${sw/2}" ry="${sw/2+1}" fill="#d4a843"/>`;
+          sticks+=`<ellipse cx="${x}" cy="${y+h/2}" rx="${sw/2}" ry="${sw/2+1}" fill="#b8860b"/>`;
+          cnt++;
         }
       }
-      return `<span style="display:flex;align-items:center;justify-content:center;width:40px;height:50px">
-        <svg width="40" height="50" viewBox="0 0 40 50">${sticks}</svg>
-      </span>`;
+      return `<span style="display:flex;align-items:center;justify-content:center;width:42px;height:52px"><svg width="42" height="52" viewBox="0 0 42 52">${sticks}</svg></span>`;
     }
-
-    if (tile.suit === 'honor') {
-      const honorNames  = ['東','南','西','北','中','白','發'];
-      const honorColors = ['#1a5fa8','#c01818','#777','#206030','#c01818','#444','#157a3a'];
-      const name = honorNames[tile.value] || '?';
-      const color = honorColors[tile.value] || 'inherit';
-      if (name === '白') {
-        return `<span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:2.5px solid #aaa;border-radius:4px;color:#aaa;font-size:0.75em;font-weight:700;font-family:'Noto Serif TC'">白</span>`;
-      }
-      return `<span style="color:${color};font-size:1.55em;font-weight:900;font-family:'Ma Shan Zheng','Noto Serif TC';text-shadow:0 1px 2px rgba(0,0,0,0.15)">${name}</span>`;
+    if (tile.suit==='honor') {
+      const names=['東','南','西','北','中','白','發'];
+      const colors=['#1a5fa8','#c01818','#777','#1a7030','#c01818','#555','#157a3a'];
+      const nm=names[tile.value]||'?';
+      if(nm==='白') return `<span style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;border:2.5px solid #aaa;border-radius:4px;color:#aaa;font-size:0.8em;font-weight:700;font-family:'Noto Serif TC'">白</span>`;
+      return `<span style="color:${colors[tile.value]};font-size:1.6em;font-weight:900;font-family:'Ma Shan Zheng','Noto Serif TC';text-shadow:0 1px 2px rgba(0,0,0,0.18)">${nm}</span>`;
     }
-
-    if (tile.suit === 'flower') {
-      const flowerIcons = ['🌸','🌿','🌼','🎋','🌱','☀️','🍂','❄️'];
-      const flowerNames = ['梅','蘭','菊','竹','春','夏','秋','冬'];
-      return `<span style="display:flex;flex-direction:column;align-items:center;line-height:1.2;gap:1px">
-        <span style="font-size:1em">${flowerIcons[tile.value] || '🌸'}</span>
-        <span style="font-size:0.5em;font-weight:700;opacity:0.8;font-family:'Noto Serif TC'">${flowerNames[tile.value] || ''}</span>
-      </span>`;
+    if (tile.suit==='flower') {
+      const icons=['🌸','🌿','🌼','🎋','🌱','☀️','🍂','❄️'];
+      const fnames=['梅','蘭','菊','竹','春','夏','秋','冬'];
+      return `<span style="display:flex;flex-direction:column;align-items:center;line-height:1.2;gap:1px"><span style="font-size:0.95em">${icons[tile.value]||'🌸'}</span><span style="font-size:0.5em;font-weight:700;opacity:0.8;font-family:'Noto Serif TC'">${fnames[tile.value]||''}</span></span>`;
     }
-    return tile.name || '?';
+    return tile.name||'?';
   },
 
   onTileClick(tile) {
     const s = this.isHost ? MahjongGame.state : this.state;
-    if (!s || s.phase !== 'playing') return;
-    const myTurn = s.turn === this.myIndex;
-    if (!myTurn) { this.showToast('還沒輪到你！'); return; }
-
-    if (this.selectedTile?.id === tile.id) {
-      this.confirmDiscard(tile);
-    } else {
-      this.selectedTile = tile;
-      this.renderGame(this.isHost ? MahjongGame.getPublicState(this.myIndex) : this.state);
-      this.showActionButtons([
-        { type: 'confirm_discard', label: `打出 ${tile.name}`, tileId: tile.id },
-        { type: 'cancel', label: '取消' }
-      ]);
-    }
+    if (!s||s.phase!=='playing') return;
+    if (s.turn!==this.myIndex) { this.showToast('還沒輪到你！'); return; }
+    if (this.selectedTile?.id===tile.id) { this.confirmDiscard(tile); return; }
+    this.selectedTile = tile;
+    this.renderGame(this.isHost ? MahjongGame.getPublicState(this.myIndex) : this.state);
+    this.showActionButtons([
+      {type:'confirm_discard', label:`打出 ${tile.name}`, tileId:tile.id},
+      {type:'cancel', label:'取消'}
+    ]);
   },
 
   confirmDiscard(tile) {
-    this.clearActionButtons();
-    this.selectedTile = null;
-    this.doDiscard(this.myIndex, tile.id);
+    this.clearActionButtons(); this.selectedTile=null;
+    this.doDiscard(this.myIndex, tile.id||tile);
   },
 
   showActionButtons(options) {
@@ -1384,144 +1257,132 @@ const App = {
     panel.innerHTML = '';
     options.forEach(opt => {
       const btn = document.createElement('button');
-      btn.className = `action-btn ${opt.type === 'win' ? 'win' : ''} ${opt.type === 'skip' || opt.type === 'cancel' ? 'skip' : ''}`;
+      const cls = {
+        win:'action-btn win', pong:'action-btn pong-btn', chi:'action-btn chi-btn',
+        kong:'action-btn kong-btn', selfkong:'action-btn kong-btn',
+        skip:'action-btn skip-btn', cancel:'action-btn skip-btn', 'cancel-meld':'action-btn skip-btn',
+        confirm_discard:'action-btn discard-btn',
+      };
+      btn.className = cls[opt.type]||'action-btn';
       btn.textContent = opt.label;
       btn.onclick = () => {
-        clearTimeout(this.meldTimeout);
-        this.clearActionButtons();
+        clearTimeout(this.meldTimeout); this.clearActionButtons(); this.stopTimer();
+        const s = this.isHost ? MahjongGame.state : this.state;
         switch(opt.type) {
-          case 'confirm_discard': this.confirmDiscard({ id: opt.tileId }); break;
-          case 'cancel': this.selectedTile = null; this.renderGame(this.isHost ? MahjongGame.getPublicState(this.myIndex) : null); break;
-          case 'win': this.doWin(this.myIndex, !this.state?.lastDiscardPlayer && this.state?.lastDiscardPlayer !== 0); break;
-          case 'pong': case 'chi': case 'kong': this.doMeld(this.myIndex, opt.type, opt.tiles || []); break;
-          case 'skip': this.checkNextAction(); break;
+          case 'confirm_discard': this.confirmDiscard({id:opt.tileId}); break;
+          case 'cancel': this.selectedTile=null; this.renderGame(this.isHost?MahjongGame.getPublicState(this.myIndex):this.state); break;
+          case 'win': this.doWin(this.myIndex, s?.lastDiscardPlayer===-1||s?.drawnTileId!=null); break;
+          case 'pong': case 'chi': case 'kong': this.doMeld(this.myIndex, opt.type, (opt.tiles||[]).map(t=>({id:t.id}))); break;
+          case 'selfkong': this.doSelfKong(this.myIndex, opt.tiles||[]); break;
+          case 'skip': case 'cancel-meld': this.checkNextAction(); break;
         }
       };
       panel.appendChild(btn);
     });
   },
 
-  clearActionButtons() {
-    document.getElementById('action-panel').innerHTML = '';
-  },
+  clearActionButtons() { document.getElementById('action-panel').innerHTML=''; },
 
-  highlightMyTurn(active) {
-    const area = document.getElementById('area-0');
-    if (active) area.classList.add('player-active');
-    else area.classList.remove('player-active');
-  },
-
-  showWinOverlay(playerIndex, hand, isSelfDraw) {
-    const s = this.state || MahjongGame.state;
+  // === WIN OVERLAY ===
+  showWinOverlay(playerIndex, winData) {
+    const s = this.isHost ? MahjongGame.state : this.state;
     const overlay = document.getElementById('win-overlay');
-    const title = document.getElementById('win-title');
-    const detail = document.getElementById('win-detail');
-    const tilesEl = document.getElementById('win-tiles');
-    
-    if (playerIndex === -1) {
-      title.textContent = '流局！';
-      detail.textContent = '牌堆已空，無人胡牌';
-    } else {
-      const name = s?.playerNames?.[playerIndex] || '玩家' + (playerIndex+1);
-      const isMe = playerIndex === this.myIndex;
-      title.textContent = isMe ? '🎉 你胡了！' : `${name} 胡牌！`;
-      const scoreInfo = s?.scores?.[playerIndex];
-      detail.textContent = `${isSelfDraw ? '自摸' : '放槍'} | 分數: ${scoreInfo ?? 0}`;
+    if (playerIndex===-1) {
+      document.getElementById('win-title').textContent='流局！';
+      document.getElementById('win-tai').textContent='';
+      document.getElementById('win-bonuses').innerHTML='';
+      document.getElementById('win-money').textContent='牌堆已空，無人胡牌';
+      document.getElementById('win-hands').innerHTML='';
+      overlay.style.display='flex'; return;
     }
-    
-    tilesEl.innerHTML = '';
-    if (hand) {
-      hand.filter(t => !t.isFlower).forEach(t => {
-        const el = this.createTileEl(t, false, 0);
-        tilesEl.appendChild(el);
+    const name=s?.playerNames?.[playerIndex]||('玩家'+(playerIndex+1));
+    const isMe=playerIndex===this.myIndex;
+    document.getElementById('win-title').textContent=isMe?'🎉 你胡了！':`${name} 胡牌！`;
+    const wd=winData||s?.winData;
+    if(wd){
+      const payTxt=wd.isSelfDraw?'自摸（各家付）':`${s?.playerNames?.[wd.payerIndex]||'?'} 放槍`;
+      document.getElementById('win-tai').textContent=`${wd.tai} 台 × $${wd.perTai} = $${wd.total}（${payTxt}）`;
+      document.getElementById('win-bonuses').innerHTML=(wd.bonuses||[]).map(b=>`<span class="win-bonus-chip">${b}</span>`).join('');
+      const mArr=s?.money||[];
+      document.getElementById('win-money').innerHTML=`<span style="color:rgba(255,255,255,0.6);font-size:0.88rem">各家籌碼：</span>${(s?.playerNames||[]).map((n,i)=>`<span style="margin:0 8px;color:${(mArr[i]||0)<0?'#e74c3c':'#2ecc71'}">${n}: $${(mArr[i]||0).toLocaleString()}</span>`).join('')}`;
+    }
+    // Show all hands
+    const handsEl=document.getElementById('win-hands');
+    handsEl.innerHTML='';
+    const allHands=this.isHost?(MahjongGame.state?.hands||[]):(s?.allHands||[]);
+    const order=[playerIndex,...[0,1,2,3].filter(i=>i!==playerIndex)];
+    order.forEach(pi=>{
+      const ph=(allHands[pi]||[]).filter(t=>!t.isFlower);
+      const pm=s?.opponentMelds?.[pi]||[];
+      const sec=document.createElement('div'); sec.className='hand-section';
+      const lbl=document.createElement('div'); lbl.className='hand-label';
+      lbl.textContent=(pi===playerIndex?'🀇 ':'')+((s?.playerNames?.[pi])||'玩家')+(pi===playerIndex?' — 胡牌者':'');
+      sec.appendChild(lbl);
+      const row=document.createElement('div'); row.className='hand-row';
+      pm.forEach(meld=>{
+        meld.tiles.forEach(t=>{const e=this.createTileEl(t,false,0);e.classList.add('small');e.style.outline='2px solid #3498db';row.appendChild(e);});
+        const sp=document.createElement('span');sp.style.width='6px';row.appendChild(sp);
       });
-    }
-    
-    overlay.style.display = 'flex';
+      ph.forEach(t=>{const e=this.createTileEl(t,false,0);e.classList.add('small');if(pi===playerIndex)e.style.outline='2px solid var(--gold)';row.appendChild(e);});
+      sec.appendChild(row); handsEl.appendChild(sec);
+    });
+    overlay.style.display='flex';
   },
 
   newRound() {
-    document.getElementById('win-overlay').style.display = 'none';
+    document.getElementById('win-overlay').style.display='none';
+    this.hideTenpaiPanel();
     if (this.isHost) {
-      const names = this.peers.map(p => p.name);
-      const oldScores = [...(this.state?.scores || [0,0,0,0])];
-      this.state = MahjongGame.initGame(names);
-      this.state.scores = oldScores; // Keep scores
+      const names=this.peers.map(p=>p.name);
+      const oldMoney=[...(MahjongGame.state?.money||[0,0,0,0])];
+      const s=MahjongGame.initGame(names, this.gameSettings);
+      s.money=oldMoney;
       this.broadcastGameState();
-      setTimeout(() => this.doTurn(), 300);
+      setTimeout(()=>this.showDiceAndStart(),200);
     }
   },
 
-  returnLobby() {
-    location.reload();
-  },
+  returnLobby() { location.reload(); },
 
   // === CHAT ===
   toggleChat() {
-    this.chatOpen = !this.chatOpen;
-    const body = document.getElementById('chat-body');
-    const arrow = document.getElementById('chat-arrow');
-    if (this.chatOpen) {
-      body.classList.add('open');
-      arrow.textContent = '▼';
-      this.unreadChat = 0;
-      document.getElementById('chat-badge').style.display = 'none';
-    } else {
-      body.classList.remove('open');
-      arrow.textContent = '▲';
-    }
+    this.chatOpen=!this.chatOpen;
+    document.getElementById('chat-body').classList.toggle('open',this.chatOpen);
+    document.getElementById('chat-arrow').textContent=this.chatOpen?'▼':'▲';
+    if(this.chatOpen){this.unreadChat=0;document.getElementById('chat-badge').style.display='none';}
   },
-
   sendChat() {
-    const input = document.getElementById('chat-input');
-    const msg = input.value.trim();
-    if (!msg) return;
-    input.value = '';
-    const name = MahjongNetwork.playerName || '我';
-    this.addChatMsg(name, msg, false);
-    MahjongNetwork.broadcast({ type: 'chat', name, msg });
+    const input=document.getElementById('chat-input');
+    const msg=input.value.trim(); if(!msg) return; input.value='';
+    const name=MahjongNetwork.playerName||'我';
+    this.addChatMsg(name,msg,false);
+    MahjongNetwork.broadcast({type:'chat',name,msg});
+  },
+  receiveChat(name,msg) {
+    this.addChatMsg(name,msg,false);
+    if(!this.chatOpen){this.unreadChat++;const b=document.getElementById('chat-badge');b.textContent=this.unreadChat;b.style.display='inline';}
+  },
+  addChatMsg(sender,msg,isSystem) {
+    const msgs=document.getElementById('chat-messages');
+    const div=document.createElement('div'); div.className='chat-msg';
+    if(isSystem) div.innerHTML=`<span class="system-msg">${msg}</span>`;
+    else div.innerHTML=`<span class="sender">${sender}:</span> ${msg}`;
+    msgs.appendChild(div); msgs.scrollTop=msgs.scrollHeight;
   },
 
-  receiveChat(name, msg) {
-    this.addChatMsg(name, msg, false);
-    if (!this.chatOpen) {
-      this.unreadChat++;
-      const badge = document.getElementById('chat-badge');
-      badge.textContent = this.unreadChat;
-      badge.style.display = 'inline';
-    }
-  },
-
-  addChatMsg(sender, msg, isSystem) {
-    const msgs = document.getElementById('chat-messages');
-    const div = document.createElement('div');
-    div.className = 'chat-msg';
-    if (isSystem) {
-      div.innerHTML = `<span class="system">${msg}</span>`;
-    } else {
-      div.innerHTML = `<span class="sender">${sender}:</span> ${msg}`;
-    }
-    msgs.appendChild(div);
-    msgs.scrollTop = msgs.scrollHeight;
-  },
-
-  showToast(msg, duration = 2000) {
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    setTimeout(() => el.classList.remove('show'), duration);
+  showToast(msg,dur=2200) {
+    const el=document.getElementById('toast');
+    el.textContent=msg; el.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer=setTimeout(()=>el.classList.remove('show'),dur);
   }
 };
 
-// Auto-join from URL params
-window.addEventListener('load', () => {
-  const params = new URLSearchParams(location.search);
-  const room = params.get('room');
-  const host = params.get('host');
-  if (room && host) {
-    document.getElementById('room-code-input').value = room;
-    document.getElementById('status-msg').textContent = `收到邀請，房間: ${room}`;
-  }
+// Auto-join from URL
+window.addEventListener('load',()=>{
+  const p=new URLSearchParams(location.search);
+  const room=p.get('room'),host=p.get('host');
+  if(room&&host){document.getElementById('room-code-input').value=room;document.getElementById('status-msg').textContent=`收到邀請，房間: ${room}`;}
 });
 </script>
 </body>
