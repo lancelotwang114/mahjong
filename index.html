@@ -6,7 +6,7 @@
 <title>台灣麻將 Online</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;700&family=Ma+Shan+Zheng&display=swap');
 
 :root {
   --felt: #1a6b3c;
@@ -23,10 +23,15 @@
   --text-light: #f5ecd7;
   --panel-bg: rgba(0,0,0,0.45);
   --panel-border: rgba(212,168,67,0.4);
-  --man-color: #c0392b;
-  --pin-color: #2471a3;
-  --sou-color: #1e8449;
-  --honor-color: #6c3483;
+  --man-color: #c0241a;
+  --pin-color: #1a5fa8;
+  --sou-color: #157a3a;
+  --honor-color: #7b2d8b;
+  --tile-bg: #fdf6e3;
+  --tile-bg2: #f5e6c0;
+  --tile-border: #b89050;
+  --tile-border-light: #e8c878;
+  --tile-shadow: rgba(60,30,0,0.45);
 }
 
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -265,54 +270,114 @@ body {
 /* Hand tiles container */
 .hand-tiles {
   display: flex; flex-wrap: nowrap;
-  gap: 3px; padding: 8px;
+  gap: 4px; padding: 10px 8px;
   align-items: flex-end;
 }
 .player-area.top .hand-tiles { align-items: flex-start; }
 .player-area.left .hand-tiles { flex-direction: column; align-items: flex-end; margin: 4px; }
 .player-area.right .hand-tiles { flex-direction: column; align-items: flex-start; margin: 4px; }
 
-/* Individual tile */
+/* Individual tile - 3D ivory look */
 .tile {
-  width: 44px; height: 60px;
-  background: var(--tile-bg);
-  border: 2px solid var(--tile-border);
-  border-radius: 5px;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Noto Serif TC', serif;
-  font-size: 1.1rem;
+  width: 52px; height: 72px;
+  background: linear-gradient(160deg, #fffdf5 0%, #fdf0cc 40%, #f5e4b0 100%);
+  border: 1.5px solid var(--tile-border);
+  border-radius: 6px 6px 7px 7px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  font-family: 'Ma Shan Zheng', 'Noto Serif TC', serif;
+  font-size: 1.5rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
+  transition: transform 0.18s cubic-bezier(.34,1.5,.64,1), box-shadow 0.18s;
   position: relative;
-  box-shadow: 2px 2px 4px var(--tile-shadow);
+  box-shadow:
+    0 1px 0 #fff8e8 inset,
+    1px 0 0 #fff0d0 inset,
+    -1px 0 0 #e8cc88 inset,
+    0 -3px 0 #c8a040 inset,
+    3px 6px 10px var(--tile-shadow),
+    0 2px 4px rgba(0,0,0,0.3);
   user-select: none;
   flex-shrink: 0;
+  overflow: hidden;
 }
-.tile:hover { transform: translateY(-8px); box-shadow: 2px 10px 12px var(--tile-shadow); }
-.tile.selected { transform: translateY(-12px); border-color: var(--gold); box-shadow: 0 0 12px var(--gold); }
-.tile.man { color: var(--man-color); }
-.tile.pin { color: var(--pin-color); }
-.tile.sou { color: var(--sou-color); }
+.tile::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(180,140,60,0.25);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 0;
+}
+.tile > * { position: relative; z-index: 1; }
+
+.tile:hover {
+  transform: translateY(-14px) scale(1.1);
+  box-shadow:
+    0 1px 0 #fff8e8 inset,
+    1px 0 0 #fff0d0 inset,
+    -1px 0 0 #e8cc88 inset,
+    0 -3px 0 #c8a040 inset,
+    5px 18px 22px rgba(0,0,0,0.55),
+    0 6px 10px rgba(0,0,0,0.4);
+}
+.tile.selected {
+  transform: translateY(-18px) scale(1.12);
+  background: linear-gradient(160deg, #fffff0 0%, #fffce0 40%, #fff0c0 100%);
+  border-color: var(--gold);
+  box-shadow:
+    0 1px 0 #fffef0 inset,
+    0 -3px 0 #d4a830 inset,
+    5px 20px 24px rgba(0,0,0,0.55),
+    0 0 20px rgba(212,168,67,0.8),
+    0 0 40px rgba(212,168,67,0.35);
+}
+
+.tile.man   { color: var(--man-color); }
+.tile.pin   { color: var(--pin-color); }
+.tile.sou   { color: var(--sou-color); }
 .tile.honor { color: var(--honor-color); }
-.tile.flower { color: #b7950b; background: #fff9e6; }
+.tile.flower {
+  color: #9a6010;
+  background: linear-gradient(160deg, #fffef0 0%, #fff8d0 40%, #f8e8a0 100%);
+}
+
 .tile.back {
-  background: linear-gradient(135deg, #1a5c35 25%, #0f4225 75%);
+  background: linear-gradient(135deg, #1e6b40 0%, #2a8a52 30%, #1a5c35 60%, #0f4225 100%);
   border-color: #0a2e1a;
   cursor: default;
-  font-size: 0;
 }
-.tile.back::after {
-  content: '🀫';
-  font-size: 1.2rem;
-  opacity: 0.6;
+.tile.back::before {
+  inset: 0;
+  border: none;
+  border-radius: 0;
+  background: repeating-linear-gradient(
+    45deg, transparent, transparent 5px,
+    rgba(255,255,255,0.04) 5px, rgba(255,255,255,0.04) 10px
+  );
 }
-.tile.small { width: 32px; height: 44px; font-size: 0.75rem; }
-.tile.tiny { width: 24px; height: 32px; font-size: 0.55rem; }
-.tile.highlighted { animation: tileGlow 1s infinite alternate; }
+.tile.back::after { content: '🀫'; font-size: 1.4rem; opacity: 0.45; position: relative; z-index: 1; }
+
+.tile.small {
+  width: 38px; height: 52px;
+  font-size: 1rem; font-weight: 700;
+  border-radius: 4px 4px 5px 5px;
+}
+.tile.small::before { inset: 2px; }
+.tile.tiny {
+  width: 28px; height: 38px;
+  font-size: 0.72rem; font-weight: 700;
+  border-radius: 3px 3px 4px 4px;
+  box-shadow: 2px 3px 5px var(--tile-shadow);
+}
+.tile.tiny::before { display: none; }
+
+.tile.highlighted { animation: tileGlow 0.8s infinite alternate; }
 @keyframes tileGlow {
-  from { box-shadow: 0 0 6px rgba(212,168,67,0.6); }
-  to { box-shadow: 0 0 16px rgba(212,168,67,1); border-color: var(--gold); }
+  from { box-shadow: 3px 6px 10px var(--tile-shadow), 0 0 8px rgba(212,168,67,0.5); border-color: var(--tile-border); }
+  to   { box-shadow: 3px 6px 10px var(--tile-shadow), 0 0 22px rgba(212,168,67,1); border-color: var(--gold-light); }
 }
 
 /* Discard area */
@@ -892,12 +957,12 @@ const App = {
       const publicState = MahjongGame.getPublicState(i);
       MahjongNetwork.sendTo(p.id, { type: 'game_state', state: publicState });
     });
-    if (this.myIndex === 0) {
-      this.renderGame(MahjongGame.getPublicState(0));
-    }
+    // Always render for the host (host is always player 0)
+    this.renderGame(MahjongGame.getPublicState(this.myIndex));
   },
 
   receiveGameState(state) {
+    this.state = state; // Store for non-host
     this.renderGame(state);
   },
 
@@ -986,64 +1051,62 @@ const App = {
   checkDiscardReactions(tile, discardPlayer) {
     const s = this.state;
     const reactions = [];
-    
+
     for (let p = 0; p < 4; p++) {
       if (p === discardPlayer) continue;
       const opts = MahjongEngine.checkMeldOptions(
         s.hands[p].filter(t => !t.isFlower), tile, p, discardPlayer
       );
-      if (opts.length > 0) {
-        reactions.push({ player: p, opts });
-      }
+      if (opts.length > 0) reactions.push({ player: p, opts });
     }
-    
+
     if (reactions.length === 0) {
-      // No reactions, next player draws
       setTimeout(() => this.doTurn(), 300);
       return;
     }
-    
-    // Prioritize: win > kong > pong > chi
-    // Check AI reactions immediately
-    let actionTaken = false;
-    
-    // First check for wins (highest priority)
+
+    // Priority: any win first (human or AI)
     for (const r of reactions) {
       const winOpt = r.opts.find(o => o.type === 'win');
-      if (winOpt && this.aiPlayers.includes(r.player)) {
-        actionTaken = true;
-        setTimeout(() => this.doWin(r.player, false), 500);
+      if (winOpt) {
+        if (this.aiPlayers.includes(r.player)) {
+          setTimeout(() => this.doWin(r.player, false), 500);
+        } else {
+          // Show win option to human - highest priority
+          this.showActionButtons(r.opts.map(o => ({ ...o, tileId: tile.id })));
+          this.meldTimeout = setTimeout(() => {
+            this.clearActionButtons();
+            setTimeout(() => this.doTurn(), 100);
+          }, 15000);
+        }
         return;
       }
     }
-    
-    // Then check AI non-win melds
+
+    // Then AI non-win melds (only pick the FIRST one to avoid conflict)
     for (const r of reactions) {
       if (this.aiPlayers.includes(r.player)) {
         const decision = MahjongAI.decideMeld(r.opts, s.hands[r.player], s.melds[r.player]);
-        if (decision && decision.type !== 'win') {
-          actionTaken = true;
+        if (decision) {
           const meldTiles = r.opts.find(o => o.type === decision.type)?.tiles || [];
           setTimeout(() => {
             s.turn = r.player;
-            this.doMeld(r.player, decision.type, meldTiles.map(t => ({id: t.id})));
+            this.doMeld(r.player, decision.type, meldTiles.map(t => ({ id: t.id })));
           }, 700);
           return;
         }
       }
     }
-    
-    // Check if human player has reactions
+
+    // Human player reactions (non-win)
     const humanReaction = reactions.find(r => r.player === this.myIndex && !this.aiPlayers.includes(r.player));
     if (humanReaction) {
       this.showActionButtons(humanReaction.opts.map(o => ({ ...o, tileId: tile.id })));
-      // Set timeout to auto-skip if no action in 15s
       this.meldTimeout = setTimeout(() => {
         this.clearActionButtons();
         setTimeout(() => this.doTurn(), 100);
       }, 15000);
     } else {
-      // No human reactions, proceed
       setTimeout(() => this.doTurn(), 300);
     }
   },
@@ -1057,26 +1120,26 @@ const App = {
     const hand = s.hands[playerIndex];
     const tiles = tileDefs.map(def => hand.find(t => t.id === def.id)).filter(Boolean);
     if (tiles.length === 0 && meldType !== 'win') return;
-    
+
     clearTimeout(this.meldTimeout);
     this.clearActionButtons();
-    
+
     const result = MahjongGame.performMeld(playerIndex, meldType, tiles, s.lastDiscard);
+    s.turn = playerIndex;
     this.broadcastGameState();
-    
+
     if (result === 'draw_extra') {
-      s.turn = playerIndex;
       setTimeout(() => this.doTurn(), 400);
     } else {
       // Player must now discard
-      s.turn = playerIndex;
-      this.broadcastGameState();
-      
       if (this.aiPlayers.includes(playerIndex)) {
         const discard = MahjongAI.chooseDiscard(s.hands[playerIndex], s.melds[playerIndex], s);
-        setTimeout(() => this.doDiscard(playerIndex, discard.id), 600);
+        setTimeout(() => this.doDiscard(playerIndex, discard.id), 700);
+      } else {
+        // Human needs to discard — show a reminder toast
+        this.showToast('請選一張牌打出！', 3000);
+        this.highlightMyTurn(true);
       }
-      // Human waits to discard
     }
   },
 
@@ -1102,8 +1165,8 @@ const App = {
 
   // === RENDERING ===
   renderGame(state) {
-    const s = state || MahjongGame.getPublicState(this.myIndex);
-    
+    const s = state || this.state;
+    if (!s) return;
     document.getElementById('deck-count').textContent = s.deckCount;
     document.getElementById('round-wind').textContent = s.roundWind + '風';
     
@@ -1205,7 +1268,7 @@ const App = {
     const el = document.createElement('div');
     el.className = `tile ${tile.suit}`;
     if (tile.isFlower) el.classList.add('flower');
-    
+    if (tile.name) el.dataset.name = tile.name;
     const display = this.getTileDisplay(tile);
     el.innerHTML = display;
     el.dataset.id = tile.id;
@@ -1214,40 +1277,95 @@ const App = {
   },
 
   getTileDisplay(tile) {
-    const suitSymbols = {
-      man: ['一','二','三','四','五','六','七','八','九'],
-      pin: ['①','②','③','④','⑤','⑥','⑦','⑧','⑨'],
-      sou: ['1','2','3','4','5','6','7','8','9'],
-      honor: ['東','南','西','北','中','白','發'],
-      flower: ['梅','蘭','菊','竹','春','夏','秋','冬']
-    };
-    const arr = suitSymbols[tile.suit] || [];
-    const idx = tile.suit === 'honor' || tile.suit === 'flower' ? tile.value : tile.value - 1;
-    const char = arr[idx] || '?';
-    
+    const numChinese = ['','一','二','三','四','五','六','七','八','九'];
+
     if (tile.suit === 'man') {
-      return `<span style="display:flex;flex-direction:column;align-items:center;line-height:1.1">
-        <span style="font-size:0.75em">${char}</span>
-        <span style="font-size:0.6em;color:#888">萬</span>
+      return `<span style="display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.05;gap:1px">
+        <span style="font-size:1.3em;font-weight:900;letter-spacing:-0.02em">${numChinese[tile.value]}</span>
+        <span style="font-size:0.48em;font-weight:700;color:rgba(150,80,20,0.85);font-family:'Noto Serif TC'">萬</span>
       </span>`;
     }
-    return char;
+
+    if (tile.suit === 'pin') {
+      // SVG-based circles - classic mahjong pin look
+      const pinSVGs = {
+        1: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="16" cy="16" r="5" fill="currentColor"/></svg>`,
+        2: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="9" r="3" fill="currentColor"/><circle cx="16" cy="23" r="7" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="23" r="3" fill="currentColor"/></svg>`,
+        3: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="6" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="16" cy="6" r="2.5" fill="currentColor"/><circle cx="16" cy="16" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="16" cy="16" r="2.5" fill="currentColor"/><circle cx="16" cy="26" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="16" cy="26" r="2.5" fill="currentColor"/></svg>`,
+        4: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="9" cy="9" r="2.5" fill="currentColor"/><circle cx="23" cy="9" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="23" cy="9" r="2.5" fill="currentColor"/><circle cx="9" cy="23" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="9" cy="23" r="2.5" fill="currentColor"/><circle cx="23" cy="23" r="5.5" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="23" cy="23" r="2.5" fill="currentColor"/></svg>`,
+        5: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="9" r="2.2" fill="currentColor"/><circle cx="23" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="9" r="2.2" fill="currentColor"/><circle cx="16" cy="16" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="16" r="2.2" fill="currentColor"/><circle cx="9" cy="23" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="23" r="2.2" fill="currentColor"/><circle cx="23" cy="23" r="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="23" r="2.2" fill="currentColor"/></svg>`,
+        6: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="7" r="2" fill="currentColor"/><circle cx="23" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="7" r="2" fill="currentColor"/><circle cx="9" cy="16" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="16" r="2" fill="currentColor"/><circle cx="23" cy="16" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="16" r="2" fill="currentColor"/><circle cx="9" cy="25" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="25" r="2" fill="currentColor"/><circle cx="23" cy="25" r="4.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="23" cy="25" r="2" fill="currentColor"/></svg>`,
+        7: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="6" r="1.8" fill="currentColor"/><circle cx="23" cy="6" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="23" cy="6" r="1.8" fill="currentColor"/><circle cx="9" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="14" r="1.8" fill="currentColor"/><circle cx="23" cy="14" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="23" cy="14" r="1.8" fill="currentColor"/><circle cx="16" cy="20" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16" cy="20" r="1.8" fill="currentColor"/><circle cx="9" cy="26" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9" cy="26" r="1.8" fill="currentColor"/><circle cx="23" cy="26" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="23" cy="26" r="1.8" fill="currentColor"/></svg>`,
+        8: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="6" r="1.7" fill="currentColor"/><circle cx="23" cy="6" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="23" cy="6" r="1.7" fill="currentColor"/><circle cx="9" cy="13" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="13" r="1.7" fill="currentColor"/><circle cx="23" cy="13" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="23" cy="13" r="1.7" fill="currentColor"/><circle cx="9" cy="20" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="20" r="1.7" fill="currentColor"/><circle cx="23" cy="20" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="23" cy="20" r="1.7" fill="currentColor"/><circle cx="9" cy="27" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="27" r="1.7" fill="currentColor"/><circle cx="23" cy="27" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="23" cy="27" r="1.7" fill="currentColor"/></svg>`,
+        9: `<svg width="32" height="32" viewBox="0 0 32 32"><circle cx="9" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="5" r="1.6" fill="currentColor"/><circle cx="23" cy="5" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="5" r="1.6" fill="currentColor"/><circle cx="9" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="12" r="1.6" fill="currentColor"/><circle cx="23" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="12" r="1.6" fill="currentColor"/><circle cx="16" cy="16" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="16" r="1.6" fill="currentColor"/><circle cx="9" cy="20" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="20" r="1.6" fill="currentColor"/><circle cx="23" cy="20" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="20" r="1.6" fill="currentColor"/><circle cx="9" cy="27" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="27" r="1.6" fill="currentColor"/><circle cx="23" cy="27" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="23" cy="27" r="1.6" fill="currentColor"/></svg>`
+      };
+      return `<span style="display:flex;align-items:center;justify-content:center;width:38px;height:38px">${pinSVGs[tile.value] || ''}</span>`;
+    }
+
+    if (tile.suit === 'sou') {
+      // SVG bamboo sticks - classic look
+      const bambooColor = ['','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48','#2a9d48'];
+      const v = tile.value;
+      // Draw v bamboo sticks using SVG
+      const stickW = v <= 3 ? 6 : v <= 6 ? 5 : 4;
+      const cols = v <= 3 ? v : v <= 6 ? 2 : 3;
+      const rows = Math.ceil(v / cols);
+      const spacing = cols === 1 ? 0 : (28 / (cols - 1 || 1));
+      const rowSpacing = rows === 1 ? 0 : (38 / (rows + 1));
+      let sticks = '';
+      let count = 0;
+      for (let r = 0; r < rows && count < v; r++) {
+        const colsThisRow = (count + cols <= v) ? cols : v - count;
+        const startX = (32 - (colsThisRow - 1) * (stickW + 3)) / 2;
+        for (let c = 0; c < colsThisRow; c++) {
+          const x = startX + c * (stickW + 3);
+          const y = rowSpacing + r * rowSpacing;
+          const h = rowSpacing > 0 ? rowSpacing - 3 : 38;
+          sticks += `<rect x="${x-stickW/2}" y="${y}" width="${stickW}" height="${Math.max(h,8)}" rx="2" fill="#157a3a"/>`;
+          sticks += `<rect x="${x-stickW/2}" y="${y+2}" width="${stickW}" height="3" rx="1" fill="#1fa84a" opacity="0.6"/>`;
+          sticks += `<ellipse cx="${x}" cy="${y}" rx="${stickW/2}" ry="${stickW/2+1}" fill="#e8c84a"/>`;
+          sticks += `<ellipse cx="${x}" cy="${y+Math.max(h,8)}" rx="${stickW/2}" ry="${stickW/2+1}" fill="#e8c84a"/>`;
+          count++;
+        }
+      }
+      return `<span style="display:flex;align-items:center;justify-content:center;width:40px;height:50px">
+        <svg width="40" height="50" viewBox="0 0 40 50">${sticks}</svg>
+      </span>`;
+    }
+
+    if (tile.suit === 'honor') {
+      const honorNames  = ['東','南','西','北','中','白','發'];
+      const honorColors = ['#1a5fa8','#c01818','#777','#206030','#c01818','#444','#157a3a'];
+      const name = honorNames[tile.value] || '?';
+      const color = honorColors[tile.value] || 'inherit';
+      if (name === '白') {
+        return `<span style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;border:2.5px solid #aaa;border-radius:4px;color:#aaa;font-size:0.75em;font-weight:700;font-family:'Noto Serif TC'">白</span>`;
+      }
+      return `<span style="color:${color};font-size:1.55em;font-weight:900;font-family:'Ma Shan Zheng','Noto Serif TC';text-shadow:0 1px 2px rgba(0,0,0,0.15)">${name}</span>`;
+    }
+
+    if (tile.suit === 'flower') {
+      const flowerIcons = ['🌸','🌿','🌼','🎋','🌱','☀️','🍂','❄️'];
+      const flowerNames = ['梅','蘭','菊','竹','春','夏','秋','冬'];
+      return `<span style="display:flex;flex-direction:column;align-items:center;line-height:1.2;gap:1px">
+        <span style="font-size:1em">${flowerIcons[tile.value] || '🌸'}</span>
+        <span style="font-size:0.5em;font-weight:700;opacity:0.8;font-family:'Noto Serif TC'">${flowerNames[tile.value] || ''}</span>
+      </span>`;
+    }
+    return tile.name || '?';
   },
 
   onTileClick(tile) {
-    const s = this.state || MahjongGame.state;
-    if (!s) return;
+    const s = this.isHost ? MahjongGame.state : this.state;
+    if (!s || s.phase !== 'playing') return;
     const myTurn = s.turn === this.myIndex;
-    
     if (!myTurn) { this.showToast('還沒輪到你！'); return; }
-    
+
     if (this.selectedTile?.id === tile.id) {
-      // Double click / confirm discard
       this.confirmDiscard(tile);
     } else {
       this.selectedTile = tile;
-      this.renderGame(this.isHost ? MahjongGame.getPublicState(this.myIndex) : null);
-      // Show confirm button
+      this.renderGame(this.isHost ? MahjongGame.getPublicState(this.myIndex) : this.state);
       this.showActionButtons([
         { type: 'confirm_discard', label: `打出 ${tile.name}`, tileId: tile.id },
         { type: 'cancel', label: '取消' }
