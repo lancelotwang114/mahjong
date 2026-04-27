@@ -2086,7 +2086,8 @@ const Snd={
     // Fast mode: speak quicker so it doesn't lag behind
     const spd=Game?.aiSpeed||'normal';
     const baseRate=Game?.settings?.rate||1.05;
-    u.rate=(spd==='fast'||spd==='turbo')?Math.min(baseRate*1.6,2.0):baseRate;
+    const rateMap={slow:0.82,normal:1.0,fast:1.4,turbo:2.0};
+    u.rate=Math.min(baseRate*(rateMap[spd]??1.0),2.0);
     u.pitch=voicePref==='male'?0.8:voicePref==='female'?1.1:1.0;
     u.volume=1.0;
     const v=this._pickVoice(voicePref);
