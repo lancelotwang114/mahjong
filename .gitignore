@@ -1,0 +1,24 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# 開發用暫時預覽圖（非遊戲資源）
+layout_actual.png
+layout_preview.png
+preview_v2.png
+
+# 開發用暫時預覽頁面
+layout-preview.html
+sprite-preview.html
+flower-preview.html
+
+# 編輯器
+.vscode/
+.idea/
+
+# 牌圖素材（已內嵌進 mahjong-solo.html，不對外公開）
+images/
+tiles-sprite.css
+
+# Node（如果未來加入）
+node_modules/
