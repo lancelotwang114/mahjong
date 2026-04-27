@@ -536,6 +536,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 /* ── Compass score badges: 4 player scores at N/S/E/W of the pool ── */
 .pool-score {
+  display: none !important; /* Player info shown in each corner area; pool badges removed */
   position: absolute; z-index: 6; pointer-events: none;
   background: rgba(5,10,20,.82);
   border: 1px solid rgba(65,105,165,.4);
@@ -1180,7 +1181,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* ══ IN-GAME SPEED PANEL ════════════════════════════════════ */
 #speed-panel {
-  position:absolute; top:10px; left:50%; transform:translateX(-50%);
+  position:absolute; top:10px; left:10px;
   z-index:310; display:none; align-items:center; gap:6px;
   background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
   border:1.5px solid rgba(180,130,55,.4);
@@ -1844,6 +1845,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <button class="spd-btn" id="spd-slow" onclick="Game.setSpeed('slow')">慢</button>
     <button class="spd-btn active" id="spd-normal" onclick="Game.setSpeed('normal')">正常</button>
     <button class="spd-btn" id="spd-fast" onclick="Game.setSpeed('fast')">快</button>
+    <button class="spd-btn" id="spd-turbo" onclick="Game.setSpeed('turbo')">極快</button>
   </div>
 
   <div id="info-box">
@@ -2084,7 +2086,7 @@ const Snd={
     // Fast mode: speak quicker so it doesn't lag behind
     const spd=Game?.aiSpeed||'normal';
     const baseRate=Game?.settings?.rate||1.05;
-    u.rate=spd==='fast'?Math.min(baseRate*1.6,2.0):baseRate;
+    u.rate=(spd==='fast'||spd==='turbo')?Math.min(baseRate*1.6,2.0):baseRate;
     u.pitch=voicePref==='male'?0.8:voicePref==='female'?1.1:1.0;
     u.volume=1.0;
     const v=this._pickVoice(voicePref);
@@ -2331,13 +2333,14 @@ const Game={
   _speeds:{
     slow:  {draw:3000,discard:2500,meld:1800,reaction:1500},
     normal:{draw:1100,discard:900, meld:500, reaction:800},
-    fast:  {draw:120, discard:150, meld:300, reaction:200},
+    fast:  {draw:380, discard:320, meld:220, reaction:300},
+    turbo: {draw:80,  discard:80,  meld:100, reaction:80 },
   },
   spd(key){ return this._speeds[this.aiSpeed][key]||this._speeds.normal[key]; },
 
   setSpeed(s){
     this.aiSpeed=s;
-    ['slow','normal','fast'].forEach(id=>{
+    ['slow','normal','fast','turbo'].forEach(id=>{
       const b=document.getElementById('spd-'+id);
       if(b)b.className='spd-btn'+(s===id?' active':'');
     });
@@ -3073,7 +3076,12 @@ const Game={
         const s=this.st;
         if(s&&s.turn===0){
           const hand=s.myHand||s.hands[0]||[];
-          if(hand.length){const t2=s.drawnId?hand.find(t=>t.id===s.drawnId)||hand[0]:hand[0];this.doDiscard(0,t2.id);}
+          if(hand.length){
+            // 自摸優先：若手牌已可胡，計時器到時自動宣胡而非打牌
+            if(canWin(hand.filter(x=>!x.fl))){this.doWin(0,true);return;}
+            const t2=s.drawnId?hand.find(t=>t.id===s.drawnId)||hand[0]:hand[0];
+            this.doDiscard(0,t2.id);
+          }
         }
       }
     },1000);
