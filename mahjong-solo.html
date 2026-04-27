@@ -551,9 +551,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   display: flex; align-items: center; gap: 5px;
   padding: 3px 8px; white-space: nowrap;
 }
-/* South — p0 (me), centered in dc0 zone */
+/* South — p0 (me), centred higher in dc0 zone to clear action-overlay */
 #ps-S {
-  bottom: 46px; left: 50%; transform: translateX(-50%);
+  bottom: 90px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 5px;
   padding: 3px 8px; white-space: nowrap;
 }
@@ -631,12 +631,12 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   display: flex; flex-direction: column;
   align-items: center; justify-content: flex-start;
   padding-top: 6px; gap: 4px;
-  z-index: 3;
+  z-index: 3; overflow: visible;
 }
 /* Player 3 (left opponent): left column between pool top/bottom */
 #pa3-area {
   position: absolute;
-  top: 115px; bottom: 175px; left: 0; width: 200px;
+  top: 115px; bottom: 185px; left: 0; width: 200px;
   display: flex; flex-direction: column;
   align-items: center; gap: 4px; padding: 6px 4px;
   z-index: 3; overflow: visible;
@@ -644,15 +644,15 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* Player 1 (right opponent): right column */
 #pa1-area {
   position: absolute;
-  top: 115px; bottom: 175px; right: 0; width: 200px;
+  top: 115px; bottom: 185px; right: 0; width: 200px;
   display: flex; flex-direction: column;
   align-items: center; gap: 4px; padding: 6px 4px;
   z-index: 3; overflow: visible;
 }
-/* Player 0 (me): full-width bottom strip */
+/* Player 0 (me): full-width bottom strip — 185px gives pbar+tbar+meld+hand room */
 #p0-zone {
   position: absolute;
-  bottom: 0; left: 0; right: 0; height: 175px;
+  bottom: 0; left: 0; right: 0; height: 185px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: flex-end;
   padding: 0 4px 6px; z-index: 3; overflow: visible;
@@ -1468,7 +1468,6 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   height: 100%;
   flex-shrink: 0;
   overflow: visible;
-  position: relative; /* needed for #action-overlay absolute positioning */
 }
 
 #pb0 {
@@ -1481,15 +1480,17 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    #pa0 sits at absolute bottom:0 in #p0-zone (height:175px from tbl bottom).
    bottom:180px = 180px above pa0's bottom edge = tbl y≈540, above the meld row (y≈572).
    Grows upward into lower pool area — acceptable (matches commercial games). */
+/* #action-overlay is inside #p0-zone (position:absolute, 1280×185px).
+   Anchored to bottom-right of player zone, beside meld/hand tiles.
+   flex-direction:column → hand-bar on top, ap buttons below. */
 #action-overlay {
   position: absolute;
-  left: 0; right: 0;
-  bottom: 180px;
+  right: 24px;
+  bottom: 10px;
   display: none;
   flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 0 2px;
+  align-items: flex-end;
+  gap: 6px;
   pointer-events: none;
   z-index: 60;
 }
@@ -1810,27 +1811,28 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <span id="fld"></span>
       </div>
       <div class="tbar"><div class="tfill" id="tf0"></div></div>
-      <!-- Action overlay floats above hand -->
-      <div id="action-overlay">
-        <div id="hand-bar">
-          <div id="tbadge">
-            <svg width="40" height="40" viewBox="0 0 44 44">
-              <circle class="rbg" cx="22" cy="22" r="19"/>
-              <circle class="rfg" id="trfg" cx="22" cy="22" r="19"/>
-            </svg>
-            <span class="tn" id="tnum">--</span>
-          </div>
-          <span class="hb-label" id="hb-label"></span>
-          <div class="hb-tiles" id="hb-tiles"></div>
-        </div>
-        <div id="ap"></div>
-      </div>
       <div id="pa0-meld-row">
         <div class="ma" id="ma0"></div>
       </div>
       <div id="pa0-hand-row">
         <div class="ht" id="ht0"></div>
       </div>
+    </div>
+
+    <!-- Action overlay: inside p0-zone, anchored to bottom-right of player zone -->
+    <div id="action-overlay">
+      <div id="hand-bar">
+        <div id="tbadge">
+          <svg width="40" height="40" viewBox="0 0 44 44">
+            <circle class="rbg" cx="22" cy="22" r="19"/>
+            <circle class="rfg" id="trfg" cx="22" cy="22" r="19"/>
+          </svg>
+          <span class="tn" id="tnum">--</span>
+        </div>
+        <span class="hb-label" id="hb-label"></span>
+        <div class="hb-tiles" id="hb-tiles"></div>
+      </div>
+      <div id="ap"></div>
     </div>
   </div>
 
@@ -3659,22 +3661,24 @@ const Game={
 // init sound + preload TTS voices on first interaction
 document.addEventListener('click',()=>{ Snd.init(); },{once:true});
 
-// Scale #tbl to fit viewport while maintaining 1280×720 design
+// Scale #tbl to fit viewport while maintaining 1280×720 design.
+// 10px margin ensures hand tiles never get cut by browser chrome / scrollbars.
 function updateTblVars(){
   const tbl=document.getElementById('tbl');
   if(!tbl)return;
-  const scaleX = window.innerWidth  / 1280;
-  const scaleY = window.innerHeight / 720;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const scaleX = (vw - 10) / 1280;
+  const scaleY = (vh - 10) / 720;
   const scale  = Math.min(scaleX, scaleY);
-  // Always scale from top-left corner
   tbl.style.transformOrigin = 'top left';
   tbl.style.transform = `scale(${scale})`;
-  // Center in viewport: offset by the black letterbox margin
-  const offsetX = (window.innerWidth  - 1280 * scale) / 2;
-  const offsetY = (window.innerHeight - 720  * scale) / 2;
+  // Center in viewport
+  const offsetX = (vw - 1280 * scale) / 2;
+  const offsetY = (vh - 720  * scale) / 2;
   tbl.style.position = 'absolute';
   tbl.style.left = offsetX + 'px';
-  tbl.style.top  = offsetY + 'px';
+  tbl.style.top  = Math.max(0, offsetY) + 'px';
 }
 updateTblVars();
 window.addEventListener('resize', updateTblVars);
