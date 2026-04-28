@@ -634,9 +634,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   position: absolute;
   top: 0; left: 0; right: 0; height: 115px;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: flex-end;
-  padding-bottom: 4px; gap: 3px;
-  z-index: 3; overflow: visible;
+  align-items: center; justify-content: flex-start;
+  padding-top: 2px; gap: 3px;
+  z-index: 3; overflow: hidden;
 }
 /* Player 3 (left opponent): left column between pool top/bottom */
 #pa3-area {
@@ -749,12 +749,15 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   border-color: #0a1e35 !important;
 }
 
-/* Meld tile sizes for side/top players — big enough to read.
-   NO background-image:none here: the base .t uses background: gradient (shorthand),
-   and overriding background-image removes the ivory gradient making tiles invisible. */
-#pa1 .ma .t, #pa3 .ma .t, #pa2 .ma .t {
+/* Meld tile sizes for side players */
+#pa1 .ma .t, #pa3 .ma .t {
   width: 32px !important; height: 44px !important;
   font-size: .72rem !important;
+}
+/* pa2 meld/flower tiles: ti-size (22×30) to fit inside 115px top zone */
+#pa2 .ma .t {
+  width: 22px !important; height: 30px !important;
+  font-size: .5rem !important;
 }
 
 /* ── z-bh removed; use #p0-zone ── */
@@ -1217,6 +1220,70 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .chi-opt .chi-tile.is-disc {
   border-color: var(--gold2);
   box-shadow: 0 0 5px rgba(212,168,67,.5);
+}
+
+/* ══ MELD CANDIDATE TILE HIGHLIGHT ══════════════════════════ */
+/* Tiles in hand that the player can use to 碰/吃 — float up and glow */
+.t.meld-candidate {
+  transform: translateY(-12px);
+  cursor: pointer;
+  position: relative;
+  z-index: 5;
+  box-shadow:
+    0 2px 0 #fff9ee inset, 0 -4px 0 #b8860b inset,
+    0 6px 16px rgba(0,0,0,.6),
+    0 0 14px rgba(212,168,67,.9),
+    0 0 32px rgba(212,168,67,.5);
+  animation: candidatePulse 1.3s ease-in-out infinite;
+  outline: 2px solid rgba(212,168,67,.7);
+  outline-offset: 1px;
+}
+.t.meld-candidate:hover {
+  transform: translateY(-18px) scale(1.06);
+  box-shadow:
+    0 2px 0 #fff9ee inset, 0 -4px 0 #b8860b inset,
+    0 8px 20px rgba(0,0,0,.7),
+    0 0 24px rgba(212,168,67,1),
+    0 0 55px rgba(212,168,67,.7);
+  outline-color: var(--gold);
+}
+@keyframes candidatePulse {
+  0%,100%{ box-shadow:0 2px 0 #fff9ee inset,0 -4px 0 #b8860b inset,0 6px 16px rgba(0,0,0,.6),0 0 12px rgba(212,168,67,.8),0 0 28px rgba(212,168,67,.4); }
+  50%    { box-shadow:0 2px 0 #fff9ee inset,0 -4px 0 #b8860b inset,0 6px 16px rgba(0,0,0,.6),0 0 20px rgba(212,168,67,1),0 0 44px rgba(212,168,67,.65); }
+}
+
+/* ══ MELD TOOLTIP (hover preview) ═══════════════════════════ */
+#meld-tooltip {
+  position: absolute;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 8px 12px;
+  background: rgba(6,14,28,.97);
+  border: 1.5px solid rgba(180,130,50,.7);
+  border-radius: 10px;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,.75), 0 0 12px rgba(180,130,50,.2);
+  transform: translateY(-100%) translateY(-10px);
+}
+#meld-tooltip.show { display: flex; }
+.mt-label {
+  font-size: .62rem;
+  color: rgba(212,168,67,.8);
+  font-family: 'Noto Serif TC';
+  letter-spacing: .08em;
+}
+.mt-combo { display: flex; gap: 3px; align-items: center; }
+.mt-combo .t.sm {
+  width: 28px !important; height: 38px !important;
+  font-size: .58rem !important;
+  flex-shrink: 0; cursor: default;
+}
+.mt-combo .t.sm.mt-disc {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
 }
 
 /* ══ RIICHI / 聽牌 BUTTON ═══════════════════════════════════ */
@@ -1696,7 +1763,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG · 單機版</div>
-    <div class="lver">v1.2.0</div>
+    <div class="lver">v1.3.0</div>
 
     <div class="fg">
       <label class="fl">你的名字</label>
@@ -1912,6 +1979,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   </div>
 
   <div id="glog"></div>
+  <div id="meld-tooltip"></div>
   <div id="meld-preview"><span class="mp-label"></span></div>
   <div id="chi-picker"><span class="chi-label">選擇吃法</span></div>
   <div id="ann"></div>
@@ -2815,33 +2883,123 @@ const Game={
 
   offerMeld(p,opts,tile){
     const s=this.st;
-    // Highlight only the specific tiles involved in available melds
-    if(p===0){
-      // Collect all tile IDs that could be used in any meld
-      const meldTileIds=new Set();
-      opts.forEach(o=>{if(o.tiles)o.tiles.forEach(t=>meldTileIds.add(t.id));});
-      this._meldHighlightIds=meldTileIds;
-      this._applyMeldHighlight();
-    }
-    // Build buttons — merge multiple chi opts into one "吃" button
+    // offerMeld should only be called for human player (p=0); guard anyway
+    if(p!==0)return;
+
+    // ── Human player: highlight candidate tiles, minimal buttons ──
+    this.clearBtns();
+    Snd.play&&Snd.play('meld');
+    document.getElementById('ht0').classList.add('meld-alert');
+    clearTimeout(this._meldTimeout);
+
     const chiOpts=opts.filter(o=>o.type==='chi');
-    const nonChi=opts.filter(o=>o.type!=='chi');
-    const btns=nonChi.map(o=>{
-      const cls={pong:'apo',kong:'ako',win:'aw'}[o.type]||'';
-      const lbl={pong:'碰',kong:'槓',win:'胡！'}[o.type]||o.type;
-      return{type:o.type,label:lbl,cls,tiles:o.tiles,tileId:tile.id,preview:[...(o.tiles||[]),tile]};
-    });
-    if(chiOpts.length===1){
-      // Only one way to eat — button directly confirms
-      btns.unshift({type:'chi',label:'吃',cls:'ach',tiles:chiOpts[0].tiles,tileId:tile.id,preview:[...chiOpts[0].tiles,tile]});
-    } else if(chiOpts.length>1){
-      // Multiple combos — single button opens picker
-      btns.unshift({type:'chi-pick',label:'吃',cls:'ach',chiOpts,tileId:tile.id,discTile:tile});
+    const winOpt =opts.find(o=>o.type==='win');
+    const pongOpt=opts.find(o=>o.type==='pong');
+    const kongOpt=opts.find(o=>o.type==='kong');
+    const skOpt  =opts.find(o=>o.type==='sk');
+
+    // Build candidate map: tileId → {label, combos[], action()}
+    const cmap=new Map();
+    const addCand=(tileId,label,combos,action)=>{
+      if(cmap.has(tileId)){cmap.get(tileId).combos.push(...combos);}
+      else{cmap.set(tileId,{label,combos,action});}
+    };
+    if(pongOpt){
+      const combos=[sortH([...pongOpt.tiles,tile])];
+      pongOpt.tiles.forEach(t=>addCand(t.id,'碰',combos,()=>{this.clearBtns();this.doMeld(0,'pong',pongOpt.tiles);}));
     }
-    btns.push({type:'skip',label:'不要',cls:'ask'});
-    this.showBtns(btns);
+    if(kongOpt){
+      const combos=[sortH([...kongOpt.tiles,tile])];
+      kongOpt.tiles.forEach(t=>addCand(t.id,'槓',combos,()=>{this.clearBtns();this.doMeld(0,'kong',kongOpt.tiles);}));
+    }
+    if(skOpt){
+      const combos=[sortH([...skOpt.tiles,tile])];
+      skOpt.tiles.forEach(t=>addCand(t.id,'槓',combos,()=>{this.clearBtns();this.doSelfKong(0,skOpt.tiles);}));
+    }
+    if(chiOpts.length){
+      const allCombos=chiOpts.map(o=>sortH([...o.tiles,tile]));
+      chiOpts.forEach(opt=>opt.tiles.forEach(t=>addCand(t.id,'吃',allCombos,()=>{
+        this.clearBtns();
+        if(chiOpts.length===1)this.doMeld(0,'chi',chiOpts[0].tiles);
+        else this.showChiPicker(chiOpts,tile);
+      })));
+    }
+
+    // Highlight tiles after render finishes
+    this._candidateMap=cmap;
+    this._candidateDisc=tile;
+    setTimeout(()=>this._applyCandidateHighlights(),0);
+
+    // Show only 胡 + 跳過 as buttons
+    const ap=document.getElementById('ap');
+    const ov=document.getElementById('action-overlay');
+    if(winOpt){
+      const b=document.createElement('button');b.className='ab aw';b.textContent='胡！';
+      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
+        document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,s.drawnId!=null);};
+      ap.appendChild(b);
+    }
+    {
+      const b=document.createElement('button');b.className='ab ask';b.textContent='跳過';
+      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
+        this.hideChiPicker();const rp=document.getElementById('riichi-select-panel');if(rp)rp.remove();this.nextTurn();};
+      ap.appendChild(b);
+    }
+    ov.classList.add('active');
+
     const tt=this.settings.time||0;
     if(tt>0)this._meldTimeout=setTimeout(()=>{this.hideMeldPreview();this.clearBtns();this.nextTurn();},tt*1000);
+  },
+
+  // Apply .meld-candidate class + hover/click handlers to hand tiles
+  _applyCandidateHighlights(){
+    const cmap=this._candidateMap;
+    const disc=this._candidateDisc;
+    if(!cmap||!cmap.size)return;
+    const ht=document.getElementById('ht0');
+    Array.from(ht.querySelectorAll('.t')).forEach(el=>{
+      const id=+el.dataset.id;
+      if(!cmap.has(id))return;
+      const info=cmap.get(id);
+      el.classList.add('meld-candidate');
+      el.addEventListener('mouseenter',()=>this._showCandidateTooltip(el,info,disc));
+      el.addEventListener('mouseleave',()=>this._hideCandidateTooltip());
+      el.onclick=()=>{this._hideCandidateTooltip();info.action();};
+    });
+  },
+
+  _showCandidateTooltip(el,info,disc){
+    const tip=document.getElementById('meld-tooltip');
+    if(!tip)return;
+    tip.innerHTML='';
+    const lbl=document.createElement('div');
+    lbl.className='mt-label';
+    lbl.textContent=info.label==='吃'&&info.combos.length>1?'選擇吃法':`可以${info.label}`;
+    tip.appendChild(lbl);
+    info.combos.forEach(combo=>{
+      const row=document.createElement('div');row.className='mt-combo';
+      combo.forEach(t=>{
+        const e=mkTile(t,'sm');e.style.cursor='default';
+        if(disc&&t.id===disc.id)e.classList.add('mt-disc');
+        row.appendChild(e);
+      });
+      tip.appendChild(row);
+    });
+    // Position: screen coords → tbl coords
+    const tbl=document.getElementById('tbl');
+    const tblRect=tbl.getBoundingClientRect();
+    const scale=parseFloat((tbl.style.transform.match(/scale\(([^)]+)\)/)||[0,1])[1]);
+    const elRect=el.getBoundingClientRect();
+    const tipX=(elRect.left-tblRect.left)/scale;
+    const tipY=(elRect.top-tblRect.top)/scale;
+    tip.style.left=Math.max(4,tipX-30)+'px';
+    tip.style.top=tipY+'px';
+    tip.classList.add('show');
+  },
+
+  _hideCandidateTooltip(){
+    const tip=document.getElementById('meld-tooltip');
+    if(tip){tip.classList.remove('show');tip.innerHTML='';}
   },
 
   showChiPicker(chiOpts,discTile){
@@ -3261,18 +3419,20 @@ const Game={
       if(tb)tb.style.display=s.tenpai[i]?'inline-block':'none';
       // Melds + flowers (flowers shown like melds above hand)
       const ma=document.getElementById(`ma${i}`);ma.innerHTML='';
+      // pa2 uses ti-size tiles to fit in the 115px top zone
+      const meldSz=i===2?'ti':'sm';
       // Flowers first (grouped)
       if(s.flowers[i]&&s.flowers[i].length){
         const fg=document.createElement('div');fg.className='mg flower-group';
         s.flowers[i].forEach(t=>{
-          const e=mkTile(t,'sm flower');e.style.cursor='default';fg.appendChild(e);
+          const e=mkTile(t,`${meldSz} flower`);e.style.cursor='default';fg.appendChild(e);
         });
         ma.appendChild(fg);
       }
       // Melds
       s.melds[i].forEach(meld=>{
         const mg=document.createElement('div');mg.className='mg';
-        meld.tiles.forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';mg.appendChild(e);});
+        meld.tiles.forEach(t=>{const e=mkTile(t,meldSz);e.style.cursor='default';mg.appendChild(e);});
         ma.appendChild(mg);
       });
       // Hand + discards
@@ -3382,6 +3542,13 @@ const Game={
   },
   clearBtns(){
     this.hideChiPicker();
+    this._hideCandidateTooltip();
+    // Remove candidate highlights from hand tiles
+    this._candidateMap=null;this._candidateDisc=null;
+    const ht0=document.getElementById('ht0');
+    Array.from(ht0.querySelectorAll('.t.meld-candidate')).forEach(el=>{
+      el.classList.remove('meld-candidate');
+    });
     const ap=document.getElementById('ap');
     Array.from(ap.children).forEach(c=>{if(c.id!=='tbadge')c.remove();});
     document.getElementById('ht0').classList.remove('meld-alert');
