@@ -392,15 +392,16 @@
 .z-td .t.flower.v7,.z-bd .t.flower.v7,.z-ld .t.flower.v7,.z-rd .t.flower.v7{background-position:-196px -1px!important}
 
 /* pa2-meld 22×30 (ti size)  bg 176×33  step=22  y=-1 */
-#pa2 .ma .t.flower{background-size:176px 33px!important}
-#pa2 .ma .t.flower.v0{background-position:0 -1px!important}
-#pa2 .ma .t.flower.v1{background-position:-22px -1px!important}
-#pa2 .ma .t.flower.v2{background-position:-44px -1px!important}
-#pa2 .ma .t.flower.v3{background-position:-66px -1px!important}
-#pa2 .ma .t.flower.v4{background-position:-88px -1px!important}
-#pa2 .ma .t.flower.v5{background-position:-110px -1px!important}
-#pa2 .ma .t.flower.v6{background-position:-132px -1px!important}
-#pa2 .ma .t.flower.v7{background-position:-154px -1px!important}
+/* pa2 flower tiles: sm size (32×44) → use sm-sprite coords */
+#pa2 .ma .t.flower{background-size:256px 47px!important}
+#pa2 .ma .t.flower.v0{background-position:0 -2px!important}
+#pa2 .ma .t.flower.v1{background-position:-32px -2px!important}
+#pa2 .ma .t.flower.v2{background-position:-64px -2px!important}
+#pa2 .ma .t.flower.v3{background-position:-96px -2px!important}
+#pa2 .ma .t.flower.v4{background-position:-128px -2px!important}
+#pa2 .ma .t.flower.v5{background-position:-160px -2px!important}
+#pa2 .ma .t.flower.v6{background-position:-192px -2px!important}
+#pa2 .ma .t.flower.v7{background-position:-224px -2px!important}
 
 </style>
 <style>
@@ -442,6 +443,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
 .ltitle{font-family:'Noto Serif TC';font-size:clamp(1.8rem,4vw,2.6rem);font-weight:900;color:var(--gold);letter-spacing:.15em;text-shadow:0 0 25px rgba(212,168,67,.55)}
 .lsub{color:rgba(212,168,67,.45);font-size:.78rem;letter-spacing:.25em;margin-bottom:24px}
 .ldeco{font-size:1.4rem;margin-bottom:10px;animation:bob 3s ease-in-out infinite}
+.lver{font-size:.7rem;color:rgba(212,168,67,.35);letter-spacing:.12em;margin-bottom:18px;margin-top:-18px}
 @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 .fg{margin-bottom:8px;text-align:left}
 .fl{display:block;font-size:.75rem;color:var(--gold);margin-bottom:4px;letter-spacing:.1em}
@@ -843,11 +845,21 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     0 0 24px rgba(212,168,67,.95),0 0 50px rgba(212,168,67,.4);
 }
 .t.drawn{
+  transform: translateY(-8px);
+  position: relative;
+  z-index: 2;
   box-shadow:
     0 2px 0 #fff9ee inset,1px 0 0 #fff2d8 inset,-1px 0 0 #d4aa60 inset,
     0 -5px 0 #a87820 inset,
     3px 8px 14px rgba(20,10,0,.6),
-    0 0 16px rgba(212,168,67,.75);
+    0 0 16px rgba(212,168,67,.95),
+    0 0 36px rgba(212,168,67,.6),
+    0 0 72px rgba(212,168,67,.25);
+  animation: drawnGlow 1.8s ease-in-out infinite;
+}
+@keyframes drawnGlow {
+  0%,100%{ box-shadow:0 2px 0 #fff9ee inset,1px 0 0 #fff2d8 inset,-1px 0 0 #d4aa60 inset,0 -5px 0 #a87820 inset,3px 8px 14px rgba(20,10,0,.6),0 0 16px rgba(212,168,67,.9),0 0 36px rgba(212,168,67,.5),0 0 72px rgba(212,168,67,.2); }
+  50%    { box-shadow:0 2px 0 #fff9ee inset,1px 0 0 #fff2d8 inset,-1px 0 0 #d4aa60 inset,0 -5px 0 #a87820 inset,3px 8px 14px rgba(20,10,0,.6),0 0 22px rgba(212,168,67,1),0 0 50px rgba(212,168,67,.7),0 0 96px rgba(212,168,67,.35); }
 }
 .t.man{color:var(--man)}.t.pin{color:var(--pin)}.t.sou{color:var(--sou)}.t.honor{color:var(--hon)}
 .t.flower{color:#9a6010}  /* background handled by tiles-sprite.css */
@@ -1169,7 +1181,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* ── 吃 combination picker ─────────────────────────────── */
 #chi-picker {
   position: absolute;
-  right: 24px; bottom: 60px;        /* sits above action-overlay */
+  right: 60px; bottom: 310px;       /* sits above action-overlay in tbl coords */
   display: none;
   flex-direction: column;
   gap: 5px;
@@ -1525,13 +1537,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    #pa0 sits at absolute bottom:0 in #p0-zone (height:175px from tbl bottom).
    bottom:180px = 180px above pa0's bottom edge = tbl y≈540, above the meld row (y≈572).
    Grows upward into lower pool area — acceptable (matches commercial games). */
-/* #action-overlay is inside #p0-zone (position:absolute, 1280×185px).
-   Anchored to bottom-right of player zone, beside meld/hand tiles.
-   flex-direction:column → hand-bar on top, ap buttons below. */
+/* #action-overlay is a direct child of #tbl — floats above the player hand,
+   right side (above drawn tile position). z-index > pool so it's always visible.
+   flex-direction:column → hand-bar (timer) on top, ap (buttons) below. */
 #action-overlay {
   position: absolute;
-  right: 24px;
-  bottom: 10px;
+  right: 60px;
+  bottom: 192px;
   display: none;
   flex-direction: column;
   align-items: flex-end;
@@ -1684,6 +1696,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG · 單機版</div>
+    <div class="lver">v1.2.0</div>
 
     <div class="fg">
       <label class="fl">你的名字</label>
@@ -1731,7 +1744,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     </div>
 
     <div class="sec-title">🔊 語音設定</div>
-    <div class="sgrid">
+    <div class="sgrid" style="grid-template-columns:1fr">
       <div class="fg" style="margin:0">
         <label class="fl">報牌語音</label>
         <select class="fi" id="svoice">
@@ -1741,15 +1754,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
           <option value="off">關閉</option>
         </select>
       </div>
-      <div class="fg" style="margin:0">
-        <label class="fl">語速</label>
-        <select class="fi" id="srate">
-          <option value="0.9">慢</option>
-          <option value="1.05" selected>正常</option>
-          <option value="1.3">快</option>
-        </select>
-      </div>
     </div>
+    <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;text-align:center">語速可在遊戲中透過 AI 速度面板調整</div>
 
     <div class="sec-title">🤖 AI對手名稱（選填）</div>
     <div class="sgrid" style="grid-template-columns:1fr 1fr 1fr">
@@ -1864,21 +1870,6 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       </div>
     </div>
 
-    <!-- Action overlay: inside p0-zone, anchored to bottom-right of player zone -->
-    <div id="action-overlay">
-      <div id="hand-bar">
-        <div id="tbadge">
-          <svg width="40" height="40" viewBox="0 0 44 44">
-            <circle class="rbg" cx="22" cy="22" r="19"/>
-            <circle class="rfg" id="trfg" cx="22" cy="22" r="19"/>
-          </svg>
-          <span class="tn" id="tnum">--</span>
-        </div>
-        <span class="hb-label" id="hb-label"></span>
-        <div class="hb-tiles" id="hb-tiles"></div>
-      </div>
-      <div id="ap"></div>
-    </div>
   </div>
 
 <!-- UI overlays inside tbl (scale with board) -->
@@ -1902,6 +1893,22 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ib-turn" id="ib-turn">等待開始</div>
     <div class="ib-hint" id="ib-hint" style="display:none"></div>
     <div class="ib-scores" id="ib-scores"></div>
+  </div>
+
+  <!-- Action overlay: floats above player hand on right side (above drawn tile) -->
+  <div id="action-overlay">
+    <div id="hand-bar">
+      <div id="tbadge">
+        <svg width="40" height="40" viewBox="0 0 44 44">
+          <circle class="rbg" cx="22" cy="22" r="19"/>
+          <circle class="rfg" id="trfg" cx="22" cy="22" r="19"/>
+        </svg>
+        <span class="tn" id="tnum">--</span>
+      </div>
+      <span class="hb-label" id="hb-label"></span>
+      <div class="hb-tiles" id="hb-tiles"></div>
+    </div>
+    <div id="ap"></div>
   </div>
 
   <div id="glog"></div>
@@ -2403,7 +2410,7 @@ const Game={
       money:+document.getElementById('smoney').value,
       time:+document.getElementById('stime').value,
       voice:document.getElementById('svoice').value,
-      rate:+document.getElementById('srate').value,
+      rate:1.05,  /* voice speed follows AI speed in-game */
     };
     Snd._bestVoice=null; // reset so gender pref takes effect
     this.winStats=[0,0,0,0];this.rounds=0;
