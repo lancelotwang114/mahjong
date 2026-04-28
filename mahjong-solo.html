@@ -625,13 +625,15 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #col-table { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); }
 
 /* ══ PLAYER AREAS — absolute layout ══════════════════════════ */
-/* Player 2 (top opponent): full-width top strip */
+/* Player 2 (top opponent): full-width top strip.
+   justify-content:flex-end → content stacks at the bottom (y≈115);
+   any overflow goes upward toward y=0 where tbl clips it, not into pool. */
 #pa2-area {
   position: absolute;
   top: 0; left: 0; right: 0; height: 115px;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: flex-start;
-  padding-top: 6px; gap: 4px;
+  align-items: center; justify-content: flex-end;
+  padding-bottom: 4px; gap: 3px;
   z-index: 3; overflow: visible;
 }
 /* Player 3 (left opponent): left column between pool top/bottom */
@@ -676,9 +678,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   flex-wrap: nowrap !important; gap: 1px !important;
   align-items: flex-start; justify-content: center; flex: 1;
 }
+/* ti-size (22×30) so p2 hand row fits within 115px zone without overflowing into pool */
 #ht2 .t {
-  width: 38px !important; height: 52px !important;
-  font-size: .7rem !important;
+  width: 22px !important; height: 30px !important;
+  font-size: .5rem !important;
   background-image: none !important;
 }
 #ht2 .t.back {
@@ -1161,6 +1164,47 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   position:absolute; top:-22px; left:50%; transform:translateX(-50%);
   font-family:'Noto Serif TC'; font-size:.78rem; color:var(--gold);
   white-space:nowrap; font-weight:700;
+}
+
+/* ── 吃 combination picker ─────────────────────────────── */
+#chi-picker {
+  position: absolute;
+  right: 24px; bottom: 60px;        /* sits above action-overlay */
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 65;
+  background: rgba(6,14,28,.92);
+  border: 1.5px solid rgba(180,130,50,.55);
+  border-radius: 10px;
+  padding: 8px 10px;
+  align-items: flex-end;
+}
+#chi-picker.show { display: flex; }
+#chi-picker .chi-label {
+  font-family: 'Noto Serif TC'; font-size: .65rem;
+  color: rgba(212,168,67,.7); margin-bottom: 2px; align-self: center;
+}
+.chi-opt {
+  display: flex; gap: 3px; align-items: center;
+  padding: 4px 8px; cursor: pointer; border-radius: 6px;
+  border: 1px solid rgba(180,130,50,.3);
+  background: rgba(255,255,255,.04);
+  transition: background .12s, border-color .12s;
+}
+.chi-opt:hover { background: rgba(180,130,50,.18); border-color: var(--gold); }
+.chi-opt .chi-tile {
+  width: 28px; height: 38px; border-radius: 4px;
+  background: linear-gradient(145deg,#f5ecd7,#e8d8b8);
+  border: 1.5px solid rgba(120,80,20,.5);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem; overflow: hidden;
+}
+.chi-opt .chi-tile svg { width: 26px; height: 36px; }
+/* highlight the discard tile in each combo */
+.chi-opt .chi-tile.is-disc {
+  border-color: var(--gold2);
+  box-shadow: 0 0 5px rgba(212,168,67,.5);
 }
 
 /* ══ RIICHI / 聽牌 BUTTON ═══════════════════════════════════ */
@@ -1862,6 +1906,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
   <div id="glog"></div>
   <div id="meld-preview"><span class="mp-label"></span></div>
+  <div id="chi-picker"><span class="chi-label">選擇吃法</span></div>
   <div id="ann"></div>
   <div id="tpanel"><div class="tpt">🀇 聽牌！</div><div id="tptiles"></div></div>
   <div id="toast"></div>
@@ -2771,18 +2816,52 @@ const Game={
       this._meldHighlightIds=meldTileIds;
       this._applyMeldHighlight();
     }
-    // Build buttons with tile hover preview info
-    const btns=opts.map(o=>{
-      const cls={pong:'apo',chi:'ach',kong:'ako',win:'aw'}[o.type]||'';
-      const lbl={pong:'碰',chi:'吃',kong:'槓',win:'胡！'}[o.type]||o.type;
-      // tiles involved: for pong/chi/kong = hand tiles + the discard
-      const previewTiles=[...(o.tiles||[]),tile];
-      return{type:o.type,label:lbl,cls,tiles:o.tiles,tileId:tile.id,preview:previewTiles};
+    // Build buttons — merge multiple chi opts into one "吃" button
+    const chiOpts=opts.filter(o=>o.type==='chi');
+    const nonChi=opts.filter(o=>o.type!=='chi');
+    const btns=nonChi.map(o=>{
+      const cls={pong:'apo',kong:'ako',win:'aw'}[o.type]||'';
+      const lbl={pong:'碰',kong:'槓',win:'胡！'}[o.type]||o.type;
+      return{type:o.type,label:lbl,cls,tiles:o.tiles,tileId:tile.id,preview:[...(o.tiles||[]),tile]};
     });
+    if(chiOpts.length===1){
+      // Only one way to eat — button directly confirms
+      btns.unshift({type:'chi',label:'吃',cls:'ach',tiles:chiOpts[0].tiles,tileId:tile.id,preview:[...chiOpts[0].tiles,tile]});
+    } else if(chiOpts.length>1){
+      // Multiple combos — single button opens picker
+      btns.unshift({type:'chi-pick',label:'吃',cls:'ach',chiOpts,tileId:tile.id,discTile:tile});
+    }
     btns.push({type:'skip',label:'不要',cls:'ask'});
     this.showBtns(btns);
     const tt=this.settings.time||0;
     if(tt>0)this._meldTimeout=setTimeout(()=>{this.hideMeldPreview();this.clearBtns();this.nextTurn();},tt*1000);
+  },
+
+  showChiPicker(chiOpts,discTile){
+    const picker=document.getElementById('chi-picker');
+    if(!picker)return;
+    // Remove old combo rows (keep label)
+    Array.from(picker.children).forEach(c=>{if(!c.classList.contains('chi-label'))c.remove();});
+    chiOpts.forEach((opt,i)=>{
+      const row=document.createElement('div');
+      row.className='chi-opt';
+      // Show the 3 tiles of this combo (2 from hand + 1 discard)
+      const combo=sortH([...opt.tiles,discTile]);
+      combo.forEach(t=>{
+        const cell=document.createElement('div');
+        cell.className='chi-tile'+(t.id===discTile.id?' is-disc':'');
+        cell.innerHTML=tileSVG(t);
+        row.appendChild(cell);
+      });
+      row.onclick=()=>{this.hideChiPicker();this.doMeld(0,'chi',opt.tiles);};
+      picker.appendChild(row);
+    });
+    picker.classList.add('show');
+  },
+
+  hideChiPicker(){
+    const p=document.getElementById('chi-picker');
+    if(p){p.classList.remove('show');Array.from(p.children).forEach(c=>{if(!c.classList.contains('chi-label'))c.remove();});}
   },
 
   doMeld(p,type,tiles){
@@ -3270,9 +3349,10 @@ const Game={
         const s=this.st;
         switch(opt.type){
           case 'win': this.doWin(0,s.drawnId!=null);break;
-          case 'pong':case 'chi':case 'kong': this.doMeld(0,opt.type,opt.tiles||[]);break;
+          case 'pong':case 'chi':case 'kong': this.hideChiPicker();this.doMeld(0,opt.type,opt.tiles||[]);break;
+          case 'chi-pick': this.showChiPicker(opt.chiOpts,opt.discTile);break;
           case 'sk': this.doSelfKong(0,opt.tiles||[]);break;
-          case 'skip': {const rp=document.getElementById('riichi-select-panel');if(rp)rp.remove();this.nextTurn();break;}
+          case 'skip': {const rp=document.getElementById('riichi-select-panel');if(rp)rp.remove();this.hideChiPicker();this.nextTurn();break;}
           case 'riichi': this.startRiichiSelect();break;
           case 'stop-riichi': this.stopRiichi();break;
         }
@@ -3294,6 +3374,7 @@ const Game={
     el.classList.remove('show');el.innerHTML='';
   },
   clearBtns(){
+    this.hideChiPicker();
     const ap=document.getElementById('ap');
     Array.from(ap.children).forEach(c=>{if(c.id!=='tbadge')c.remove();});
     document.getElementById('ht0').classList.remove('meld-alert');
