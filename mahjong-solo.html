@@ -392,16 +392,16 @@
 .z-td .t.flower.v7,.z-bd .t.flower.v7,.z-ld .t.flower.v7,.z-rd .t.flower.v7{background-position:-196px -1px!important}
 
 /* pa2-meld 22×30 (ti size)  bg 176×33  step=22  y=-1 */
-/* pa2 flower tiles: sm size (32×44) → use sm-sprite coords */
-#pa2 .ma .t.flower{background-size:256px 47px!important}
-#pa2 .ma .t.flower.v0{background-position:0 -2px!important}
-#pa2 .ma .t.flower.v1{background-position:-32px -2px!important}
-#pa2 .ma .t.flower.v2{background-position:-64px -2px!important}
-#pa2 .ma .t.flower.v3{background-position:-96px -2px!important}
-#pa2 .ma .t.flower.v4{background-position:-128px -2px!important}
-#pa2 .ma .t.flower.v5{background-position:-160px -2px!important}
-#pa2 .ma .t.flower.v6{background-position:-192px -2px!important}
-#pa2 .ma .t.flower.v7{background-position:-224px -2px!important}
+/* pa2 flower tiles: ti size (22×30) → use ti-sprite coords */
+#pa2 .ma .t.flower{background-size:176px 33px!important}
+#pa2 .ma .t.flower.v0{background-position:0 -1px!important}
+#pa2 .ma .t.flower.v1{background-position:-22px -1px!important}
+#pa2 .ma .t.flower.v2{background-position:-44px -1px!important}
+#pa2 .ma .t.flower.v3{background-position:-66px -1px!important}
+#pa2 .ma .t.flower.v4{background-position:-88px -1px!important}
+#pa2 .ma .t.flower.v5{background-position:-110px -1px!important}
+#pa2 .ma .t.flower.v6{background-position:-132px -1px!important}
+#pa2 .ma .t.flower.v7{background-position:-154px -1px!important}
 
 </style>
 <style>
@@ -1276,12 +1276,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   letter-spacing: .08em;
 }
 .mt-combo { display: flex; gap: 3px; align-items: center; }
-.mt-combo .t.sm {
-  width: 28px !important; height: 38px !important;
-  font-size: .58rem !important;
-  flex-shrink: 0; cursor: default;
-}
-.mt-combo .t.sm.mt-disc {
+.mt-combo .t { flex-shrink: 0; cursor: default; }
+.mt-combo .t.mt-disc {
   outline: 2px solid var(--gold);
   outline-offset: 1px;
 }
