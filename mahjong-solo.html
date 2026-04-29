@@ -1224,19 +1224,22 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   transition: background .12s, border-color .12s;
 }
 .chi-opt:hover { background: rgba(180,130,50,.18); border-color: var(--gold); }
-.chi-opt .chi-tile {
-  width: 28px; height: 38px; border-radius: 4px;
+/* Shared base style for chi-tile (chi-picker + tooltip) */
+.chi-tile {
+  border-radius: 4px;
   background: linear-gradient(145deg,#f5ecd7,#e8d8b8);
   border: 1.5px solid rgba(120,80,20,.5);
   display: flex; align-items: center; justify-content: center;
-  font-size: .6rem; overflow: hidden;
+  overflow: hidden;
 }
-.chi-opt .chi-tile svg { width: 26px; height: 36px; }
-/* highlight the discard tile in each combo */
-.chi-opt .chi-tile.is-disc {
+.chi-tile.is-disc {
   border-color: var(--gold2);
   box-shadow: 0 0 5px rgba(212,168,67,.5);
 }
+.chi-opt .chi-tile {
+  width: 28px; height: 38px; font-size: .6rem;
+}
+.chi-opt .chi-tile svg { width: 26px; height: 36px; }
 
 /* ══ MELD CANDIDATE TILE HIGHLIGHT ══════════════════════════ */
 /* Tiles in hand that the player can use to 碰/吃 — float up and glow */
@@ -2966,7 +2969,7 @@ const Game={
         addCand(t.id,'吃',allCombos,()=>{
           this.clearBtns();
           if(chiOpts.length===1)this.doMeld(0,'chi',chiOpts[0].tiles);
-          else this.showChiPicker(chiOpts,tile);
+          // Multi-chi: selection handled entirely by tooltip rows — no chi-picker
         });
         // Store chiOpts + disc tile on the info for clickable tooltip rows
         if(cmap.has(t.id)){
@@ -3021,7 +3024,16 @@ const Game={
         // Delay hide so user can move mouse into tooltip for chi selection
         this._tipLeaveTimer=setTimeout(()=>this._hideCandidateTooltip(),220);
       });
-      el.onclick=()=>{this._hideCandidateTooltip();info.action();};
+      el.onclick=()=>{
+        if(info.chiOpts&&info.chiOpts.length>1){
+          // Multi-chi: clicking tile keeps/shows tooltip for row selection
+          clearTimeout(this._tipLeaveTimer);
+          this._showCandidateTooltip(el,info,disc);
+        } else {
+          this._hideCandidateTooltip();
+          info.action();
+        }
+      };
     });
   },
 
