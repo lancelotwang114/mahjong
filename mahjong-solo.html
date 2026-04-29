@@ -2851,6 +2851,11 @@ const Game={
     s.discards[p].push(tile);s.last=tile;s.lastP=p;s.drawnId=null;
     if(s.firstRound) s.firstRound=false;  // 第一張牌打出後天胡條件失效
     this.checkTenpai(p);
+    // 玩家打牌後立即更新聽牌面板（不等下次摸牌）
+    if(p===0){
+      if(s.tenpai[0]&&s.tenpaiT[0]) setTimeout(()=>this.showTenpai(s.tenpaiT[0]),250);
+      else this.hideTenpai();
+    }
     this.log(`${s.names[p]} 打出 ${tile.n}`);
     Snd.discard();
     // Fast mode: only announce human player's discard + last discard before my turn
@@ -3149,7 +3154,11 @@ const Game={
     this.render();
     if(type==='kong'){setTimeout(()=>this.doTurn(),this.spd('meld'));return;}
     if(s.ai.includes(p)){const d=AI.discard(s.hands[p],s.melds[p],s.discards);const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));setTimeout(()=>this.doDiscard(p,d.id),_dMs);}
-    else{this.toast('請選一張牌打出！');this.startTimer(p);}
+    else{
+      this.checkTenpai(p);
+      this.toast('請選一張牌打出！');
+      this.startTimer(p);
+    }
   },
 
   doSelfKong(p,tiles){
