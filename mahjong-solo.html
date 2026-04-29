@@ -608,6 +608,14 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow: 0 0 8px rgba(212,168,67,.9) !important;
   animation: tglow .7s infinite alternate !important;
 }
+#pool .t.hi-prev {
+  border-color: rgba(180,130,50,.7) !important;
+  box-shadow: 0 0 6px rgba(180,130,50,.5) !important;
+  transform: scale(1.1) translateY(-2px) !important;
+  transition: transform .15s, box-shadow .15s !important;
+  z-index: 2 !important;
+  position: relative !important;
+}
 
 /* Center info panel — re-enabled inside pool, navy theme */
 .cp {
@@ -1048,20 +1056,28 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* Individual dice element */
 .dice-el{display:inline-block;transform-origin:center center}
 @keyframes diceSpinRoll{
-  0%  {transform:rotate(0) scale(1)}
-  22% {transform:rotate(18deg) scale(1.12)}
+  0%  {transform:rotate(0deg) scale(1) translateY(0)}
+  20% {transform:rotate(20deg) scale(1.15) translateY(-6px)}
   50% {transform:rotate(-14deg) scale(1.08)}
   78% {transform:rotate(8deg) scale(1.05)}
   100%{transform:rotate(0) scale(1)}
 }
 @keyframes diceReveal{
-  0%  {transform:scale(.4) rotate(-15deg);opacity:0;filter:blur(4px)}
-  55% {transform:scale(1.18) rotate(4deg);opacity:1;filter:blur(0)}
-  80% {transform:scale(.96) rotate(-1deg)}
-  100%{transform:scale(1) rotate(0);opacity:1}
+  0%   {transform:scale(.3) rotate(-20deg) translateY(-30px);opacity:0;filter:blur(6px)}
+  45%  {transform:scale(1.28) rotate(6deg) translateY(0);opacity:1;filter:blur(0)}
+  65%  {transform:scale(.9) rotate(-3deg) translateY(4px)}
+  80%  {transform:scale(1.08) rotate(1deg) translateY(-2px)}
+  90%  {transform:scale(.97) rotate(0deg)}
+  100% {transform:scale(1) rotate(0) translateY(0);opacity:1}
 }
-.dice-el.rolling{animation:diceSpinRoll .15s ease-in-out}
-.dice-el.reveal {animation:diceReveal .5s cubic-bezier(.34,1.5,.64,1) forwards}
+.dice-el.rolling{animation:diceSpinRoll .18s ease-in-out}
+.dice-el.reveal {animation:diceReveal .65s cubic-bezier(.34,1.56,.64,1) forwards}
+@keyframes diceGlow{
+  0%  {filter:drop-shadow(0 0 0px rgba(212,168,67,0))}
+  40% {filter:drop-shadow(0 0 18px rgba(212,168,67,.9)) drop-shadow(0 0 6px rgba(255,230,120,.8))}
+  100%{filter:drop-shadow(0 0 4px rgba(212,168,67,.3))}
+}
+.dice-el.glow{animation:diceGlow .7s ease-out forwards}
 
 /* ══ TOAST ═══════════════════════════════════════════════ */
 #toast{
@@ -1269,6 +1285,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   transform: translateY(-100%) translateY(-10px);
 }
 #meld-tooltip.show { display: flex; }
+#meld-tooltip.interactive { pointer-events: auto; }
 .mt-label {
   font-size: .62rem;
   color: rgba(212,168,67,.8);
@@ -1276,6 +1293,18 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   letter-spacing: .08em;
 }
 .mt-combo { display: flex; gap: 3px; align-items: center; }
+.mt-combo.clickable {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 4px 6px;
+  transition: background .13s, transform .1s;
+  border: 1px solid transparent;
+}
+.mt-combo.clickable:hover {
+  background: rgba(212,168,67,.18);
+  border-color: rgba(212,168,67,.4);
+  transform: scale(1.05);
+}
 /* Tooltip tiles: chi-tile style (32×44, ivory bg, pure SVG) */
 .mt-chi { width:32px!important; height:44px!important; font-size:.7rem!important; }
 .mt-chi svg { width:30px; height:42px; }
@@ -1757,7 +1786,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG · 單機版</div>
-    <div class="lver">v1.3.0</div>
+    <div class="lver">v1.3.3</div>
 
     <div class="fg">
       <label class="fl">你的名字</label>
@@ -2586,7 +2615,6 @@ const Game={
     const d1=1+~~(Math.random()*6),d2=1+~~(Math.random()*6);
     this.st.dice=[d1,d2];
 
-    // Create individual dice wrapper elements for per-die animation
     const mkDiceEl=()=>{const d=document.createElement('div');d.className='dice-el';return d;};
     const e1=mkDiceEl(), e2=mkDiceEl();
     dov.style.display='flex';
@@ -2594,37 +2622,56 @@ const Game={
     e1.innerHTML=this._diceSVG(1,90); e2.innerHTML=this._diceSVG(1,90);
     dtxt.textContent='擲骰中...'; dok.style.display='none';
 
-    // Rolling animation with staggered dice
+    // Deceleration schedule (ms per frame): fast → slow → slam
+    const frames=[75,75,80,85,95,110,130,160,200,260];
+    let step=0;
     Snd.dice();
-    let rollCount=0;
-    const rollInterval=setInterval(()=>{
+
+    const doRoll=()=>{
       const r1=1+~~(Math.random()*6), r2=1+~~(Math.random()*6);
-      e1.innerHTML=this._diceSVG(r1,90);
+      e1.innerHTML=this._diceSVG(r1,86);
       e1.classList.remove('rolling'); void e1.offsetWidth; e1.classList.add('rolling');
+      const lag=Math.floor(frames[step]*0.45);
       setTimeout(()=>{
-        e2.innerHTML=this._diceSVG(r2,90);
+        e2.innerHTML=this._diceSVG(r2,86);
         e2.classList.remove('rolling'); void e2.offsetWidth; e2.classList.add('rolling');
-      },45);
-      rollCount++;
-      if(rollCount>=8){
-        clearInterval(rollInterval);
+      },lag);
+      step++;
+      if(step<frames.length){
+        setTimeout(doRoll, frames[step-1]);
+      } else {
+        // — Final reveal —
         setTimeout(()=>{
-          // Final dramatic reveal
-          e1.className='dice-el'; e2.className='dice-el';
-          e1.innerHTML=this._diceSVG(d1,100);
-          setTimeout(()=>e2.innerHTML=this._diceSVG(d2,100),90);
+          // Show final values with bounce animation
+          e1.className='dice-el';
+          e1.innerHTML=this._diceSVG(d1,104);
           void e1.offsetWidth;
           e1.classList.add('reveal');
-          setTimeout(()=>{void e2.offsetWidth;e2.classList.add('reveal');},90);
-          Snd.play(660,.15,'sine',.22);
-          setTimeout(()=>Snd.play(880,.2,'sine',.18),120);
-          dtxt.textContent=`骰子: ${d1}+${d2}=${d1+d2}　莊家: ${this.st.names[this.st.dealer??0]}`;
-          this.st.phase='playing';
-          this.render();
-          setTimeout(()=>dok.style.display='inline-block',280);
-        },180);
+          Snd.play(500,.12,'square',.08);
+          setTimeout(()=>{
+            e2.className='dice-el';
+            e2.innerHTML=this._diceSVG(d2,104);
+            void e2.offsetWidth;
+            e2.classList.add('reveal');
+            Snd.play(660,.18,'sine',.22);
+          },110);
+          // Gold glow + sum reveal
+          setTimeout(()=>{
+            e1.classList.add('glow');
+            e2.classList.add('glow');
+            Snd.play(880,.22,'sine',.2);
+            setTimeout(()=>Snd.play(1100,.15,'sine',.15),120);
+            const sum=d1+d2;
+            const dealer=this.st.names[this.st.dealer??0];
+            dtxt.innerHTML=`骰子 <span style="color:var(--gold);font-weight:700;font-size:1.05em">${d1}＋${d2}＝${sum}</span>　莊家：${dealer}`;
+            this.st.phase='playing';
+            this.render();
+            setTimeout(()=>dok.style.display='inline-block',340);
+          },320);
+        },200);
       }
-    },120);
+    };
+    doRoll();
   },
 
   // Flower replacement: plays out on the board, each player in turn order
@@ -2921,6 +2968,11 @@ const Game={
           if(chiOpts.length===1)this.doMeld(0,'chi',chiOpts[0].tiles);
           else this.showChiPicker(chiOpts,tile);
         });
+        // Store chiOpts + disc tile on the info for clickable tooltip rows
+        if(cmap.has(t.id)){
+          cmap.get(t.id).chiOpts=chiOpts;
+          cmap.get(t.id).discTile=tile;
+        }
       }));
     }
 
@@ -2961,8 +3013,14 @@ const Game={
       if(!cmap.has(id))return;
       const info=cmap.get(id);
       el.classList.add('meld-candidate');
-      el.addEventListener('mouseenter',()=>this._showCandidateTooltip(el,info,disc));
-      el.addEventListener('mouseleave',()=>this._hideCandidateTooltip());
+      el.addEventListener('mouseenter',()=>{
+        clearTimeout(this._tipLeaveTimer);
+        this._showCandidateTooltip(el,info,disc);
+      });
+      el.addEventListener('mouseleave',()=>{
+        // Delay hide so user can move mouse into tooltip for chi selection
+        this._tipLeaveTimer=setTimeout(()=>this._hideCandidateTooltip(),220);
+      });
       el.onclick=()=>{this._hideCandidateTooltip();info.action();};
     });
   },
@@ -2973,24 +3031,54 @@ const Game={
     tip.innerHTML='';
     const lbl=document.createElement('div');
     lbl.className='mt-label';
-    lbl.textContent=info.label==='吃'&&info.combos.length>1?'選擇吃法':`可以${info.label}`;
+    const isMultiChi=info.chiOpts&&info.chiOpts.length>1;
+    lbl.textContent=isMultiChi?'點選吃法':(info.label==='吃'?`可以${info.label}`:`可以${info.label}`);
     tip.appendChild(lbl);
-    // Deduplicate combos (a tile appearing in multiple chi opts causes duplicates)
-    const seenCombos=new Set();
-    info.combos.forEach(combo=>{
-      const key=combo.map(t=>`${t.s}${t.v}`).join('-');
-      if(seenCombos.has(key))return;
-      seenCombos.add(key);
-      const row=document.createElement('div');row.className='mt-combo';
-      combo.forEach(t=>{
-        // Use chi-tile style (pure SVG, no CSS sprite) to avoid layer conflicts
-        const cell=document.createElement('div');
-        cell.className='chi-tile mt-chi'+(disc&&t.id===disc.id?' is-disc':'');
-        cell.innerHTML=tileSVG(t);
-        row.appendChild(cell);
+
+    if(info.chiOpts){
+      // Chi: render clickable combo rows using chiOpts for accurate action binding
+      tip.classList.add('interactive');
+      tip.onmouseenter=()=>clearTimeout(this._tipLeaveTimer);
+      tip.onmouseleave=()=>{this._tipLeaveTimer=setTimeout(()=>this._hideCandidateTooltip(),80);};
+      const discTile=info.discTile||disc;
+      const seenCombos=new Set();
+      info.chiOpts.forEach(opt=>{
+        const combo=sortH([...opt.tiles,discTile]);
+        const key=combo.map(t=>`${t.s}${t.v}`).join('-');
+        if(seenCombos.has(key))return;
+        seenCombos.add(key);
+        const row=document.createElement('div');
+        row.className='mt-combo clickable';
+        combo.forEach(t=>{
+          const cell=document.createElement('div');
+          cell.className='chi-tile mt-chi'+(discTile&&t.id===discTile.id?' is-disc':'');
+          cell.innerHTML=tileSVG(t);
+          row.appendChild(cell);
+        });
+        // Capture opt in closure — clicking row directly executes this chi combo
+        const capturedOpt=opt;
+        row.onclick=(e)=>{e.stopPropagation();this.clearBtns();this.doMeld(0,'chi',capturedOpt.tiles);};
+        tip.appendChild(row);
       });
-      tip.appendChild(row);
-    });
+    } else {
+      // Pong/kong/sk: non-clickable preview
+      tip.classList.remove('interactive');
+      tip.onmouseenter=null; tip.onmouseleave=null;
+      const seenCombos=new Set();
+      info.combos.forEach(combo=>{
+        const key=combo.map(t=>`${t.s}${t.v}`).join('-');
+        if(seenCombos.has(key))return;
+        seenCombos.add(key);
+        const row=document.createElement('div');row.className='mt-combo';
+        combo.forEach(t=>{
+          const cell=document.createElement('div');
+          cell.className='chi-tile mt-chi'+(disc&&t.id===disc.id?' is-disc':'');
+          cell.innerHTML=tileSVG(t);
+          row.appendChild(cell);
+        });
+        tip.appendChild(row);
+      });
+    }
     // Position: screen coords → tbl coords
     const tbl=document.getElementById('tbl');
     const tblRect=tbl.getBoundingClientRect();
@@ -3474,7 +3562,10 @@ const Game={
       const pile=s.discards[pi].slice(-28);  // 顯示最近 28 張棄牌
       pile.forEach((t,idx)=>{
         const e=mkTile(t,'');e.style.cursor='default';
-        if(idx===pile.length-1&&pi===s.lastP) e.classList.add('hi');
+        if(idx===pile.length-1){
+          if(pi===s.lastP) e.classList.add('hi');
+          else e.classList.add('hi-prev');
+        }
         dcEl.appendChild(e);
       });
     }
