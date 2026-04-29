@@ -939,6 +939,37 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* ══ ACTION PANEL ═══════════════════════════════════════ */
 
+/* ── 呼吸燈：整個 overlay 出現時散發金光 ── */
+@keyframes overlayBreath {
+  0%,100% { filter: drop-shadow(0 0 2px rgba(212,168,67,.0)); }
+  50%      { filter: drop-shadow(0 0 14px rgba(212,168,67,.55)) drop-shadow(0 0 28px rgba(212,168,67,.2)); }
+}
+#action-overlay.active { animation: overlayBreath 1.9s ease-in-out infinite; }
+
+/* ── 胡！呼吸紅光 ── */
+@keyframes winBreathe {
+  0%,100% { box-shadow: 0 0 2px rgba(231,76,60,.2); border-color:#e74c3c; }
+  50%      { box-shadow: 0 0 16px rgba(231,76,60,.9), 0 0 32px rgba(231,76,60,.4); border-color:#ff8080; text-shadow: 0 0 14px rgba(255,100,100,.9); }
+}
+.ab.aw { animation: winBreathe 1.15s ease-in-out infinite; }
+
+/* ── 跳過：淡入淡出 ── */
+@keyframes skipFade {
+  0%,100% { opacity:.55; }
+  50%      { opacity:1; }
+}
+.ab.ask { animation: skipFade 2s ease-in-out infinite; }
+
+/* ── 手牌框：鳴牌可用時邊框呼吸 ── */
+@keyframes handAlertBreath {
+  0%,100% { box-shadow: none; outline: 2px solid transparent; }
+  50%      { box-shadow: 0 0 0 3px rgba(212,168,67,.35), 0 0 22px rgba(212,168,67,.2); outline: 2px solid rgba(212,168,67,.3); }
+}
+#ht0.meld-alert {
+  border-radius: 6px;
+  animation: handAlertBreath 1.6s ease-in-out infinite;
+}
+
 .ab {
   padding: 7px 16px;
   border: 2px solid var(--gold);
@@ -1353,6 +1384,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* Flower tiles in meld area */
 .mg.flower-group { border-color: rgba(255,200,80,.35); background: rgba(255,180,0,.08); }
 .mg.flower-group .t { cursor: default; }
+
+/* ── 暗槓特效：外側兩張金框，中間兩張深色反蓋 ── */
+.mg.dark-kong { border-color: rgba(100,60,20,.85); background: rgba(8,5,2,.7); }
+.mg.dark-kong .t.dark-kong-outer { border-color: rgba(180,130,50,.9) !important; box-shadow: 0 0 6px rgba(180,130,50,.6) !important; }
+.mg.dark-kong .t.back { background: linear-gradient(145deg,#1a0e04,#0d0703) !important; border-color: rgba(80,50,15,.8) !important; }
 
 /* ══ TARGETED MELD HIGHLIGHT ════════════════════════════════ */
 .t.meld-hi {
@@ -3203,9 +3239,9 @@ const Game={
       s.turn=p;s.drawnId=null;
       this.log(`${s.names[p]} 加槓`);this.ann('kong');this.render();
     } else {
-      // 暗槓
+      // 暗槓 — dark:true 讓 render 時中間兩張反蓋
       tiles.forEach(t=>{const i=s.hands[p].findIndex(h=>h.id===t.id);if(i>=0)s.hands[p].splice(i,1)});
-      s.melds[p].push({type:'kong',tiles:[...tiles]});
+      s.melds[p].push({type:'kong',tiles:[...tiles],dark:true});
       s.turn=p;s.drawnId=null;
       this.log(`${s.names[p]} 暗槓`);this.ann('kong');this.render();
     }
@@ -3546,8 +3582,20 @@ const Game={
       }
       // Melds
       s.melds[i].forEach(meld=>{
-        const mg=document.createElement('div');mg.className='mg';
-        meld.tiles.forEach(t=>{const e=mkTile(t,meldSz);e.style.cursor='default';mg.appendChild(e);});
+        const isDarkKong=meld.type==='kong'&&meld.dark;
+        const mg=document.createElement('div');
+        mg.className='mg'+(isDarkKong?' dark-kong':'');
+        meld.tiles.forEach((t,idx)=>{
+          let e;
+          if(isDarkKong&&(idx===1||idx===2)){
+            // 暗槓中間兩張反蓋
+            e=mkBack(meldSz);e.style.cursor='default';
+          } else {
+            e=mkTile(t,meldSz);e.style.cursor='default';
+            if(isDarkKong) e.classList.add('dark-kong-outer');
+          }
+          mg.appendChild(e);
+        });
         ma.appendChild(mg);
       });
       // Hand + discards
