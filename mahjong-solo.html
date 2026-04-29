@@ -1276,11 +1276,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   letter-spacing: .08em;
 }
 .mt-combo { display: flex; gap: 3px; align-items: center; }
-.mt-combo .t { flex-shrink: 0; cursor: default; }
-.mt-combo .t.mt-disc {
-  outline: 2px solid var(--gold);
-  outline-offset: 1px;
-}
+/* Tooltip tiles: chi-tile style (32×44, ivory bg, pure SVG) */
+.mt-chi { width:32px!important; height:44px!important; font-size:.7rem!important; }
+.mt-chi svg { width:30px; height:42px; }
 
 /* ══ RIICHI / 聽牌 BUTTON ═══════════════════════════════════ */
 .ab.riichi { border-color:#2ecc71; color:#2ecc71; }
@@ -2914,11 +2912,16 @@ const Game={
     }
     if(chiOpts.length){
       const allCombos=chiOpts.map(o=>sortH([...o.tiles,tile]));
-      chiOpts.forEach(opt=>opt.tiles.forEach(t=>addCand(t.id,'吃',allCombos,()=>{
-        this.clearBtns();
-        if(chiOpts.length===1)this.doMeld(0,'chi',chiOpts[0].tiles);
-        else this.showChiPicker(chiOpts,tile);
-      })));
+      const chiTilesDone=new Set(); // prevent duplicate combo rows for shared tiles
+      chiOpts.forEach(opt=>opt.tiles.forEach(t=>{
+        if(chiTilesDone.has(t.id))return;
+        chiTilesDone.add(t.id);
+        addCand(t.id,'吃',allCombos,()=>{
+          this.clearBtns();
+          if(chiOpts.length===1)this.doMeld(0,'chi',chiOpts[0].tiles);
+          else this.showChiPicker(chiOpts,tile);
+        });
+      }));
     }
 
     // Highlight tiles after render finishes
@@ -2972,12 +2975,19 @@ const Game={
     lbl.className='mt-label';
     lbl.textContent=info.label==='吃'&&info.combos.length>1?'選擇吃法':`可以${info.label}`;
     tip.appendChild(lbl);
+    // Deduplicate combos (a tile appearing in multiple chi opts causes duplicates)
+    const seenCombos=new Set();
     info.combos.forEach(combo=>{
+      const key=combo.map(t=>`${t.s}${t.v}`).join('-');
+      if(seenCombos.has(key))return;
+      seenCombos.add(key);
       const row=document.createElement('div');row.className='mt-combo';
       combo.forEach(t=>{
-        const e=mkTile(t,'sm');e.style.cursor='default';
-        if(disc&&t.id===disc.id)e.classList.add('mt-disc');
-        row.appendChild(e);
+        // Use chi-tile style (pure SVG, no CSS sprite) to avoid layer conflicts
+        const cell=document.createElement('div');
+        cell.className='chi-tile mt-chi'+(disc&&t.id===disc.id?' is-disc':'');
+        cell.innerHTML=tileSVG(t);
+        row.appendChild(cell);
       });
       tip.appendChild(row);
     });
