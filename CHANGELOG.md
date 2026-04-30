@@ -4,6 +4,22 @@
 
 ---
 
+## [1.3.7] — 2026-04-30
+
+### 修復
+- **`clearBtns` timer 殘留**：`clearBtns()` 頂部加入 `clearTimeout(_tipLeaveTimer)`，防止跳過後 tooltip 仍然殘留
+- **`_hideCandidateTooltip` 清理不完整**：現在同時移除 `show`、`interactive` class 並清除 `onmouseenter/onmouseleave` 事件，避免 pointer-events 殘留
+- **Tooltip 標題冗餘三元**：簡化為單一 `textContent` 賦值
+- **`doMeld` 後聽牌面板不顯示**：人類玩家 doMeld else 分支加入 `checkTenpai` + `showTenpai` 即時更新
+
+### 清理
+- 移除未使用的 `.mt-chi` CSS 規則（tooltip 牌現用 `mkTile+zoom:0.52`，非舊版 `.chi-tile`）
+- 合併重複的 `#action-overlay.active` CSS 區塊為單一規則
+- 更新大廳版本徽章為 v1.3.7
+- 更新 CLAUDE.md：修正 tooltip 渲染說明、sprite 全域說明、新增 `_hideCandidateTooltip` 項目
+
+---
+
 ## [1.3.6] — 2026-04-29
 
 ### 新增

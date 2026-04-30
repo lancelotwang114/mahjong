@@ -1,7 +1,7 @@
 # CLAUDE.md — 台灣麻將單機版 開發指引
 
 > 給 Claude（AI 助手）的專案說明，讓每次對話都能快速掌握架構、規則與注意事項。
-> 當前版本：**v1.3.6**
+> 當前版本：**v1.3.7**
 
 ---
 
@@ -47,13 +47,11 @@ JS 在啟動時對 `#tbl` 套用 `transform: scale()` 讓它適應任意視窗�
 
 ### Sprite CSS 注意事項
 
-`tiles-sprite.css` 只對以下 class 內的 `.t` 套用 sprite：
-- `.z-td`（dc2 — p2 棄牌）
-- `.z-bd`（dc0 — p0 棄牌）
-- `.z-ld`（dc3 — p3 棄牌）
-- `.z-rd`（dc1 — p1 棄牌）
+`tiles-sprite.css` 是全域套用：所有 `.t.man / .t.pin / .t.sou / .t.honor / .t.flower` 都會套用 sprite 背景，並用 `>span{display:none!important}` 隱藏 SVG overlay。
 
-**副露牌（`.ma .t`）不在 sprite 範圍**，所以 `.ma .t` **不可加** `background-image: none`，否則會移除 `.t` 的象牙漸層背景，讓牌變透明。
+- 不限棄牌區，手牌、副露牌也走 sprite
+- 尺寸 class (`sm`, `ti`, `side`) 對應不同 `background-size` 與 `background-position`
+- **副露牌（`.ma .t`）不可加** `background-image: none`，否則會移除象牙漸層背景
 
 ---
 
@@ -61,27 +59,28 @@ JS 在啟動時對 `#tbl` 套用 `transform: scale()` 讓它適應任意視窗�
 
 本專案有兩種牌面渲染方式，**必須按場景正確使用**：
 
-| 場景 | 使用方式 | class |
-|------|----------|-------|
-| 手牌、副露牌、棄牌 | `mkTile(t, cls)` — CSS sprite + SVG 疊層 | `.t` |
-| 吃法 tooltip 內的牌 | `tileSVG(t)` 純 SVG，外層 `.chi-tile` | `.chi-tile` |
+| 場景 | 使用方式 | 備註 |
+|------|----------|------|
+| 手牌、副露牌、棄牌 | `mkTile(t, cls)` — CSS sprite + SVG 疊層 | `.t` div |
+| **Tooltip / 鳴牌預覽牌** | `mkTile(t, '')` + `zoom: 0.52` | 全尺寸 mkTile 再縮放，sprite 比例正確 |
 | 暗牌（背面） | `mkBack(cls)` | `.t.back` |
 
-### `.chi-tile` 樣式（tooltip / chi-picker 專用）
+### Tooltip 牌面渲染（`_showCandidateTooltip` 內）
 
-```css
-.chi-tile {
-  border-radius: 4px;
-  background: linear-gradient(145deg,#f5ecd7,#e8d8b8); /* 象牙漸層，必須保留 */
-  border: 1.5px solid rgba(120,80,20,.5);
-  display: flex; align-items: center; justify-content: center;
-  overflow: hidden;
-}
+```js
+const mkTipTile = (t, discTile) => {
+  const e = mkTile(t, '');               // 全尺寸（62×86），sprite 正確顯示
+  e.style.cssText += 'zoom:0.52;cursor:default;flex-shrink:0;';
+  if (discTile && t.id === discTile.id) {
+    e.style.outline = '2.5px solid var(--gold2)';
+    e.style.boxShadow = '0 0 10px rgba(212,168,67,.85)';
+  }
+  return e;
+};
 ```
 
-- **只用 `tileSVG(t)`**，不套用 CSS sprite，避免雙層衝突（sprite 圖案 + SVG 圖案疊加）
-- `cell.className = 'chi-tile mt-chi'`（tooltip）或 `'chi-tile'`（chi-picker）
-- **不可**用 `mkTile()` 建立 tooltip 內的牌
+**不可**用 `mkTile(t, 'sm')` — sm 尺寸在 tooltip 會造成 sprite 比例錯誤（圖案切出錯位）。
+**不可**用舊版 `.chi-tile + tileSVG()` — 已廢棄，現在不用純 SVG tooltip。
 
 ---
 
@@ -103,6 +102,7 @@ JS 在啟動時對 `#tbl` 套用 `transform: scale()` 讓它適應任意視窗�
 - tooltip 的 `.interactive` class 讓 `pointer-events: auto` 生效
 - 候選牌 `mouseleave` 有 220ms 延遲，讓滑鼠可移入 tooltip 點選
 - `info.chiOpts` 存放原始 chiOpts 陣列，供 tooltip 列的 onclick 使用
+- `clearBtns()` 頂部必須 `clearTimeout(this._tipLeaveTimer)` 防止 timer 遺留
 
 ### `_candidateMap` 資料結構
 
@@ -152,6 +152,7 @@ Map<tileId, {
 | 鳴牌提示 | `Game.offerMeld(p, opts, tile)` |
 | 候選牌高亮 | `Game._applyCandidateHighlights()` |
 | Tooltip 顯示 | `Game._showCandidateTooltip(el, info, disc)` |
+| Tooltip 隱藏 | `Game._hideCandidateTooltip()` — 移除 show+interactive，清除事件 |
 | 聽牌偵測 | `Game.checkTenpai(p)` — 打牌後立即呼叫並更新面板 |
 | 擲骰動畫 | `Game.showDice()` — 減速節奏 + 彈跳 + 金色光暈 |
 
@@ -169,12 +170,13 @@ Map<tileId, {
 
 1. **棄牌不顯示** → 檢查 `#dcX` 是否有對應 `z-*d` class；`#pool .t` 的大小要配合 sprite（28×39px）
 2. **副露牌透明** → 勿在 `.ma .t` 加 `background-image: none`
-3. **action-overlay 擋住牌** → 定位在 `#tbl` 層 `right:60px bottom:192px`，不可放回 `#p0-zone` 內
+3. **action-overlay 擋住牌** → 定位在 `#tbl` 層 `right:60px bottom:192px`，`position:absolute`，不可放回 `#p0-zone` 內
 4. **重複 id** → `#turn-light` 只能有一個
-5. **Sprite 只作用於棄牌區** → 副露牌、手牌背面、tooltip 牌等不走 sprite
-6. **tooltip 牌面花牌問題** → 務必用 `.chi-tile` + `tileSVG()` 純 SVG，**不可**用 `mkTile()`
+5. **Sprite 全域套用** → 所有 `.t.man/.pin/.sou/.honor/.flower` 都走 sprite，tooltip 牌用 `mkTile+zoom:0.52` 而非純 SVG
+6. **Tooltip 牌面花牌問題** → 用 `mkTile(t,'')` + `zoom:0.52`，**不可**用舊版 `.chi-tile + tileSVG()`
 7. **多吃法不開 chi-picker** → 多種吃法一律透過 tooltip 列點選，`showChiPicker()` 僅保留備用，正常流程不呼叫
-8. **聽牌即時顯示** → `doDiscard` 中打牌後立即 `checkTenpai` + `showTenpai`，不等下次摸牌
+8. **聽牌即時顯示** → `doDiscard` 與 `doMeld` 中打牌後立即 `checkTenpai` + `showTenpai`，不等下次摸牌
+9. **clearBtns 必須清 timer** → `clearTimeout(this._tipLeaveTimer)` 在 `clearBtns()` 最頂，避免 tooltip timer 殘留
 
 ---
 

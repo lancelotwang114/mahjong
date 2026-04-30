@@ -1326,7 +1326,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   font-family: 'Noto Serif TC';
   letter-spacing: .08em;
 }
-.mt-combo { display: flex; gap: 3px; align-items: center; }
+.mt-combo { display: flex; gap: 2px; align-items: flex-end; }
 .mt-combo.clickable {
   cursor: pointer;
   border-radius: 6px;
@@ -1339,9 +1339,6 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   border-color: rgba(212,168,67,.4);
   transform: scale(1.05);
 }
-/* Tooltip tiles: chi-tile style (32×44, ivory bg, pure SVG) */
-.mt-chi { width:32px!important; height:44px!important; font-size:.7rem!important; }
-.mt-chi svg { width:30px; height:42px; }
 
 /* ══ RIICHI / 聽牌 BUTTON ═══════════════════════════════════ */
 .ab.riichi { border-color:#2ecc71; color:#2ecc71; }
@@ -1551,10 +1548,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 
 
-/* Action panel + hand-bar: positioned above hand area */
-
+/* Action panel: show when active */
 #action-overlay.active { display: flex !important; }
-
 
 
 
@@ -1825,7 +1820,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG · 單機版</div>
-    <div class="lver">v1.3.6</div>
+    <div class="lver">v1.3.7</div>
 
     <div class="fg">
       <label class="fl">你的名字</label>
@@ -3085,8 +3080,19 @@ const Game={
     const lbl=document.createElement('div');
     lbl.className='mt-label';
     const isMultiChi=info.chiOpts&&info.chiOpts.length>1;
-    lbl.textContent=isMultiChi?'點選吃法':(info.label==='吃'?`可以${info.label}`:`可以${info.label}`);
+    lbl.textContent=isMultiChi?'點選吃法':`可以${info.label}`;
     tip.appendChild(lbl);
+
+    // Helper: build a full-size tile scaled via zoom so sprite renders correctly
+    const mkTipTile=(t,discTile)=>{
+      const e=mkTile(t,'');
+      e.style.cssText+='zoom:0.52;cursor:default;flex-shrink:0;';
+      if(discTile&&t.id===discTile.id){
+        e.style.outline='2.5px solid var(--gold2)';
+        e.style.boxShadow='0 0 10px rgba(212,168,67,.85)';
+      }
+      return e;
+    };
 
     if(info.chiOpts){
       // Chi: render clickable combo rows using chiOpts for accurate action binding
@@ -3102,13 +3108,7 @@ const Game={
         seenCombos.add(key);
         const row=document.createElement('div');
         row.className='mt-combo clickable';
-        combo.forEach(t=>{
-          const cell=mkTile(t,'sm');
-          cell.style.cursor='default';
-          if(discTile&&t.id===discTile.id) cell.classList.add('is-disc');
-          row.appendChild(cell);
-        });
-        // Capture opt in closure — clicking row directly executes this chi combo
+        combo.forEach(t=>row.appendChild(mkTipTile(t,discTile)));
         const capturedOpt=opt;
         row.onclick=(e)=>{e.stopPropagation();this.clearBtns();this.doMeld(0,'chi',capturedOpt.tiles);};
         tip.appendChild(row);
@@ -3123,12 +3123,7 @@ const Game={
         if(seenCombos.has(key))return;
         seenCombos.add(key);
         const row=document.createElement('div');row.className='mt-combo';
-        combo.forEach(t=>{
-          const cell=mkTile(t,'sm');
-          cell.style.cursor='default';
-          if(disc&&t.id===disc.id) cell.classList.add('is-disc');
-          row.appendChild(cell);
-        });
+        combo.forEach(t=>row.appendChild(mkTipTile(t,disc)));
         tip.appendChild(row);
       });
     }
@@ -3146,7 +3141,7 @@ const Game={
 
   _hideCandidateTooltip(){
     const tip=document.getElementById('meld-tooltip');
-    if(tip){tip.classList.remove('show');tip.innerHTML='';}
+    if(tip){tip.classList.remove('show','interactive');tip.onmouseenter=null;tip.onmouseleave=null;tip.innerHTML='';}
   },
 
   showChiPicker(chiOpts,discTile){
@@ -3192,6 +3187,8 @@ const Game={
     if(s.ai.includes(p)){const d=AI.discard(s.hands[p],s.melds[p],s.discards);const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));setTimeout(()=>this.doDiscard(p,d.id),_dMs);}
     else{
       this.checkTenpai(p);
+      if(s.tenpai[0]&&s.tenpaiT[0]) setTimeout(()=>this.showTenpai(s.tenpaiT[0]),250);
+      else this.hideTenpai();
       this.toast('請選一張牌打出！');
       this.startTimer(p);
     }
@@ -3707,6 +3704,7 @@ const Game={
     el.classList.remove('show');el.innerHTML='';
   },
   clearBtns(){
+    clearTimeout(this._tipLeaveTimer); this._tipLeaveTimer=null; // ① 防止殘留 timer 干擾
     this.hideChiPicker();
     this._hideCandidateTooltip();
     // Remove candidate highlights from hand tiles
