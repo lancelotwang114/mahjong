@@ -1,6 +1,7 @@
 # CLAUDE.md — 台灣麻將單機版 開發指引
 
 > 給 Claude（AI 助手）的專案說明，讓每次對話都能快速掌握架構、規則與注意事項。
+> 當前版本：**v1.3.6**
 
 ---
 
@@ -41,7 +42,7 @@ JS 在啟動時對 `#tbl` 套用 `transform: scale()` 讓它適應任意視窗�
 - `#tbl` 用 `position: relative; display: block`（非 grid）
 - 所有玩家區塊用 `position: absolute` 定位
 - `#pool` 有 `overflow: hidden`，棄牌 sprite 靠 `.z-td/.z-bd/.z-ld/.z-rd` class 套用
-- `#action-overlay` 是 `position: absolute; bottom: 180px`（相對 `#pa0`），在副露牌 / 手牌之上、不遮蓋 `#ma0`
+- `#action-overlay` 在 `#tbl` 層，`position: absolute; right: 60px; bottom: 192px`，浮於手牌右上方，不遮蓋任何牌
 - 副露牌容器 `#pa1-area, #pa3-area` 需 `overflow: visible`（避免裁切）
 
 ### Sprite CSS 注意事項
@@ -52,7 +53,88 @@ JS 在啟動時對 `#tbl` 套用 `transform: scale()` 讓它適應任意視窗�
 - `.z-ld`（dc3 — p3 棄牌）
 - `.z-rd`（dc1 — p1 棄牌）
 
-**副露牌（`.ma .t`）不在 sprite 範圍**，所以 `.ma .t` **不可加** `background-image: none`，否則會移除 `.t` 的象牙漸層背景（`background:` shorthand = `background-image`），讓牌變透明。
+**副露牌（`.ma .t`）不在 sprite 範圍**，所以 `.ma .t` **不可加** `background-image: none`，否則會移除 `.t` 的象牙漸層背景，讓牌變透明。
+
+---
+
+## 牌面渲染規則（重要）
+
+本專案有兩種牌面渲染方式，**必須按場景正確使用**：
+
+| 場景 | 使用方式 | class |
+|------|----------|-------|
+| 手牌、副露牌、棄牌 | `mkTile(t, cls)` — CSS sprite + SVG 疊層 | `.t` |
+| 吃法 tooltip 內的牌 | `tileSVG(t)` 純 SVG，外層 `.chi-tile` | `.chi-tile` |
+| 暗牌（背面） | `mkBack(cls)` | `.t.back` |
+
+### `.chi-tile` 樣式（tooltip / chi-picker 專用）
+
+```css
+.chi-tile {
+  border-radius: 4px;
+  background: linear-gradient(145deg,#f5ecd7,#e8d8b8); /* 象牙漸層，必須保留 */
+  border: 1.5px solid rgba(120,80,20,.5);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+```
+
+- **只用 `tileSVG(t)`**，不套用 CSS sprite，避免雙層衝突（sprite 圖案 + SVG 圖案疊加）
+- `cell.className = 'chi-tile mt-chi'`（tooltip）或 `'chi-tile'`（chi-picker）
+- **不可**用 `mkTile()` 建立 tooltip 內的牌
+
+---
+
+## 鳴牌互動系統（v1.3+）
+
+### 流程
+
+1. 有人打牌 → `checkReactions()` → 找出可鳴牌的玩家
+2. 輪到人類玩家 → `offerMeld(0, opts, tile)`
+3. 可鳴牌的手牌浮起 + 金色脈衝（`.meld-candidate`）
+4. 滑鼠移上候選牌 → `_showCandidateTooltip()` 顯示吃法預覽
+5. **單一吃法**：點候選牌直接執行
+6. **多種吃法**：tooltip 顯示所有吃法列（`.mt-combo.clickable`），點列執行對應吃法
+7. 按「跳過」→ `clearBtns()` 清除所有高亮
+
+### 重要：多吃法選擇
+
+- 多吃法時 **不呼叫 `showChiPicker()`**（舊版已棄用）
+- tooltip 的 `.interactive` class 讓 `pointer-events: auto` 生效
+- 候選牌 `mouseleave` 有 220ms 延遲，讓滑鼠可移入 tooltip 點選
+- `info.chiOpts` 存放原始 chiOpts 陣列，供 tooltip 列的 onclick 使用
+
+### `_candidateMap` 資料結構
+
+```js
+Map<tileId, {
+  label: '吃'|'碰'|'槓',
+  combos: Array<tile[]>,   // 含棄牌的完整牌組（顯示用）
+  action: Function,        // 點牌時執行（單吃直接 doMeld）
+  chiOpts?: Array,         // 多吃法時存放原始 opts（tooltip 點選用）
+  discTile?: tile          // 棄牌 tile 物件
+}>
+```
+
+---
+
+## 副露牌渲染規則
+
+### 牌尺寸
+
+| 玩家位置 | 尺寸 class | 實際大小 |
+|----------|-----------|---------|
+| p0（自己） | `sm` | 32×44px |
+| p1（右家） | `sm` | 32×44px |
+| p2（對家） | `ti` | 22×30px（頂欄 115px 限制） |
+| p3（左家） | `sm` | 32×44px |
+
+### 暗槓顯示
+
+- `meld.dark === true` → 暗槓
+- render 時 idx=1, idx=2 用 `mkBack(meldSz)` 反蓋
+- idx=0, idx=3 用 `mkTile()` 正面 + `.dark-kong-outer` class
+- `.mg.dark-kong` 套用深色邊框樣式
 
 ---
 
@@ -61,20 +143,25 @@ JS 在啟動時對 `#tbl` 套用 `transform: scale()` 讓它適應任意視窗�
 | 功能 | 位置 |
 |------|------|
 | 牌面 SVG 渲染 | `tileSVG(tile)` |
-| 建立牌元素 | `mkTile(tile, cls, click)` |
+| 建立牌元素（sprite+SVG） | `mkTile(tile, cls, click)` |
 | 建立暗牌 | `mkBack(cls)` |
 | 主要遊戲物件 | `const Game = { ... }` |
 | AI 邏輯 | `const AI = { ... }` |
 | 音效 | `const Snd = { ... }` |
 | render() | `Game.render()` — 每次狀態變更後呼叫 |
+| 鳴牌提示 | `Game.offerMeld(p, opts, tile)` |
+| 候選牌高亮 | `Game._applyCandidateHighlights()` |
+| Tooltip 顯示 | `Game._showCandidateTooltip(el, info, disc)` |
+| 聽牌偵測 | `Game.checkTenpai(p)` — 打牌後立即呼叫並更新面板 |
+| 擲骰動畫 | `Game.showDice()` — 減速節奏 + 彈跳 + 金色光暈 |
 
 ### render() 負責更新
 
 1. deck count / cbar / rwind（中央圓圈）
 2. 四方 score badges（`#ps-N/S/E/W`）
 3. turn spotlight（`#turn-light`）
-4. 每位玩家：pbar（名字、金錢、tenpai badge）、melds（`#maX`）、hand（`#htX`）
-5. 四個棄牌區（`#dcX`）
+4. 每位玩家：pbar（名字、金錢）、melds（`#maX`）、hand（`#htX`）
+5. 四個棄牌區（`#dcX`）— 每家最後一張棄牌：`lastP` 家用 `.hi`（金色脈衝），其餘三家用 `.hi-prev`（放大+靜態金框）
 
 ---
 
@@ -82,10 +169,12 @@ JS 在啟動時對 `#tbl` 套用 `transform: scale()` 讓它適應任意視窗�
 
 1. **棄牌不顯示** → 檢查 `#dcX` 是否有對應 `z-*d` class；`#pool .t` 的大小要配合 sprite（28×39px）
 2. **副露牌透明** → 勿在 `.ma .t` 加 `background-image: none`
-3. **action-overlay 擋住牌** → `position: absolute; bottom: 180px`（在 #pa0 內），不可改為 in-flow
-4. **重複 id** → `#turn-light` 只能有一個，舊版多餘的已移除
-5. **JS `bottom` 定位** → `ov.style.bottom` 相關程式碼已全部移除，改用 CSS 固定值
-6. **Sprite 只作用於棄牌區** → 副露牌、手牌背面等不走 sprite
+3. **action-overlay 擋住牌** → 定位在 `#tbl` 層 `right:60px bottom:192px`，不可放回 `#p0-zone` 內
+4. **重複 id** → `#turn-light` 只能有一個
+5. **Sprite 只作用於棄牌區** → 副露牌、手牌背面、tooltip 牌等不走 sprite
+6. **tooltip 牌面花牌問題** → 務必用 `.chi-tile` + `tileSVG()` 純 SVG，**不可**用 `mkTile()`
+7. **多吃法不開 chi-picker** → 多種吃法一律透過 tooltip 列點選，`showChiPicker()` 僅保留備用，正常流程不呼叫
+8. **聽牌即時顯示** → `doDiscard` 中打牌後立即 `checkTenpai` + `showTenpai`，不等下次摸牌
 
 ---
 
@@ -101,8 +190,7 @@ python3 -m http.server 8080
 
 ## 待辦 / 未來功能
 
-- [ ] 聽牌指示更清楚
-- [ ] 花牌動畫
+- [ ] 花牌揭示動畫
 - [ ] 聲音音量控制
 - [ ] 行動版適配（目前僅 transform:scale 縮放）
 - [ ] 統計資料持久化（localStorage）

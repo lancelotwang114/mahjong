@@ -3103,9 +3103,9 @@ const Game={
         const row=document.createElement('div');
         row.className='mt-combo clickable';
         combo.forEach(t=>{
-          const cell=document.createElement('div');
-          cell.className='chi-tile mt-chi'+(discTile&&t.id===discTile.id?' is-disc':'');
-          cell.innerHTML=tileSVG(t);
+          const cell=mkTile(t,'sm');
+          cell.style.cursor='default';
+          if(discTile&&t.id===discTile.id) cell.classList.add('is-disc');
           row.appendChild(cell);
         });
         // Capture opt in closure — clicking row directly executes this chi combo
@@ -3124,9 +3124,9 @@ const Game={
         seenCombos.add(key);
         const row=document.createElement('div');row.className='mt-combo';
         combo.forEach(t=>{
-          const cell=document.createElement('div');
-          cell.className='chi-tile mt-chi'+(disc&&t.id===disc.id?' is-disc':'');
-          cell.innerHTML=tileSVG(t);
+          const cell=mkTile(t,'sm');
+          cell.style.cursor='default';
+          if(disc&&t.id===disc.id) cell.classList.add('is-disc');
           row.appendChild(cell);
         });
         tip.appendChild(row);
@@ -3160,9 +3160,9 @@ const Game={
       // Show the 3 tiles of this combo (2 from hand + 1 discard)
       const combo=sortH([...opt.tiles,discTile]);
       combo.forEach(t=>{
-        const cell=document.createElement('div');
-        cell.className='chi-tile'+(t.id===discTile.id?' is-disc':'');
-        cell.innerHTML=tileSVG(t);
+        const cell=mkTile(t,'sm');
+        cell.style.cursor='default';
+        if(t.id===discTile.id) cell.classList.add('is-disc');
         row.appendChild(cell);
       });
       row.onclick=()=>{this.hideChiPicker();this.doMeld(0,'chi',opt.tiles);};
