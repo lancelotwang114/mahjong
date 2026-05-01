@@ -1783,7 +1783,37 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   justify-content: center;
   flex-shrink: 0;
 }
-#ht0 .t { touch-action: none; }
+#ht0 .t { touch-action: none; cursor: grab; }
+#ht0 .t:active { cursor: grabbing; }
+#ht0 .t.dragging {
+  opacity: .35;
+  transform: translateY(-4px) scale(.97);
+  transition: opacity .12s, transform .12s;
+  pointer-events: none;
+}
+.drag-ghost {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  transform: scale(1.08) rotate(-4deg);
+  box-shadow: 0 8px 28px rgba(0,0,0,.55), 0 0 12px rgba(212,168,67,.45);
+  border-radius: 4px;
+  transition: transform .08s;
+  will-change: left, top;
+}
+.drag-insert-line {
+  width: 3px;
+  background: var(--gold);
+  border-radius: 2px;
+  height: 44px;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(212,168,67,.8);
+  animation: insertPulse .5s ease-in-out infinite alternate;
+}
+@keyframes insertPulse {
+  from { opacity: .7; }
+  to   { opacity: 1; box-shadow: 0 0 14px rgba(212,168,67,1); }
+}
 
 /* ══ TURN SPOTLIGHT ═══════════════════════════════════════ */
 /* Subtle radial light on the felt surface indicating active player */
@@ -5303,53 +5333,191 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-// ── v1.5: Pointer Events (touch support) on #ht0 ──────────
+// ── v1.5/1.6: Pointer Events — touch swipe + drag-reorder on #ht0 ────────
 (function(){
-  let _ptDown=null,_ptTimer=null,_ptMoved=false;
-  document.addEventListener('pointerdown',function(e){
+  // ── state ──
+  let _down=null;      // {x,y,id,el,startTime}
+  let _timer=null;     // long-press timer
+  let _mode=null;      // null | 'drag' | 'swipe' | 'longpress'
+  let _ghost=null;     // ghost DOM element
+  let _insertIdx=null; // current insert index shown
+  let _insertEl=null;  // the .drag-insert-line element
+
+  function _tileRemainingCount(t){
+    const s=Game.st;if(!s)return 4;
+    const seen={};
+    const count=tile2=>{if(!tile2.fl){const k=tile2.s+'_'+tile2.v;seen[k]=(seen[k]||0)+1;}};
+    s.discards.forEach(d=>d.forEach(count));
+    s.melds.forEach(m=>m.forEach(meld=>meld.tiles.forEach(count)));
+    s.flowers.forEach(f=>f.forEach(count));
+    return 4-(seen[t.s+'_'+t.v]||0);
+  }
+
+  function _isPlayerTurn(){
+    const s=Game.st;
+    return s&&s.phase==='playing'&&s.turn===0;
+  }
+
+  function _hasBtns(){
+    const ap=document.getElementById('ap');
+    return ap&&ap.querySelectorAll('.ab').length>0;
+  }
+
+  function _startGhost(el, cx, cy){
+    const r=el.getBoundingClientRect();
+    _ghost=el.cloneNode(true);
+    _ghost.className=(el.className+' drag-ghost').replace('dragging','').trim();
+    _ghost.style.cssText=`left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;`;
+    document.body.appendChild(_ghost);
+    el.classList.add('dragging');
+    _moveGhost(cx,cy,r.width,r.height);
+  }
+
+  function _moveGhost(cx,cy,w,h){
+    if(!_ghost)return;
+    w=w||_ghost.offsetWidth;h=h||_ghost.offsetHeight;
+    _ghost.style.left=(cx-w/2)+'px';
+    _ghost.style.top=(cy-h/2-8)+'px';
+  }
+
+  function _removeGhost(){
+    if(_ghost){_ghost.remove();_ghost=null;}
+    if(_insertEl){_insertEl.remove();_insertEl=null;}
+    _insertIdx=null;
+    const ht=document.getElementById('ht0');
+    if(ht)ht.querySelectorAll('.t.dragging').forEach(e=>e.classList.remove('dragging'));
+  }
+
+  function _getInsertIdx(cx){
+    const ht=document.getElementById('ht0');if(!ht)return null;
+    const tiles=Array.from(ht.querySelectorAll('.t[data-id]:not(.dragging)'));
+    if(!tiles.length)return 0;
+    for(let i=0;i<tiles.length;i++){
+      const r=tiles[i].getBoundingClientRect();
+      if(cx<r.left+r.width*0.5)return i;
+    }
+    return tiles.length;
+  }
+
+  function _showInsertLine(insertIdx){
     const ht=document.getElementById('ht0');if(!ht)return;
+    if(_insertIdx===insertIdx)return;
+    _insertIdx=insertIdx;
+    if(_insertEl){_insertEl.remove();_insertEl=null;}
+    const tiles=Array.from(ht.querySelectorAll('.t[data-id]:not(.dragging)'));
+    _insertEl=document.createElement('div');
+    _insertEl.className='drag-insert-line';
+    if(insertIdx<tiles.length){
+      ht.insertBefore(_insertEl,tiles[insertIdx]);
+    } else {
+      ht.appendChild(_insertEl);
+    }
+  }
+
+  function _commitDrop(draggedId, insertIdx){
+    const s=Game.st;if(!s)return;
+    const hand=s.hands[0];
+    const fromIdx=hand.findIndex(t=>t.id===draggedId);
+    if(fromIdx===-1)return;
+    const tile=hand.splice(fromIdx,1)[0];
+    // insertIdx was computed on non-dragging tiles; adjust for original position
+    const nonDragging=hand.filter(t=>!false); // all remaining after splice
+    let realIdx=insertIdx;
+    // clamp
+    realIdx=Math.max(0,Math.min(realIdx,hand.length));
+    hand.splice(realIdx,0,tile);
+    // Do NOT reset drawnId — keep the "drawn" highlight on same tile
+    Game.render();
+  }
+
+  function _cancelDrag(){
+    _removeGhost();
+    _mode=null;_down=null;
+    clearTimeout(_timer);
+  }
+
+  // ── pointerdown ──
+  document.addEventListener('pointerdown',function(e){
     const tile=e.target.closest('#ht0 .t[data-id]');if(!tile)return;
-    _ptDown={x:e.clientX,y:e.clientY,id:+tile.dataset.id,target:tile};
-    _ptMoved=false;
-    clearTimeout(_ptTimer);
-    _ptTimer=setTimeout(()=>{
-      if(!_ptMoved&&_ptDown){
-        // Long press: show info tooltip
-        const s=Game.st;if(!s)return;
-        const t=s.hands[0].find(x=>x.id===_ptDown.id);if(!t)return;
-        // Count remaining in deck + all hands
-        const seen={};
-        const countTile=tile2=>{if(!tile2.fl){const k=tile2.s+'_'+tile2.v;seen[k]=(seen[k]||0)+1;}};
-        s.discards.forEach(d=>d.forEach(countTile));
-        s.melds.forEach(m=>m.forEach(meld=>meld.tiles.forEach(countTile)));
-        s.flowers.forEach(f=>f.forEach(countTile));
-        const usedCount=seen[t.s+'_'+t.v]||0;
-        const maxCount=t.s==='honor'?4:4;
-        const rem=maxCount-usedCount;
-        Game.toast(`${t.n} 剩餘${rem}張`,1500);
-      }
+    if(_mode)return; // in progress
+    _down={x:e.clientX,y:e.clientY,id:+tile.dataset.id,el:tile,startTime:Date.now()};
+    _mode=null;
+    clearTimeout(_timer);
+    // Long press timer (only fires if not moved into drag or swipe)
+    _timer=setTimeout(()=>{
+      if(_mode)return;
+      _mode='longpress';
+      const s=Game.st;if(!s)return;
+      const t=s.hands[0].find(x=>x.id===_down.id);if(!t)return;
+      const rem=_tileRemainingCount(t);
+      Game.toast(`${t.n}　剩餘 ${rem} 張`,1600);
     },500);
   },{passive:true});
+
+  // ── pointermove ──
   document.addEventListener('pointermove',function(e){
-    if(!_ptDown)return;
-    const dx=e.clientX-_ptDown.x,dy=e.clientY-_ptDown.y;
-    if(Math.sqrt(dx*dx+dy*dy)>10)_ptMoved=true;
-  },{passive:true});
-  document.addEventListener('pointerup',function(e){
-    if(!_ptDown){return;}
-    clearTimeout(_ptTimer);
-    const dx=e.clientX-_ptDown.x,dy=e.clientY-_ptDown.y;
-    const tileId=_ptDown.id;
-    _ptDown=null;
-    // Up-swipe to discard
-    if(dy<-40&&!_ptMoved){
-      const s=Game.st;
-      if(s&&s.turn===0&&s.phase==='playing'){
-        const ap=document.getElementById('ap');
-        const hasBtns=ap&&ap.querySelectorAll('.ab').length>0;
-        if(!hasBtns)Game.doDiscard(0,tileId);
+    if(!_down)return;
+    const dx=e.clientX-_down.x, dy=e.clientY-_down.y;
+    const dist=Math.sqrt(dx*dx+dy*dy);
+
+    if(!_mode&&dist>12){
+      clearTimeout(_timer);
+      // Decide: if mostly horizontal → drag-reorder; if mostly upward → swipe-discard
+      if(Math.abs(dx)>=Math.abs(dy)*0.7){
+        _mode='drag';
+        _startGhost(_down.el, e.clientX, e.clientY);
+      } else if(dy<-8){
+        _mode='swipe';
+      } else {
+        _mode='cancel';
       }
     }
+
+    if(_mode==='drag'){
+      _moveGhost(e.clientX, e.clientY);
+      const idx=_getInsertIdx(e.clientX);
+      _showInsertLine(idx);
+    }
+  },{passive:true});
+
+  // ── pointerup ──
+  document.addEventListener('pointerup',function(e){
+    if(!_down){return;}
+    clearTimeout(_timer);
+    const dx=e.clientX-_down.x, dy=e.clientY-_down.y;
+    const id=_down.id;
+    const currentMode=_mode;
+    _down=null;_mode=null;
+
+    if(currentMode==='drag'){
+      const idx=_getInsertIdx(e.clientX);
+      // Check if dropped outside right edge of hand → discard
+      const ht=document.getElementById('ht0');
+      const htR=ht?ht.getBoundingClientRect():null;
+      const droppedOutside=htR&&e.clientX>htR.right+20;
+      _removeGhost();
+      if(droppedOutside&&_isPlayerTurn()&&!_hasBtns()){
+        Game.doDiscard(0,id);
+      } else {
+        _commitDrop(id,idx);
+      }
+      return;
+    }
+
+    if(currentMode==='swipe'||(!currentMode&&dy<-40)){
+      if(_isPlayerTurn()&&!_hasBtns()){
+        Game.doDiscard(0,id);
+      }
+      return;
+    }
+
+    // Tap (no significant movement, no long-press mode)
+    // Normal click-to-discard handled by existing onTile()
+  },{passive:true});
+
+  // Cancel on pointer cancel (e.g. browser interrupts touch)
+  document.addEventListener('pointercancel',function(){
+    clearTimeout(_timer);_removeGhost();_mode=null;_down=null;
   },{passive:true});
 })();
 
