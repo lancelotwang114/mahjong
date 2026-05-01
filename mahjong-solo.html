@@ -1783,6 +1783,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   justify-content: center;
   flex-shrink: 0;
 }
+#ht0 .t { touch-action: none; }
 
 /* ══ TURN SPOTLIGHT ═══════════════════════════════════════ */
 /* Subtle radial light on the felt surface indicating active player */
@@ -1929,6 +1930,170 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .rank-name { flex:1;text-align:left;font-size:.95rem; }
 .rank-chip { font-size:1rem;font-weight:700; }
 
+/* ══ v1.5.0 NEW STYLES ══════════════════════════════════════ */
+
+/* ── Feature 1: Assist Panel ─────────────────────────────── */
+#assist-toggle {
+  position:absolute; right:14px; top:115px;
+  width:30px; height:30px; border-radius:50%;
+  background:rgba(212,168,67,.22); border:1px solid rgba(212,168,67,.5);
+  color:var(--gold); font-size:16px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  z-index:4000; pointer-events:auto; transition:background .2s;
+}
+#assist-toggle:hover { background:rgba(212,168,67,.38); }
+#assist-panel {
+  position:absolute; right:14px; top:150px;
+  width:160px; background:rgba(8,4,2,.92);
+  border:1px solid rgba(212,168,67,.4); border-radius:10px;
+  padding:8px 10px; z-index:4000; display:none; flex-direction:column; gap:6px;
+  pointer-events:auto;
+}
+#assist-panel.open { display:flex; }
+.assist-row {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:.7rem; color:rgba(245,236,215,.8);
+}
+.assist-toggle-sw {
+  position:relative; width:32px; height:17px; flex-shrink:0;
+}
+.assist-toggle-sw input { opacity:0; width:0; height:0; }
+.assist-toggle-sw .sw-slider {
+  position:absolute; inset:0; border-radius:17px;
+  background:rgba(255,255,255,.15); cursor:pointer; transition:.3s;
+}
+.assist-toggle-sw .sw-slider:before {
+  content:''; position:absolute; width:13px; height:13px; border-radius:50%;
+  background:#fff; left:2px; bottom:2px; transition:.3s;
+}
+.assist-toggle-sw input:checked + .sw-slider { background:var(--gold); }
+.assist-toggle-sw input:checked + .sw-slider:before { transform:translateX(15px); }
+
+/* Shanten label */
+#shanten-label {
+  position:absolute; left:50%; transform:translateX(-50%);
+  bottom:188px; /* just above hand zone */
+  font-size:.65rem; font-weight:700; padding:2px 8px; border-radius:10px;
+  pointer-events:none; z-index:3500; white-space:nowrap; display:none;
+  border:1px solid rgba(255,255,255,.15);
+}
+#shanten-label.sh-win  { display:block; color:#ffd700; background:rgba(212,168,67,.25); animation:shantenPulse 1.2s ease-in-out infinite; }
+#shanten-label.sh-0    { display:block; color:#2ecc71; background:rgba(46,204,113,.18); }
+#shanten-label.sh-1    { display:block; color:#f39c12; background:rgba(243,156,18,.15); }
+#shanten-label.sh-n    { display:block; color:rgba(245,236,215,.8); background:rgba(255,255,255,.08); }
+@keyframes shantenPulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+
+/* Danger dots on tiles */
+.danger-dot {
+  position:absolute; right:2px; bottom:2px;
+  width:6px; height:6px; border-radius:50%; pointer-events:none; z-index:10;
+}
+.danger-low  .danger-dot { background:#2ecc71; }
+.danger-mid  .danger-dot { background:#f39c12; }
+.danger-high .danger-dot { background:#e74c3c; }
+
+/* Tile tracker overlay */
+#tracker-btn {
+  position:absolute; right:14px; bottom:200px;
+  width:28px; height:28px; border-radius:6px;
+  background:rgba(212,168,67,.18); border:1px solid rgba(212,168,67,.4);
+  color:var(--gold); font-size:15px; cursor:pointer; display:none;
+  align-items:center; justify-content:center; z-index:4000; pointer-events:auto;
+}
+#tracker-btn.show { display:flex; }
+#tile-tracker {
+  position:absolute; right:50px; bottom:200px;
+  width:300px; background:rgba(6,3,1,.95);
+  border:1px solid rgba(212,168,67,.35); border-radius:10px;
+  padding:8px; z-index:5000; display:none; pointer-events:auto;
+}
+#tile-tracker.show { display:block; }
+#tile-tracker .tt-title { font-size:.7rem; color:var(--gold); margin-bottom:5px; text-align:center; }
+#tile-tracker .tt-grid {
+  display:grid; grid-template-columns:repeat(9,1fr); gap:2px;
+}
+.tt-cell {
+  display:flex; flex-direction:column; align-items:center;
+  font-size:.48rem; border-radius:3px; padding:1px;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+}
+.tt-cell.tt-empty { opacity:.3; }
+.tt-cell .tt-name { color:rgba(245,236,215,.7); font-size:.5rem; }
+.tt-cell .tt-count { color:#e74c3c; font-weight:700; font-size:.6rem; }
+
+/* Sort button */
+#sort-btn {
+  position:absolute; right:14px; bottom:230px;
+  width:28px; height:28px; border-radius:6px;
+  background:rgba(80,140,220,.2); border:1px solid rgba(80,140,220,.4);
+  color:#7ab4f0; font-size:11px; cursor:pointer; display:none;
+  align-items:center; justify-content:center; z-index:4000; pointer-events:auto;
+}
+#sort-btn.show { display:flex; }
+
+/* ── Feature 2: Dust Particles ───────────────────────────── */
+.dust-particle {
+  position:absolute; border-radius:50%;
+  background:rgba(212,168,67,.25);
+  pointer-events:none; z-index:0;
+  animation:dustFloat linear infinite;
+}
+@keyframes dustFloat {
+  0%   { opacity:0; transform:translateY(0) translateX(0); }
+  15%  { opacity:0.4; }
+  85%  { opacity:0.3; }
+  100% { opacity:0; transform:translateY(-620px) translateX(var(--dx,0px)); }
+}
+[data-theme="wood"] .dust-particle { background:rgba(180,120,60,.2); }
+[data-theme="jade"] .dust-particle { background:rgba(80,180,80,.18); }
+[data-theme="noir"] .dust-particle { background:rgba(160,120,220,.2); }
+
+/* ── Feature 3: Quick Start toggle in lobby ──────────────── */
+.quick-start-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:7px 10px; margin-top:6px;
+  background:rgba(255,200,50,.07); border:1px solid rgba(212,168,67,.2);
+  border-radius:8px;
+}
+.quick-start-row label { font-size:.78rem; color:var(--gold2); cursor:pointer; }
+.qs-toggle { position:relative; width:36px; height:19px; flex-shrink:0; }
+.qs-toggle input { opacity:0; width:0; height:0; }
+.qs-toggle .qs-sl {
+  position:absolute; inset:0; border-radius:19px;
+  background:rgba(255,255,255,.15); cursor:pointer; transition:.3s;
+}
+.qs-toggle .qs-sl:before {
+  content:''; position:absolute; width:15px; height:15px; border-radius:50%;
+  background:#fff; left:2px; bottom:2px; transition:.3s;
+}
+.qs-toggle input:checked + .qs-sl { background:var(--gold); }
+.qs-toggle input:checked + .qs-sl:before { transform:translateX(17px); }
+
+/* ── Feature 5: Sound theme sel ──────────────────────────── */
+.snd-theme-row { margin-top:6px; }
+
+/* ── Feature 6: BGM controls ─────────────────────────────── */
+.bgm-row {
+  display:flex; align-items:center; gap:8px;
+  margin-top:8px; padding:7px 10px;
+  background:rgba(80,180,80,.07); border:1px solid rgba(80,200,80,.18);
+  border-radius:8px;
+}
+.bgm-row label { font-size:.78rem; color:#7dd4a8; flex:1; cursor:pointer; }
+.bgm-toggle-sw { position:relative; width:36px; height:19px; flex-shrink:0; }
+.bgm-toggle-sw input { opacity:0; width:0; height:0; }
+.bgm-toggle-sw .bgm-sl {
+  position:absolute; inset:0; border-radius:19px;
+  background:rgba(255,255,255,.15); cursor:pointer; transition:.3s;
+}
+.bgm-toggle-sw .bgm-sl:before {
+  content:''; position:absolute; width:15px; height:15px; border-radius:50%;
+  background:#fff; left:2px; bottom:2px; transition:.3s;
+}
+.bgm-toggle-sw input:checked + .bgm-sl { background:#2ecc71; }
+.bgm-toggle-sw input:checked + .bgm-sl:before { transform:translateX(17px); }
+.bgm-vol-row { display:flex; align-items:center; gap:4px; font-size:.68rem; color:rgba(245,236,215,.6); }
+
 </style>
 </head>
 <body>
@@ -1939,7 +2104,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG · 單機版</div>
-    <div class="lver">v1.4.0</div>
+    <div class="lver">v1.5.0</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -2016,7 +2181,37 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         </div>
       </div>
     </div>
+    <div class="snd-theme-row">
+      <div class="fg" style="margin:4px 0 0">
+        <label class="fl">音效主題</label>
+        <select class="fi" id="snd-theme-sel" onchange="Snd.setTheme(this.value)">
+          <option value="modern">💎 現代輕牌</option>
+          <option value="classic">🎯 復古木牌</option>
+          <option value="mute">🔕 靜音</option>
+        </select>
+      </div>
+    </div>
+    <div class="bgm-row">
+      <label for="bgm-toggle">🎵 背景音樂</label>
+      <label class="bgm-toggle-sw">
+        <input type="checkbox" id="bgm-toggle" onchange="Bgm.setEnabled(this.checked)">
+        <span class="bgm-sl"></span>
+      </label>
+    </div>
+    <div class="bgm-vol-row" style="padding:2px 10px">
+      <span>音量</span>
+      <input type="range" id="bgm-vol" min="0" max="100" value="30" style="flex:1"
+        oninput="Bgm.setVolume(this.value/100)">
+      <span id="bgm-vol-val">30%</span>
+    </div>
     <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;text-align:center">語速可在遊戲中透過 AI 速度面板調整</div>
+    <div class="quick-start-row">
+      <label for="quick-start-toggle">⚡ 快速開局（跳過動畫）</label>
+      <label class="qs-toggle">
+        <input type="checkbox" id="quick-start-toggle" onchange="Game.settings.quickStart=this.checked;localStorage.setItem('mj_quick_v1',this.checked?'1':'0')">
+        <span class="qs-sl"></span>
+      </label>
+    </div>
 
     <div class="sec-title">🎨 桌面主題</div>
     <div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px">
@@ -2206,6 +2401,43 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div id="ap"></div>
   </div>
 
+  <!-- v1.5 assist panel -->
+  <button id="assist-toggle" onclick="Game.toggleAssistPanel()" title="輔助面板">⚙</button>
+  <div id="assist-panel">
+    <div class="assist-row">
+      <span>向聽數顯示</span>
+      <label class="assist-toggle-sw">
+        <input type="checkbox" id="assist-shanten" onchange="Game.saveAssist()">
+        <span class="sw-slider"></span>
+      </label>
+    </div>
+    <div class="assist-row">
+      <span>危險牌警示</span>
+      <label class="assist-toggle-sw">
+        <input type="checkbox" id="assist-danger" onchange="Game.saveAssist()">
+        <span class="sw-slider"></span>
+      </label>
+    </div>
+    <div class="assist-row">
+      <span>剩餘牌追蹤</span>
+      <label class="assist-toggle-sw">
+        <input type="checkbox" id="assist-tracker" onchange="Game.onTrackerToggle(this.checked)">
+        <span class="sw-slider"></span>
+      </label>
+    </div>
+    <div class="assist-row">
+      <span>自動整牌</span>
+      <label class="assist-toggle-sw">
+        <input type="checkbox" id="assist-sort" onchange="Game.onSortToggle(this.checked)">
+        <span class="sw-slider"></span>
+      </label>
+    </div>
+  </div>
+  <div id="shanten-label"></div>
+  <button id="tracker-btn" onclick="Game.toggleTracker()" title="剩餘牌追蹤">🀄</button>
+  <div id="tile-tracker"><div class="tt-title">剩餘牌數</div><div class="tt-grid" id="tt-grid"></div></div>
+  <button id="sort-btn" onclick="Game.sortHand()" title="整牌 (S)">整</button>
+
   <div id="glog"></div>
   <div id="meld-tooltip"></div>
   <div id="meld-preview"><span class="mp-label"></span></div>
@@ -2373,8 +2605,11 @@ function meldOpts(hand,disc,myIdx,discIdx){
 const Snd={
   ctx:null,
   volume:0.8,   // 音量 0~1，由大廳滑桿控制
+  theme:'modern', // 'modern' | 'classic' | 'mute'
+  setTheme(t){this.theme=t;localStorage.setItem('mj_snd_theme_v1',t);},
   init(){if(!this.ctx)this.ctx=new(window.AudioContext||window.webkitAudioContext)()},
   play(freq,dur,type='triangle',vol=0.18){
+    if(this.theme==='mute')return;
     try{this.init();const o=this.ctx.createOscillator(),g=this.ctx.createGain();
       o.connect(g);g.connect(this.ctx.destination);o.type=type;o.frequency.value=freq;
       const v=Math.max(0.001,vol*this.volume);
@@ -2382,17 +2617,29 @@ const Snd={
       g.gain.exponentialRampToValueAtTime(0.001,this.ctx.currentTime+dur);
       o.start();o.stop(this.ctx.currentTime+dur)}catch(e){}
   },
-  draw(){this.play(440,.12,'sine',.12);setTimeout(()=>this.play(520,.1,'sine',.09),80)},
-  discard(){this.play(300,.08,'triangle',.1)},
+  draw(){
+    if(this.theme==='classic'){this.play(330,.15,'triangle',.14);setTimeout(()=>this.play(440,.12,'triangle',.1),90);}
+    else{this.play(1200,.06,'sine',.1);setTimeout(()=>this.play(1400,.05,'sine',.08),60);}
+  },
+  discard(){
+    if(this.theme==='classic')this.play(220,.12,'triangle',.12);
+    else this.play(900,.04,'sine',.1);
+  },
   pong(){
-    this.play(660,.08,'triangle',.22);
-    setTimeout(()=>this.play(660,.08,'triangle',.22),100);
-    setTimeout(()=>this.play(780,.12,'triangle',.18),200);
+    if(this.theme==='classic'){
+      this.play(200,.1,'triangle',.25);setTimeout(()=>this.play(180,.15,'triangle',.22),100);
+    } else {
+      this.play(660,.08,'triangle',.22);
+      setTimeout(()=>this.play(660,.08,'triangle',.22),100);
+      setTimeout(()=>this.play(780,.12,'triangle',.18),200);
+    }
   },
   chi(){
-    this.play(440,.08,'triangle',.18);
-    setTimeout(()=>this.play(550,.08,'triangle',.18),90);
-    setTimeout(()=>this.play(660,.1,'triangle',.18),180);
+    if(this.theme==='classic'){
+      this.play(330,.08,'triangle',.18);setTimeout(()=>this.play(440,.08,'triangle',.18),90);setTimeout(()=>this.play(550,.1,'triangle',.18),180);
+    } else {
+      this.play(800,.05,'sine',.14);setTimeout(()=>this.play(1000,.05,'sine',.12),70);setTimeout(()=>this.play(1200,.06,'sine',.1),140);
+    }
   },
   kong(){this.play(440,.08,'triangle',.2);setTimeout(()=>this.play(550,.08,'triangle',.2),70);setTimeout(()=>this.play(660,.12,'triangle',.22),140)},
   win(){[0,80,160,260].forEach((d,i)=>setTimeout(()=>this.play(440+i*110,.18,'sine',.25),d))},
@@ -2459,6 +2706,88 @@ const Snd={
 };
 
 // ══════════════════════════════════════════════════════════
+// BACKGROUND MUSIC (Web Audio — procedural, no files)
+// ══════════════════════════════════════════════════════════
+const Bgm={
+  ctx:null,gain:null,playing:false,volume:0.3,enabled:false,
+  _nodes:[],_pluckTimer:null,
+  _getCtx(){ if(!this.ctx)this.ctx=Snd.ctx||(Snd.init(),Snd.ctx); return this.ctx; },
+  setEnabled(v){
+    this.enabled=v;
+    localStorage.setItem('mj_bgm_v1',v?'1':'0');
+    if(v)this.start(); else this.stop();
+  },
+  setVolume(v){
+    this.volume=v;
+    localStorage.setItem('mj_bgm_vol_v1',String(v));
+    if(this.gain) this.gain.gain.setTargetAtTime(v,this._getCtx().currentTime,.1);
+    const el=document.getElementById('bgm-vol-val');
+    if(el)el.textContent=Math.round(v*100)+'%';
+  },
+  start(){
+    if(!this.enabled)return;
+    this.stop();
+    try{
+      Snd.init();
+      const ctx=Snd.ctx;
+      this.ctx=ctx;
+      // Master gain
+      const master=ctx.createGain();master.gain.value=this.volume;
+      master.connect(ctx.destination);this.gain=master;
+      // 1. Drone: 55Hz sine + LFO
+      const drone=ctx.createOscillator();drone.type='sine';drone.frequency.value=55;
+      const droneGain=ctx.createGain();droneGain.gain.value=0.03;
+      const lfo=ctx.createOscillator();lfo.type='sine';lfo.frequency.value=0.25;
+      const lfoGain=ctx.createGain();lfoGain.gain.value=3;
+      lfo.connect(lfoGain);lfoGain.connect(drone.frequency);
+      drone.connect(droneGain);droneGain.connect(master);
+      drone.start();lfo.start();
+      this._nodes.push(drone,lfo,droneGain,lfoGain);
+      // 2. White noise layer
+      const bufSize=ctx.sampleRate*2;
+      const noiseBuf=ctx.createBuffer(1,bufSize,ctx.sampleRate);
+      const data=noiseBuf.getChannelData(0);for(let i=0;i<bufSize;i++)data[i]=(Math.random()*2-1);
+      const noise=ctx.createBufferSource();noise.buffer=noiseBuf;noise.loop=true;
+      const noiseGain=ctx.createGain();noiseGain.gain.value=0.005;
+      noise.connect(noiseGain);noiseGain.connect(master);noise.start();
+      this._nodes.push(noise,noiseGain);
+      // 3. Reverb convolver (short impulse)
+      const irLen=ctx.sampleRate*0.8;
+      const irBuf=ctx.createBuffer(2,irLen,ctx.sampleRate);
+      for(let ch=0;ch<2;ch++){const d=irBuf.getChannelData(ch);for(let i=0;i<irLen;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/irLen,2);}
+      const conv=ctx.createConvolver();conv.buffer=irBuf;
+      const convGain=ctx.createGain();convGain.gain.value=0.35;conv.connect(convGain);convGain.connect(master);
+      this._nodes.push(conv,convGain);
+      this.playing=true;
+      // 4. Random pluck scheduler
+      const pentatonic=[130.81,146.83,164.81,196.00,220.00];
+      const pluck=()=>{
+        if(!this.playing)return;
+        try{
+          const freq=pentatonic[Math.floor(Math.random()*pentatonic.length)];
+          const o=ctx.createOscillator();o.type='sine';o.frequency.value=freq;
+          const g=ctx.createGain();const vol=0.04+Math.random()*0.04;
+          g.gain.setValueAtTime(vol,ctx.currentTime);
+          g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+1.5);
+          o.connect(g);g.connect(conv);g.connect(master);
+          o.start();o.stop(ctx.currentTime+1.5);
+        }catch(e){}
+        const next=(2500+Math.random()*2500);
+        this._pluckTimer=setTimeout(pluck,next);
+      };
+      this._pluckTimer=setTimeout(pluck,1500);
+    }catch(e){console.warn('[Bgm] start error',e);}
+  },
+  stop(){
+    this.playing=false;
+    clearTimeout(this._pluckTimer);
+    this._nodes.forEach(n=>{try{n.stop&&n.stop();n.disconnect&&n.disconnect();}catch(e){}});
+    this._nodes=[];
+    if(this.gain){try{this.gain.disconnect();}catch(e){}this.gain=null;}
+  },
+};
+
+// ══════════════════════════════════════════════════════════
 // BLOCK SCORE (shanten helper)
 // ══════════════════════════════════════════════════════════
 function calcBlockScore(hand) {
@@ -2500,6 +2829,55 @@ function calcBlockScore(hand) {
     if(j>=0){used[i]=used[j]=true;score+=1;}
   }
   return score;
+}
+
+// ══════════════════════════════════════════════════════════
+// SHANTEN NUMBER (v1.5)
+// ══════════════════════════════════════════════════════════
+function calcShantenStd(tiles, meldCount) {
+  const cnt = new Array(42).fill(0);
+  tiles.forEach(t=>{
+    const idx = t.s==='man'?t.v-1 : t.s==='pin'?9+t.v-1 : t.s==='sou'?18+t.v-1 : 27+(t.v||0);
+    if(idx>=0&&idx<42) cnt[idx]++;
+  });
+  let best = 8 - meldCount*2;
+  function search(idx, melds, pairs, partial) {
+    while(idx<42 && cnt[idx]===0) idx++;
+    if(idx===42){
+      const s = 8-meldCount*2 - melds*2 - Math.min(partial+pairs, 8-meldCount*2-melds*2+1);
+      if(s<best) best=s;
+      return;
+    }
+    // 刻子
+    if(cnt[idx]>=3){cnt[idx]-=3;search(idx,melds+1,pairs,partial);cnt[idx]+=3;}
+    // 順子（只對萬筒條）
+    if(idx<27 && idx%9<=6 && cnt[idx+1]>0 && cnt[idx+2]>0){
+      cnt[idx]--;cnt[idx+1]--;cnt[idx+2]--;
+      search(idx,melds+1,pairs,partial);
+      cnt[idx]++;cnt[idx+1]++;cnt[idx+2]++;
+    }
+    // 對子（作將牌）
+    if(cnt[idx]>=2){cnt[idx]-=2;search(idx+1,melds,pairs+1,partial);cnt[idx]+=2;}
+    // 搭子（連張）
+    if(idx<27 && idx%9<=7 && idx+1<42 && cnt[idx+1]>0){cnt[idx]--;cnt[idx+1]--;search(idx+1,melds,pairs,partial+1);cnt[idx]++;cnt[idx+1]++;}
+    // 搭子（隔張）
+    if(idx<27 && idx%9<=6 && idx+2<42 && cnt[idx+2]>0){cnt[idx]--;cnt[idx+2]--;search(idx+1,melds,pairs,partial+1);cnt[idx]++;cnt[idx+2]++;}
+    // 不用此牌
+    search(idx+1,melds,pairs,partial);
+  }
+  search(0,0,0,0);
+  return best;
+}
+function calcShanten(hand, melds=[]) {
+  const tiles = hand.filter(t=>!t.fl);
+  // 七對向聽數
+  const pairs = {};
+  tiles.forEach(t=>{ const k=t.s+'_'+t.v; pairs[k]=(pairs[k]||0)+1; });
+  const pairCount = Object.values(pairs).filter(c=>c>=2).length;
+  const chiitoi = 6 - pairCount;
+  // 標準型向聽數
+  const std = calcShantenStd(tiles, melds.length);
+  return Math.min(std, chiitoi);
 }
 
 // ══════════════════════════════════════════════════════════
@@ -2871,6 +3249,7 @@ const Game={
     const ai1=document.getElementById('ai1').value.trim()||'小南AI';
     const ai2=document.getElementById('ai2').value.trim()||'小西AI';
     const ai3=document.getElementById('ai3').value.trim()||'小北AI';
+    const quickStart=document.getElementById('quick-start-toggle')?.checked||false;
     this.settings={
       base:+document.getElementById('sbase').value,
       tai:+document.getElementById('stai').value,
@@ -2878,6 +3257,7 @@ const Game={
       time:+document.getElementById('stime').value,
       voice:document.getElementById('svoice').value,
       rate:1.05,
+      quickStart,
       aiStyle:[
         null,
         document.getElementById('ai1-style')?.value||'balanced',
@@ -2885,6 +3265,8 @@ const Game={
         document.getElementById('ai3-style')?.value||'balanced',
       ],
     };
+    // Quick start: force turbo speed
+    if(quickStart) this.setSpeed('turbo');
     // Sync volume from slider
     const volEl=document.getElementById('svol');
     if(volEl) Snd.volume=+volEl.value/100;
@@ -2900,6 +3282,10 @@ const Game={
     // Always show pause button + speed panel during game
     document.getElementById('pause-btn').style.display='block';
     document.getElementById('speed-panel').style.display='flex';
+    // v1.5: init dust particles
+    this._initDustParticles();
+    // v1.5: start BGM if enabled
+    if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
     const winds=['東','南','西','北'];
     for(let i=0;i<4;i++){
       document.getElementById(`wb${i}`).textContent=winds[i];
@@ -2995,6 +3381,16 @@ const Game={
     </svg>`;
   },
   showDice(){
+    // Quick start: skip dice animation
+    if(this.settings&&this.settings.quickStart){
+      const d1=1+~~(Math.random()*6),d2=1+~~(Math.random()*6);
+      if(this.st)this.st.dice=[d1,d2];
+      const dov=document.getElementById('dov');if(dov)dov.style.display='none';
+      if(this.st)this.st.phase='playing';
+      this.render();
+      this.closeDice();
+      return;
+    }
     const dov=document.getElementById('dov');
     const dbig=document.getElementById('dbig');
     const dtxt=document.getElementById('dtxt');
@@ -3261,6 +3657,7 @@ const Game={
     }
   },
   _flashFlower(fl){
+    if(this.settings&&this.settings.quickStart)return;
     const ff=document.getElementById('flower-flash');if(!ff)return;
     const icons=['🌸','🌿','🌼','🎋','🌱','☀️','🍂','❄️'];
     ff.querySelector('.ff-ic').textContent=icons[fl.v]||'🌸';
@@ -4109,6 +4506,10 @@ const Game={
     }
     // Update hand-bar tenpai counts each render
     if(this._tenpaiWaiting) this._updateHandBar();
+    // v1.5: update assist features after render
+    this.updateShantenLabel();
+    this.updateDangerDots();
+    if(this._assist&&this._assist.tracker){const tt=document.getElementById('tile-tracker');if(tt&&tt.classList.contains('show'))this.renderTracker();}
     // action-overlay is now in-flow (position:relative) — no JS repositioning needed
 
     // Four separate discard zones: dc0(bottom/me), dc1(right), dc2(top), dc3(left)
@@ -4574,6 +4975,8 @@ const Game={
     this.initRound(prevSt.names,prevSt.ai,null,nextDealer,nextRound,nextWind);
     this.render();
     updateTblVars();setTimeout(()=>this.showDice(),200);
+    // v1.5: restart BGM for new round
+    if(Bgm.enabled){ Bgm.stop(); setTimeout(()=>Bgm.start(),500); }
   },
   _showMatchSummary(){
     const s=this.st;
@@ -4624,6 +5027,7 @@ const Game={
     document.getElementById('speed-panel').style.display='none';
     document.getElementById('lobby').style.display='flex';
     speechSynthesis&&speechSynthesis.cancel();
+    Bgm.stop();
   },
 
   // ── TENPAI PANEL ─────────────────────────────────────
@@ -4680,6 +5084,170 @@ const Game={
     const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');
     clearTimeout(this._toastT);this._toastT=setTimeout(()=>t.classList.remove('on'),dur);
   },
+
+  // ══ v1.5 ASSIST PANEL ════════════════════════════════
+  _assist:{shanten:false,danger:false,tracker:false,sort:false},
+  loadAssist(){
+    try{const d=JSON.parse(localStorage.getItem('mj_assist_v1')||'{}');Object.assign(this._assist,d);}catch(e){}
+    ['shanten','danger','tracker','sort'].forEach(k=>{
+      const el=document.getElementById('assist-'+k);
+      if(el)el.checked=!!this._assist[k];
+    });
+    // Apply tracker button visibility
+    const tb=document.getElementById('tracker-btn');
+    if(tb)tb.classList.toggle('show',!!this._assist.tracker);
+    const sb=document.getElementById('sort-btn');
+    if(sb)sb.classList.toggle('show',!!this._assist.sort);
+  },
+  saveAssist(){
+    ['shanten','danger','tracker','sort'].forEach(k=>{
+      const el=document.getElementById('assist-'+k);
+      if(el)this._assist[k]=el.checked;
+    });
+    localStorage.setItem('mj_assist_v1',JSON.stringify(this._assist));
+    this.updateShantenLabel();
+    this.updateDangerDots();
+  },
+  toggleAssistPanel(){
+    const p=document.getElementById('assist-panel');
+    if(p)p.classList.toggle('open');
+  },
+  onTrackerToggle(on){
+    this._assist.tracker=on;
+    localStorage.setItem('mj_assist_v1',JSON.stringify(this._assist));
+    const tb=document.getElementById('tracker-btn');
+    if(tb)tb.classList.toggle('show',on);
+    if(!on){
+      const tt=document.getElementById('tile-tracker');
+      if(tt)tt.classList.remove('show');
+    }
+  },
+  onSortToggle(on){
+    this._assist.sort=on;
+    localStorage.setItem('mj_assist_v1',JSON.stringify(this._assist));
+    const sb=document.getElementById('sort-btn');
+    if(sb)sb.classList.toggle('show',on);
+  },
+  toggleTracker(){
+    const tt=document.getElementById('tile-tracker');
+    if(!tt)return;
+    const show=tt.classList.toggle('show');
+    if(show)this.renderTracker();
+  },
+  renderTracker(){
+    const tt=document.getElementById('tt-grid');if(!tt||!this.st)return;
+    const s=this.st;
+    // Count all visible tiles (discards + melds + player hand + flowers)
+    const seen={};
+    const addTile=t=>{if(t.fl)return;const k=t.s+'_'+t.v;seen[k]=(seen[k]||0)+1;};
+    s.discards.forEach(d=>d.forEach(addTile));
+    s.melds.forEach(m=>m.forEach(meld=>meld.tiles.forEach(addTile)));
+    s.flowers.forEach(f=>f.forEach(addTile));
+    s.hands[0].forEach(addTile);
+    // Build display
+    const suits=[
+      {s:'man',label:'萬',vals:[1,2,3,4,5,6,7,8,9]},
+      {s:'pin',label:'筒',vals:[1,2,3,4,5,6,7,8,9]},
+      {s:'sou',label:'索',vals:[1,2,3,4,5,6,7,8,9]},
+      {s:'honor',label:'字',vals:[1,2,3,4,5,6,7]},
+    ];
+    const names={man:['一萬','二萬','三萬','四萬','五萬','六萬','七萬','八萬','九萬'],
+      pin:['一筒','二筒','三筒','四筒','五筒','六筒','七筒','八筒','九筒'],
+      sou:['一索','二索','三索','四索','五索','六索','七索','八索','九索'],
+      honor:['東','南','西','北','中','白','發']};
+    const maxCnt={man:4,pin:4,sou:4,honor:4};
+    tt.innerHTML='';
+    suits.forEach(({s:suit,vals})=>{
+      vals.forEach(v=>{
+        const k=suit+'_'+v;
+        const usedCount=seen[k]||0;
+        const rem=maxCnt[suit]-usedCount;
+        const cell=document.createElement('div');
+        cell.className='tt-cell'+(rem===0?' tt-empty':'');
+        const nm=document.createElement('div');nm.className='tt-name';
+        nm.textContent=(names[suit]?.[v-1]||'');
+        const cnt=document.createElement('div');cnt.className='tt-count';
+        cnt.textContent=rem;
+        cell.appendChild(nm);cell.appendChild(cnt);
+        tt.appendChild(cell);
+      });
+    });
+  },
+  updateShantenLabel(){
+    const el=document.getElementById('shanten-label');if(!el)return;
+    if(!this._assist||!this._assist.shanten||!this.st){el.className='';return;}
+    const s=this.st;
+    const hand=s.hands[0].filter(x=>!x.fl);
+    if(hand.length===0){el.className='';return;}
+    const sh=calcShanten(hand,s.melds[0]);
+    if(sh===-1){el.className='sh-win';el.textContent='🀄 胡牌！';}
+    else if(sh===0){el.className='sh-0';el.textContent='聽牌！';}
+    else if(sh===1){el.className='sh-1';el.textContent=`距聽牌 ${sh} 張`;}
+    else{el.className='sh-n';el.textContent=`距聽牌 ${sh} 張`;}
+  },
+  updateDangerDots(){
+    const ht=document.getElementById('ht0');if(!ht||!this.st)return;
+    ht.querySelectorAll('.danger-dot').forEach(e=>e.remove());
+    ht.querySelectorAll('.t').forEach(el=>{
+      el.classList.remove('danger-low','danger-mid','danger-high');
+    });
+    if(!this._assist||!this._assist.danger)return;
+    const s=this.st;
+    ht.querySelectorAll('.t[data-id]').forEach(el=>{
+      const tid=+el.dataset.id;
+      const tile=s.hands[0].find(t=>t.id===tid);
+      if(!tile||tile.fl)return;
+      let danger=0;
+      // Check opponent melds for suit match
+      for(let p=1;p<4;p++){
+        if(s.melds[p]&&s.melds[p].length){
+          s.melds[p].forEach(meld=>{
+            meld.tiles.forEach(mt=>{
+              if(mt.s===tile.s&&mt.s!=='honor'&&Math.abs(mt.v-tile.v)<=2)danger++;
+            });
+          });
+        }
+        // Tenpai check: if opponent tenpai and tile not in their discards
+        if(s.tenpai[p]){
+          const inDiscard=s.discards[p].some(d=>d.s===tile.s&&d.v===tile.v);
+          if(!inDiscard)danger++;
+        }
+      }
+      const cls=danger<=0?'':danger===1?'danger-low':danger===2?'danger-mid':'danger-high';
+      if(cls){
+        el.classList.add(cls);
+        const dot=document.createElement('div');dot.className='danger-dot';
+        el.style.position='relative';
+        el.appendChild(dot);
+      }
+    });
+  },
+  sortHand(){
+    if(!this.st)return;
+    this.st.hands[0]=sortH(this.st.hands[0]);
+    this.render();
+    this.toast('手牌已整理',800);
+  },
+
+  // ══ v1.5 DUST PARTICLES ══════════════════════════════
+  _initDustParticles(){
+    const tbl=document.getElementById('tbl');if(!tbl)return;
+    tbl.querySelectorAll('.dust-particle').forEach(e=>e.remove());
+    for(let i=0;i<12;i++){
+      const d=document.createElement('div');
+      d.className='dust-particle';
+      const sz=2+Math.random()*3;
+      d.style.cssText=`
+        width:${sz}px;height:${sz}px;
+        left:${Math.random()*1240+20}px;
+        top:${400+Math.random()*250}px;
+        --dx:${(Math.random()-0.5)*80}px;
+        animation-duration:${20+Math.random()*15}s;
+        animation-delay:${-Math.random()*20}s;
+      `;
+      tbl.appendChild(d);
+    }
+  },
 };
 
 // Load persistent stats on startup
@@ -4693,6 +5261,96 @@ Stats.load(); Stats.render();
   document.querySelectorAll('.theme-btn').forEach(b=>{
     b.classList.toggle('active',b.dataset.theme===savedTheme);
   });
+})();
+
+// ── v1.5: Restore settings from localStorage ──────────────
+(function(){
+  // Restore sound theme
+  const sndTheme=localStorage.getItem('mj_snd_theme_v1')||'modern';
+  Snd.setTheme(sndTheme);
+  const ssel=document.getElementById('snd-theme-sel');
+  if(ssel)ssel.value=sndTheme;
+
+  // Restore BGM settings
+  const bgmEnabled=localStorage.getItem('mj_bgm_v1')==='1';
+  const bgmVol=parseFloat(localStorage.getItem('mj_bgm_vol_v1')||'0.3');
+  Bgm.volume=bgmVol;
+  Bgm.enabled=bgmEnabled;
+  const bgmToggle=document.getElementById('bgm-toggle');
+  if(bgmToggle)bgmToggle.checked=bgmEnabled;
+  const bgmVolEl=document.getElementById('bgm-vol');
+  if(bgmVolEl){bgmVolEl.value=Math.round(bgmVol*100);}
+  const bgmVolVal=document.getElementById('bgm-vol-val');
+  if(bgmVolVal)bgmVolVal.textContent=Math.round(bgmVol*100)+'%';
+
+  // Restore quick start
+  const qs=localStorage.getItem('mj_quick_v1')==='1';
+  Game.settings=Game.settings||{};
+  Game.settings.quickStart=qs;
+  const qsEl=document.getElementById('quick-start-toggle');
+  if(qsEl)qsEl.checked=qs;
+
+  // Restore assist settings
+  Game.loadAssist();
+})();
+
+// ── v1.5: Keyboard shortcut for sort (S key) ──────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='s'||e.key==='S'){
+    if(Game._assist&&Game._assist.sort&&Game.st&&Game.st.turn===0){
+      Game.sortHand();
+    }
+  }
+});
+
+// ── v1.5: Pointer Events (touch support) on #ht0 ──────────
+(function(){
+  let _ptDown=null,_ptTimer=null,_ptMoved=false;
+  document.addEventListener('pointerdown',function(e){
+    const ht=document.getElementById('ht0');if(!ht)return;
+    const tile=e.target.closest('#ht0 .t[data-id]');if(!tile)return;
+    _ptDown={x:e.clientX,y:e.clientY,id:+tile.dataset.id,target:tile};
+    _ptMoved=false;
+    clearTimeout(_ptTimer);
+    _ptTimer=setTimeout(()=>{
+      if(!_ptMoved&&_ptDown){
+        // Long press: show info tooltip
+        const s=Game.st;if(!s)return;
+        const t=s.hands[0].find(x=>x.id===_ptDown.id);if(!t)return;
+        // Count remaining in deck + all hands
+        const seen={};
+        const countTile=tile2=>{if(!tile2.fl){const k=tile2.s+'_'+tile2.v;seen[k]=(seen[k]||0)+1;}};
+        s.discards.forEach(d=>d.forEach(countTile));
+        s.melds.forEach(m=>m.forEach(meld=>meld.tiles.forEach(countTile)));
+        s.flowers.forEach(f=>f.forEach(countTile));
+        const usedCount=seen[t.s+'_'+t.v]||0;
+        const maxCount=t.s==='honor'?4:4;
+        const rem=maxCount-usedCount;
+        Game.toast(`${t.n} 剩餘${rem}張`,1500);
+      }
+    },500);
+  },{passive:true});
+  document.addEventListener('pointermove',function(e){
+    if(!_ptDown)return;
+    const dx=e.clientX-_ptDown.x,dy=e.clientY-_ptDown.y;
+    if(Math.sqrt(dx*dx+dy*dy)>10)_ptMoved=true;
+  },{passive:true});
+  document.addEventListener('pointerup',function(e){
+    if(!_ptDown){return;}
+    clearTimeout(_ptTimer);
+    const dx=e.clientX-_ptDown.x,dy=e.clientY-_ptDown.y;
+    const tileId=_ptDown.id;
+    _ptDown=null;
+    // Up-swipe to discard
+    if(dy<-40&&!_ptMoved){
+      const s=Game.st;
+      if(s&&s.turn===0&&s.phase==='playing'){
+        const ap=document.getElementById('ap');
+        const hasBtns=ap&&ap.querySelectorAll('.ab').length>0;
+        if(!hasBtns)Game.doDiscard(0,tileId);
+      }
+    }
+  },{passive:true});
 })();
 
 // init sound + preload TTS voices on first interaction

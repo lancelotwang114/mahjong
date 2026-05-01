@@ -1,7 +1,7 @@
 # CLAUDE.md — 台灣麻將單機版 開發指引
 
 > 給 Claude（AI 助手）的專案說明，讓每次對話都能快速掌握架構、規則與注意事項。
-> 當前版本：**v1.4.0**
+> 當前版本：**v1.5.0**
 
 ---
 
@@ -231,7 +231,46 @@ python3 -m http.server 8080
 
 ---
 
+## v1.5.0 新增功能
+
+### 遊戲內輔助面板（`Game.toggleAssistPanel()`）
+- `#assist-toggle`（⚙）→ 展開 `#assist-panel`，包含 4 個 toggle
+- `calcShanten(hand, melds)` / `calcShantenStd(tiles, meldCount)`：精確遞迴向聽數算法
+- `Game.updateShantenLabel()`：更新 `#shanten-label`，顏色按 -1(金)/0(綠)/1(橙)/2+(白)
+- `Game.updateDangerDots()`：對手副露/聽牌分析，每張牌右下角顯示 `.danger-low/mid/high` 圓點
+- `#tile-tracker` overlay：34 種牌剩餘張數 grid，🀄 按鈕切換顯示
+- `Game.sortHand()`：手牌按花色+點數排序，S 鍵快捷
+- 狀態存 `localStorage('mj_assist_v1')`
+
+### 牌桌背景動態效果（`Game._initDustParticles()`）
+- 注入 12 個 `.dust-particle` div，`@keyframes dustFloat` 緩慢漂浮
+- 主題配色：預設金、wood 棕、jade 綠、noir 紫
+
+### 快速開局模式（`Game.settings.quickStart`）
+- `showDice()` 開頭判斷 quickStart → 跳過動畫
+- `_flashFlower()` 同理跳過 overlay
+- 存 `localStorage('mj_quick_v1')`
+
+### 觸控手勢（Pointer Events API）
+- `pointerdown/move/up` 在 `#ht0` 監聽：上滑 (ΔY<-40) → `doDiscard()`，長按 500ms → toast
+- `#ht0 .t { touch-action: none }` CSS 允許覆蓋預設滾動
+
+### 音效主題包（`Snd.theme` / `Snd.setTheme(t)`）
+- `classic`（低頻厚重）/ `modern`（高頻清脆，預設）/ `mute`（靜音）
+- 各音效方法（draw/discard/pong/chi）內部依 theme 切換頻率
+- 存 `localStorage('mj_snd_theme_v1')`
+
+### 背景音樂（`const Bgm`）
+- `start()`：55Hz drone+LFO、五聲音階撥弦+Convolver 混響、白噪底層
+- `stop()` / `setVolume(v)` / `setEnabled(bool)`
+- 遊戲開始自動呼叫，大廳有開關+音量滑桿
+- 存 `localStorage('mj_bgm_v1')`
+
+---
+
 ## 待辦 / 未來功能
 
-- [ ] 行動版適配（目前僅 transform:scale 縮放）
+- [ ] 行動版獨立版面（直版手機排版）
 - [ ] 多人連線版整合
+- [ ] 牌局錄影回放
+- [ ] 成就系統
