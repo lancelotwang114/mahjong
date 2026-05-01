@@ -6,6 +6,7 @@
 <title>台灣麻將 Online</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="tiles-sprite.css">
 <style>
 :root {
   --felt: #1a6b3c; --felt-dark: #0f4225;
@@ -83,10 +84,38 @@ select.form-input { cursor:pointer; }
 /* Settings grid */
 .settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
 
+/* ══ LOBBY VISUAL UPGRADE ════════════════════════════════════ */
+#lobby {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Crect x='18' y='14' width='36' height='50' rx='4' fill='none' stroke='rgba(212,168,67,.06)' stroke-width='1.5' transform='rotate(-18,36,39)'/%3E%3Crect x='200' y='30' width='36' height='50' rx='4' fill='none' stroke='rgba(212,168,67,.05)' stroke-width='1.5' transform='rotate(12,218,55)'/%3E%3Crect x='260' y='180' width='30' height='42' rx='3' fill='none' stroke='rgba(212,168,67,.07)' stroke-width='1.5' transform='rotate(-8,275,201)'/%3E%3Crect x='30' y='230' width='30' height='42' rx='3' fill='none' stroke='rgba(212,168,67,.06)' stroke-width='1.5' transform='rotate(22,45,251)'/%3E%3Crect x='130' y='240' width='26' height='36' rx='3' fill='none' stroke='rgba(212,168,67,.04)' stroke-width='1' transform='rotate(-5,143,258)'/%3E%3Crect x='90' y='80' width='26' height='36' rx='3' fill='none' stroke='rgba(212,168,67,.05)' stroke-width='1' transform='rotate(30,103,98)'/%3E%3C/svg%3E") repeat,
+    radial-gradient(ellipse at 30% 30%,rgba(40,120,60,.3) 0%,transparent 60%),
+    radial-gradient(ellipse at 70% 70%,rgba(20,80,40,.2) 0%,transparent 50%),
+    radial-gradient(ellipse at center, #1a5c35 0%, #0a2e1a 70%);
+}
+.lobby-card { position:relative; }
+.lobby-card::before,.lobby-card::after {
+  content:''; position:absolute; width:40px; height:40px; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M2,38 Q2,2 38,2' fill='none' stroke='rgba(212,168,67,.35)' stroke-width='1.8' stroke-linecap='round'/%3E%3Cpath d='M2,28 Q2,2 28,2' fill='none' stroke='rgba(212,168,67,.2)' stroke-width='1' stroke-linecap='round'/%3E%3Ccircle cx='2' cy='2' r='2.5' fill='rgba(212,168,67,.4)'/%3E%3C/svg%3E");
+}
+.lobby-card::before { top:10px; left:10px; }
+.lobby-card::after  { bottom:10px; right:10px; transform:rotate(180deg); }
+
+/* In-game player avatar */
+.p-av { display:inline-block; font-size:1rem; line-height:1; margin-right:4px; filter:drop-shadow(0 1px 3px rgba(0,0,0,.7)); }
+
+/* ══ GAME BOARD FELT TEXTURE ══════════════════════════════════ */
 /* ===== GAME BOARD ===== */
 #game {
   display:none; width:100vw; height:100vh;
   background:radial-gradient(ellipse at center, #1d7040 0%, #115030 50%, #081a10 100%);
+  background-image:
+    linear-gradient(45deg,rgba(255,255,255,.012) 25%,transparent 25%),
+    linear-gradient(-45deg,rgba(255,255,255,.012) 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,rgba(255,255,255,.012) 75%),
+    linear-gradient(-45deg,transparent 75%,rgba(255,255,255,.012) 75%),
+    radial-gradient(ellipse at center, #1d7040 0%, #115030 50%, #081a10 100%);
+  background-size:6px 6px,6px 6px,6px 6px,6px 6px,100% 100%;
+  background-position:0 0,0 3px,3px -3px,-3px 0,0 0;
   position:relative; overflow:hidden;
 }
 #game::before {
@@ -206,6 +235,101 @@ select.form-input { cursor:pointer; }
   from { border-color:var(--tile-border); box-shadow:3px 6px 10px var(--tile-shadow),0 0 8px rgba(212,168,67,0.4); }
   to   { border-color:var(--gold-light);  box-shadow:3px 6px 10px var(--tile-shadow),0 0 22px rgba(212,168,67,1); }
 }
+/* ══ TILE SPRITE INTEGRATION ══════════════════════════════════
+   Sprite backgrounds for .tile elements (52×72 / 36×50 / 22×30)
+   Images shared with mahjong-solo.html (images/ folder)
+══════════════════════════════════════════════════════════════ */
+.tile.man,.tile.pin,.tile.sou,.tile.honor{
+  background-color:transparent!important;
+  background-repeat:no-repeat;
+  border:none;
+  box-shadow:3px 8px 14px rgba(20,10,0,.55),0 2px 4px rgba(0,0,0,.30);
+}
+.tile.man::before,.tile.pin::before,.tile.sou::before,.tile.honor::before{display:none}
+.tile.man>*,.tile.pin>*,.tile.sou>*,.tile.honor>*{display:none!important}
+
+/* ── 萬  (712×150) — default 52×72 ─────────────────────── */
+.tile.man{background-image:url('images/萬.png');background-size:514px 108px}
+.tile.man.v1{background-position:0 -18px}.tile.man.v2{background-position:-58px -18px}
+.tile.man.v3{background-position:-116px -18px}.tile.man.v4{background-position:-174px -18px}
+.tile.man.v5{background-position:-232px -18px}.tile.man.v6{background-position:-290px -18px}
+.tile.man.v7{background-position:-348px -18px}.tile.man.v8{background-position:-406px -18px}
+.tile.man.v9{background-position:-464px -18px}
+/* small 36×50 */
+.tile.small.man{background-size:360px 75px}
+.tile.small.man.v1{background-position:0 -12px}.tile.small.man.v2{background-position:-40px -12px}
+.tile.small.man.v3{background-position:-80px -12px}.tile.small.man.v4{background-position:-120px -12px}
+.tile.small.man.v5{background-position:-160px -12px}.tile.small.man.v6{background-position:-200px -12px}
+.tile.small.man.v7{background-position:-240px -12px}.tile.small.man.v8{background-position:-280px -12px}
+.tile.small.man.v9{background-position:-320px -12px}
+/* tiny 22×30 */
+.tile.tiny.man{background-size:218px 46px}
+.tile.tiny.man.v1{background-position:0 -8px}.tile.tiny.man.v2{background-position:-24px -8px}
+.tile.tiny.man.v3{background-position:-49px -8px}.tile.tiny.man.v4{background-position:-73px -8px}
+.tile.tiny.man.v5{background-position:-98px -8px}.tile.tiny.man.v6{background-position:-122px -8px}
+.tile.tiny.man.v7{background-position:-147px -8px}.tile.tiny.man.v8{background-position:-171px -8px}
+.tile.tiny.man.v9{background-position:-196px -8px}
+
+/* ── 筒  (712×150) — same dims as 萬 ────────────────────── */
+.tile.pin{background-image:url('images/筒.png');background-size:514px 108px}
+.tile.pin.v1{background-position:0 -18px}.tile.pin.v2{background-position:-58px -18px}
+.tile.pin.v3{background-position:-116px -18px}.tile.pin.v4{background-position:-174px -18px}
+.tile.pin.v5{background-position:-232px -18px}.tile.pin.v6{background-position:-290px -18px}
+.tile.pin.v7{background-position:-348px -18px}.tile.pin.v8{background-position:-406px -18px}
+.tile.pin.v9{background-position:-464px -18px}
+.tile.small.pin{background-size:360px 75px}
+.tile.small.pin.v1{background-position:0 -12px}.tile.small.pin.v2{background-position:-40px -12px}
+.tile.small.pin.v3{background-position:-80px -12px}.tile.small.pin.v4{background-position:-120px -12px}
+.tile.small.pin.v5{background-position:-160px -12px}.tile.small.pin.v6{background-position:-200px -12px}
+.tile.small.pin.v7{background-position:-240px -12px}.tile.small.pin.v8{background-position:-280px -12px}
+.tile.small.pin.v9{background-position:-320px -12px}
+.tile.tiny.pin{background-size:218px 46px}
+.tile.tiny.pin.v1{background-position:0 -8px}.tile.tiny.pin.v2{background-position:-24px -8px}
+.tile.tiny.pin.v3{background-position:-49px -8px}.tile.tiny.pin.v4{background-position:-73px -8px}
+.tile.tiny.pin.v5{background-position:-98px -8px}.tile.tiny.pin.v6{background-position:-122px -8px}
+.tile.tiny.pin.v7{background-position:-147px -8px}.tile.tiny.pin.v8{background-position:-171px -8px}
+.tile.tiny.pin.v9{background-position:-196px -8px}
+
+/* ── 條  (712×186) — taller PNG ─────────────────────────── */
+.tile.sou{background-image:url('images/條.png');background-size:514px 134px}
+.tile.sou.v1{background-position:0 -30px}.tile.sou.v2{background-position:-58px -30px}
+.tile.sou.v3{background-position:-116px -30px}.tile.sou.v4{background-position:-174px -30px}
+.tile.sou.v5{background-position:-232px -30px}.tile.sou.v6{background-position:-290px -30px}
+.tile.sou.v7{background-position:-348px -30px}.tile.sou.v8{background-position:-406px -30px}
+.tile.sou.v9{background-position:-464px -30px}
+.tile.small.sou{background-size:360px 93px}
+.tile.small.sou.v1{background-position:0 -21px}.tile.small.sou.v2{background-position:-40px -21px}
+.tile.small.sou.v3{background-position:-80px -21px}.tile.small.sou.v4{background-position:-120px -21px}
+.tile.small.sou.v5{background-position:-160px -21px}.tile.small.sou.v6{background-position:-200px -21px}
+.tile.small.sou.v7{background-position:-240px -21px}.tile.small.sou.v8{background-position:-280px -21px}
+.tile.small.sou.v9{background-position:-320px -21px}
+.tile.tiny.sou{background-size:218px 57px}
+.tile.tiny.sou.v1{background-position:0 -13px}.tile.tiny.sou.v2{background-position:-24px -13px}
+.tile.tiny.sou.v3{background-position:-49px -13px}.tile.tiny.sou.v4{background-position:-73px -13px}
+.tile.tiny.sou.v5{background-position:-98px -13px}.tile.tiny.sou.v6{background-position:-122px -13px}
+.tile.tiny.sou.v7{background-position:-147px -13px}.tile.tiny.sou.v8{background-position:-171px -13px}
+.tile.tiny.sou.v9{background-position:-196px -13px}
+
+/* ── 字  (552×173, 7 tiles) — v4=中 v5=白(col6) v6=発(col5) */
+.tile.honor{background-image:url('images/字.png');background-size:399px 125px}
+.tile.honor.v0{background-position:0 -26px}.tile.honor.v1{background-position:-58px -26px}
+.tile.honor.v2{background-position:-116px -26px}.tile.honor.v3{background-position:-174px -26px}
+.tile.honor.v4{background-position:-232px -26px}
+.tile.honor.v5{background-position:-348px -26px}  /* 白 col6 */
+.tile.honor.v6{background-position:-290px -26px}  /* 発 col5 */
+.tile.small.honor{background-size:276px 86px}
+.tile.small.honor.v0{background-position:0 -18px}.tile.small.honor.v1{background-position:-40px -18px}
+.tile.small.honor.v2{background-position:-80px -18px}.tile.small.honor.v3{background-position:-120px -18px}
+.tile.small.honor.v4{background-position:-160px -18px}
+.tile.small.honor.v5{background-position:-240px -18px}  /* 白 col6 */
+.tile.small.honor.v6{background-position:-200px -18px}  /* 発 col5 */
+.tile.tiny.honor{background-size:170px 53px}
+.tile.tiny.honor.v0{background-position:0 -11px}.tile.tiny.honor.v1{background-position:-24px -11px}
+.tile.tiny.honor.v2{background-position:-48px -11px}.tile.tiny.honor.v3{background-position:-72px -11px}
+.tile.tiny.honor.v4{background-position:-96px -11px}
+.tile.tiny.honor.v5{background-position:-144px -11px}  /* 白 col6 */
+.tile.tiny.honor.v6{background-position:-120px -11px}  /* 発 col5 */
+
 .tile-separator { width:3px; height:60px; background:linear-gradient(to bottom,transparent,rgba(212,168,67,0.8),transparent); border-radius:2px; flex-shrink:0; align-self:center; margin:0 4px; }
 
 /* Melds */
@@ -502,6 +626,7 @@ select.form-input { cursor:pointer; }
       <div class="player-area top" id="area-2">
         <div class="player-info-bar" id="info-2">
           <div class="player-wind-badge" id="wind-2">西</div>
+          <span class="p-av" id="av-2">🐉</span>
           <div class="player-name-money"><span class="player-name-label" id="name-2">P3</span><span class="player-money-label" id="money-2">$10,000</span></div>
           <span id="tenpai-badge-2" class="player-tenpai-badge" style="display:none">聽</span>
         </div>
@@ -518,6 +643,7 @@ select.form-input { cursor:pointer; }
       <div class="player-area left" id="area-3">
         <div class="player-info-bar" id="info-3">
           <div class="player-wind-badge" id="wind-3">北</div>
+          <span class="p-av" id="av-3">🦢</span>
           <div class="player-name-money"><span class="player-name-label" id="name-3">P4</span><span class="player-money-label" id="money-3">$10,000</span></div>
           <span id="tenpai-badge-3" class="player-tenpai-badge" style="display:none">聽</span>
         </div>
@@ -552,6 +678,7 @@ select.form-input { cursor:pointer; }
       <div class="player-area right" id="area-1">
         <div class="player-info-bar" id="info-1">
           <div class="player-wind-badge" id="wind-1">南</div>
+          <span class="p-av" id="av-1">🐯</span>
           <div class="player-name-money"><span class="player-name-label" id="name-1">P2</span><span class="player-money-label" id="money-1">$10,000</span></div>
           <span id="tenpai-badge-1" class="player-tenpai-badge" style="display:none">聽</span>
         </div>
@@ -730,8 +857,10 @@ const App = {
       const p = this.peers[i];
       const div = document.createElement('div');
       if (p) {
+        const aiAv = ['🐯','🐉','🦢'];
+        const av = p.isAI ? (aiAv[i-1]||'🤖') : '👤';
         div.className = `player-slot ${p.isAI?'ai':'filled'}`;
-        div.textContent = `${seats[i]}: ${p.name}${p.isAI?' 🤖':''}`;
+        div.textContent = `${av} ${seats[i]}: ${p.name}`;
       } else {
         div.className = 'player-slot empty';
         div.textContent = `${seats[i]}: 等待中...`;
@@ -824,12 +953,18 @@ const App = {
     document.getElementById('game').style.display = 'block';
     document.getElementById('chat-panel').style.display = 'block';
     const winds = ['東','南','西','北'];
+    // Avatar by relative seat (0=me, 1=right, 2=top, 3=left)
+    const seatAvatars = ['👤','🐯','🐉','🦢'];
     for (let i=0; i<4; i++) {
       const rel = (i-myIndex+4)%4;
-      document.getElementById(`name-${rel}`).textContent = playerNames[i]+(aiIndices.includes(i)?' 🤖':'');
+      const isAI = aiIndices.includes(i);
+      document.getElementById(`name-${rel}`).textContent = playerNames[i];
       document.getElementById(`wind-${rel}`).textContent = winds[i];
       const money = settings?.startMoney||10000;
       document.getElementById(`money-${rel}`).textContent = `$${money.toLocaleString()}`;
+      // Update avatar: AI seats get animal avatars, human seats get 👤
+      const avEl = document.getElementById(`av-${rel}`);
+      if (avEl) avEl.textContent = isAI ? seatAvatars[rel] : (rel===0 ? '' : '👤');
     }
     this.addChatMsg('系統','遊戲開始！',true);
     setTimeout(()=>this._initDustParticles(), 100);
@@ -1270,7 +1405,9 @@ const App = {
 
   createTileEl(tile, interactive, position) {
     const el = document.createElement('div');
-    el.className = `tile ${tile.suit}${tile.isFlower?' flower':''}`;
+    // Add v{N} class for sprite background positioning
+    const vClass = (tile.suit !== 'flower' && tile.value !== undefined) ? ` v${tile.value}` : '';
+    el.className = `tile ${tile.suit}${tile.isFlower?' flower':''}${vClass}`;
     if (tile.name) el.dataset.name = tile.name;
     el.innerHTML = this.getTileDisplay(tile);
     el.dataset.id = tile.id;
