@@ -2124,6 +2124,106 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .bgm-toggle-sw input:checked + .bgm-sl:before { transform:translateX(17px); }
 .bgm-vol-row { display:flex; align-items:center; gap:4px; font-size:.68rem; color:rgba(245,236,215,.6); }
 
+/* ── v1.5.2: 連線模式 ──────────────────────────────────────── */
+.online-row {
+  display:flex; align-items:center; gap:10px;
+  background:rgba(46,204,113,.08); border:1px solid rgba(46,204,113,.22);
+  border-radius:10px; padding:8px 14px; margin:10px 0 4px;
+}
+.online-row label { flex:1; font-size:.82rem; color:#7dd4a8; cursor:pointer; }
+.online-dot {
+  width:8px; height:8px; border-radius:50%; background:#2ecc71;
+  box-shadow:0 0 6px #2ecc71; flex-shrink:0;
+  animation: onlinePulse 1.8s ease-in-out infinite;
+}
+@keyframes onlinePulse {
+  0%,100%{ box-shadow:0 0 4px #2ecc71; opacity:.8; }
+  50%{ box-shadow:0 0 12px #2ecc71; opacity:1; }
+}
+.online-cnt { font-size:.65rem; color:rgba(125,212,168,.6); text-align:right; }
+.ol-toggle { position:relative; width:40px; height:21px; flex-shrink:0; }
+.ol-toggle input { opacity:0; width:0; height:0; }
+.ol-toggle .ol-sl {
+  position:absolute; inset:0; border-radius:21px;
+  background:rgba(255,255,255,.15); cursor:pointer; transition:.3s;
+}
+.ol-toggle .ol-sl:before {
+  content:''; position:absolute; width:17px; height:17px; border-radius:50%;
+  background:#fff; left:2px; bottom:2px; transition:.3s;
+}
+.ol-toggle input:checked + .ol-sl { background:#2ecc71; }
+.ol-toggle input:checked + .ol-sl:before { transform:translateX(19px); }
+
+/* matchmaking overlay */
+#matchmaking-ov {
+  position:fixed; inset:0; background:rgba(4,12,24,.96);
+  display:none; flex-direction:column; align-items:center;
+  justify-content:center; z-index:9500;
+  font-family:inherit;
+}
+#matchmaking-ov.show { display:flex; }
+.mm-title {
+  font-size:1.5rem; color:var(--gold); letter-spacing:.18em;
+  margin-bottom:6px; font-weight:700;
+}
+.mm-sub { font-size:.78rem; color:rgba(212,168,67,.55); margin-bottom:32px; letter-spacing:.1em; }
+.mm-slots { display:flex; gap:18px; margin-bottom:30px; }
+.mm-slot {
+  width:110px; background:rgba(255,255,255,.04); border:1px solid rgba(212,168,67,.15);
+  border-radius:14px; padding:16px 10px 12px; text-align:center;
+  transition: border-color .4s, background .4s;
+  position:relative; overflow:hidden;
+}
+.mm-slot.joined {
+  border-color:rgba(212,168,67,.6);
+  background:rgba(212,168,67,.08);
+  animation: slotJoin .4s ease;
+}
+.mm-slot.me { border-color:rgba(46,204,113,.5); background:rgba(46,204,113,.07); }
+@keyframes slotJoin {
+  0%{ transform:scale(.93); opacity:.5; }
+  60%{ transform:scale(1.04); }
+  100%{ transform:scale(1); opacity:1; }
+}
+.mm-avatar {
+  width:44px; height:44px; border-radius:50%; margin:0 auto 8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.4rem; background:rgba(255,255,255,.06);
+  border:2px solid rgba(212,168,67,.2);
+}
+.mm-slot.joined .mm-avatar { border-color:rgba(212,168,67,.5); }
+.mm-slot.me .mm-avatar { border-color:rgba(46,204,113,.5); }
+.mm-slot-name { font-size:.72rem; color:var(--gold2); min-height:1.2em; }
+.mm-slot-wind { font-size:.6rem; color:rgba(212,168,67,.45); margin-top:2px; }
+.mm-slot-ping { font-size:.58rem; color:rgba(125,212,168,.5); margin-top:1px; }
+.mm-slot-dots {
+  font-size:.9rem; color:rgba(212,168,67,.35); letter-spacing:.2em;
+  animation: dotsBlink 1.2s ease-in-out infinite;
+}
+@keyframes dotsBlink {
+  0%,100%{ opacity:.3; } 50%{ opacity:1; }
+}
+.mm-bar-wrap {
+  width:320px; background:rgba(255,255,255,.07); border-radius:8px;
+  height:6px; overflow:hidden; margin-bottom:14px;
+}
+.mm-bar {
+  height:100%; background:linear-gradient(90deg,var(--gold),#f0c040);
+  border-radius:8px; width:0%;
+  box-shadow:0 0 10px rgba(212,168,67,.6);
+  transition: width .3s ease;
+}
+.mm-status { font-size:.72rem; color:rgba(212,168,67,.6); letter-spacing:.08em; }
+.mm-online { font-size:.62rem; color:rgba(125,212,168,.5); margin-top:6px; }
+.mm-success {
+  font-size:1.2rem; color:#2ecc71; font-weight:700; letter-spacing:.15em;
+  display:none; animation: mmSuccessIn .5s cubic-bezier(.2,.8,.3,1.3) both;
+}
+@keyframes mmSuccessIn {
+  from{ transform:scale(.6); opacity:0; }
+  to{ transform:scale(1); opacity:1; }
+}
+
 </style>
 </head>
 <body>
@@ -2134,7 +2234,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG · 單機版</div>
-    <div class="lver">v1.5.0</div>
+    <div class="lver">v1.5.2</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -2251,8 +2351,19 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       <button class="theme-btn" data-theme="noir" onclick="Game.setTheme('noir')" title="暗夜紫" style="background:radial-gradient(#18162a,#08060e)"></button>
     </div>
 
+    <!-- 連線匹配模式 -->
+    <div class="online-row">
+      <div class="online-dot"></div>
+      <label for="online-toggle">🌐 連線匹配模式</label>
+      <div class="ol-toggle">
+        <input type="checkbox" id="online-toggle" onchange="Matchmaking.onToggle(this.checked)">
+        <span class="ol-sl"></span>
+      </div>
+    </div>
+    <div class="online-cnt" id="online-cnt" style="display:none">目前線上 <span id="online-num">—</span> 人</div>
+
     <div class="sec-title">🤖 AI對手名稱（選填）</div>
-    <div class="sgrid" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="sgrid" id="ai-name-grid" style="grid-template-columns:1fr 1fr 1fr">
       <div class="fg" style="margin:0"><label class="fl">南家</label><input class="fi" id="ai1" value="小南AI" maxlength="8"></div>
       <div class="fg" style="margin:0"><label class="fl">西家</label><input class="fi" id="ai2" value="小西AI" maxlength="8"></div>
       <div class="fg" style="margin:0"><label class="fl">北家</label><input class="fi" id="ai3" value="小北AI" maxlength="8"></div>
@@ -2282,6 +2393,42 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
     <button class="btn bp" style="margin-top:16px" onclick="Game.start()">▶ 開始遊戲</button>
   </div>
+</div>
+
+<!-- ═══ MATCHMAKING OVERLAY ═══════════════════════════════ -->
+<div id="matchmaking-ov">
+  <div class="mm-title">🀄 配對中</div>
+  <div class="mm-sub">正在尋找對手⋯⋯</div>
+  <div class="mm-slots">
+    <div class="mm-slot me" id="mm-s0">
+      <div class="mm-avatar">👤</div>
+      <div class="mm-slot-name" id="mm-n0">—</div>
+      <div class="mm-slot-wind">東家（你）</div>
+      <div class="mm-slot-ping" style="color:rgba(46,204,113,.6)">● 本機</div>
+    </div>
+    <div class="mm-slot" id="mm-s1">
+      <div class="mm-avatar">?</div>
+      <div class="mm-slot-name"><span class="mm-slot-dots">···</span></div>
+      <div class="mm-slot-wind">南家</div>
+      <div class="mm-slot-ping">搜尋中</div>
+    </div>
+    <div class="mm-slot" id="mm-s2">
+      <div class="mm-avatar">?</div>
+      <div class="mm-slot-name"><span class="mm-slot-dots">···</span></div>
+      <div class="mm-slot-wind">西家</div>
+      <div class="mm-slot-ping">搜尋中</div>
+    </div>
+    <div class="mm-slot" id="mm-s3">
+      <div class="mm-avatar">?</div>
+      <div class="mm-slot-name"><span class="mm-slot-dots">···</span></div>
+      <div class="mm-slot-wind">北家</div>
+      <div class="mm-slot-ping">搜尋中</div>
+    </div>
+  </div>
+  <div class="mm-bar-wrap"><div class="mm-bar" id="mm-bar"></div></div>
+  <div class="mm-status" id="mm-status">正在連線至伺服器⋯⋯</div>
+  <div class="mm-success" id="mm-success">✓ 配對成功！即將開始</div>
+  <div class="mm-online" id="mm-online"></div>
 </div>
 
 <!-- flower mid-game flash (outside tbl, fixed position) -->
@@ -2733,6 +2880,119 @@ const Snd={
     if(v)u.voice=v;
     speechSynthesis.speak(u);
   }
+};
+
+// ══════════════════════════════════════════════════════════
+// v1.5.2 MATCHMAKING (fake online mode)
+// ══════════════════════════════════════════════════════════
+const _MM_NAMES=[
+  '阿財','阿嬌','老王','麻將王','阿祥','阿玲','大頭','小虎',
+  '阿花','阿福','老李','三叔公','大嬸','阿珠','老陳','阿明',
+  '小婷','阿狗','大砲','阿土','阿蘭','老張','阿鳳','大俠',
+  '阿勇','小燕','老趙','阿義','大頭仔','阿紅','老孫','阿龍',
+  '小胖','阿彬','大姐','阿翠','老吳','阿仁','小妹','阿旺',
+  '大砲王','阿美','老陸','小軒','阿廷','大富','阿貴','老馮',
+  '小慧','阿宏',
+];
+const _MM_AVATARS=['🐯','🦁','🐼','🦊','🐨','🐻','🐸','🦉','🐺','🦝','🐮','🐷'];
+const _MM_PINGS=[12,18,23,31,42,55,67,88,103,120,15,27];
+
+const Matchmaking={
+  enabled:false,
+  _onlineCnt:0,
+  onToggle(on){
+    this.enabled=on;
+    const grid=document.getElementById('ai-name-grid');
+    const cnt=document.getElementById('online-cnt');
+    if(grid) grid.style.opacity=on?'0.38':'1';
+    if(grid) grid.style.pointerEvents=on?'none':'';
+    if(cnt) cnt.style.display=on?'block':'none';
+    if(on){
+      this._onlineCnt=800+~~(Math.random()*1200);
+      const el=document.getElementById('online-num');
+      if(el) el.textContent=this._onlineCnt.toLocaleString();
+    }
+  },
+  _pick3(){
+    const pool=[..._MM_NAMES];
+    const out=[];
+    while(out.length<3){
+      const idx=~~(Math.random()*pool.length);
+      out.push(pool.splice(idx,1)[0]);
+    }
+    return out;
+  },
+  show(playerName, names, onReady){
+    // names = [ai1, ai2, ai3]
+    const ov=document.getElementById('matchmaking-ov');
+    if(!ov)return onReady();
+    // reset
+    const bar=document.getElementById('mm-bar');
+    const status=document.getElementById('mm-status');
+    const success=document.getElementById('mm-success');
+    const onlineEl=document.getElementById('mm-online');
+    bar.style.width='0%';
+    success.style.display='none';
+    status.textContent='正在連線至伺服器⋯⋯';
+    // player slot
+    document.getElementById('mm-n0').textContent=playerName||'玩家';
+    const winds=['南家','西家','北家'];
+    for(let i=1;i<=3;i++){
+      const sl=document.getElementById('mm-s'+i);
+      sl.classList.remove('joined');
+      sl.querySelector('.mm-avatar').textContent='?';
+      sl.querySelector('.mm-slot-name').innerHTML='<span class="mm-slot-dots">···</span>';
+      sl.querySelector('.mm-slot-ping').textContent='搜尋中';
+    }
+    const cnt=this._onlineCnt||1247;
+    if(onlineEl) onlineEl.textContent=`目前線上 ${cnt.toLocaleString()} 人`;
+    ov.classList.add('show');
+
+    const avatars=_MM_AVATARS.slice().sort(()=>Math.random()-.5);
+    const pings=[_MM_PINGS[~~(Math.random()*_MM_PINGS.length)],
+                 _MM_PINGS[~~(Math.random()*_MM_PINGS.length)],
+                 _MM_PINGS[~~(Math.random()*_MM_PINGS.length)]];
+    const totalMs=2200+~~(Math.random()*1800); // 2.2–4s
+
+    // Animate bar + slots
+    let startT=performance.now();
+    let joined=0;
+    const joinTimes=[totalMs*.28, totalMs*.55, totalMs*.78];
+
+    const frame=(now)=>{
+      const elapsed=now-startT;
+      const pct=Math.min(elapsed/totalMs,1);
+      bar.style.width=(pct*100)+'%';
+      // Status messages
+      if(pct<.2) status.textContent='正在連線至伺服器⋯⋯';
+      else if(pct<.45) status.textContent='尋找附近對手⋯⋯';
+      else if(pct<.7) status.textContent='確認玩家資料⋯⋯';
+      else status.textContent='準備開始⋯⋯';
+      // Join each slot
+      while(joined<3&&elapsed>=joinTimes[joined]){
+        const idx=joined+1;
+        const sl=document.getElementById('mm-s'+idx);
+        sl.classList.add('joined');
+        sl.querySelector('.mm-avatar').textContent=avatars[joined]||'😊';
+        sl.querySelector('.mm-slot-name').textContent=names[joined];
+        sl.querySelector('.mm-slot-ping').textContent=`${pings[joined]}ms`;
+        Snd.play(880+joined*110,.1,'sine',.12);
+        joined++;
+      }
+      if(pct<1){ requestAnimationFrame(frame); return; }
+      // Done
+      bar.style.width='100%';
+      status.style.display='none';
+      success.style.display='block';
+      Snd.win&&Snd.play(1100,.18,'sine',.18);
+      setTimeout(()=>{
+        ov.classList.remove('show');
+        status.style.display='block';
+        onReady();
+      },900);
+    };
+    requestAnimationFrame(frame);
+  },
 };
 
 // ══════════════════════════════════════════════════════════
@@ -3276,9 +3536,6 @@ const Game={
 
   start(){
     const name=document.getElementById('pname').value.trim()||'玩家';
-    const ai1=document.getElementById('ai1').value.trim()||'小南AI';
-    const ai2=document.getElementById('ai2').value.trim()||'小西AI';
-    const ai3=document.getElementById('ai3').value.trim()||'小北AI';
     const quickStart=document.getElementById('quick-start-toggle')?.checked||false;
     this.settings={
       base:+document.getElementById('sbase').value,
@@ -3295,33 +3552,53 @@ const Game={
         document.getElementById('ai3-style')?.value||'balanced',
       ],
     };
-    // Quick start: force turbo speed
     if(quickStart) this.setSpeed('turbo');
-    // Sync volume from slider
     const volEl=document.getElementById('svol');
     if(volEl) Snd.volume=+volEl.value/100;
     Snd._bestVoice=null;
     this.winStats=[0,0,0,0];this.rounds=0;
     this.riichiMode=false;this.riichiTile=null;
-    const names=[name,ai1,ai2,ai3];
-    this.initRound(names,[1,2,3],this.settings.money,0,1,'東');
-    document.getElementById('lobby').style.display='none';
-    const gEl=document.getElementById('game');
-    gEl.classList.add('show');
-    setTimeout(updateTblVars, 50);  // recalc after game panel shown
-    // Always show pause button + speed panel during game
-    document.getElementById('pause-btn').style.display='block';
-    document.getElementById('speed-panel').style.display='flex';
-    // v1.5: init dust particles
-    this._initDustParticles();
-    // v1.5: start BGM if enabled
-    if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
-    const winds=['東','南','西','北'];
-    for(let i=0;i<4;i++){
-      document.getElementById(`wb${i}`).textContent=winds[i];
-      document.getElementById(`pn${i}`).textContent=names[i];
+
+    // Pick AI names (online mode = random pool, else use input fields)
+    let ai1,ai2,ai3;
+    if(Matchmaking.enabled){
+      [ai1,ai2,ai3]=Matchmaking._pick3();
+      // Fill lobby inputs for display consistency
+      document.getElementById('ai1').value=ai1;
+      document.getElementById('ai2').value=ai2;
+      document.getElementById('ai3').value=ai3;
+    } else {
+      ai1=document.getElementById('ai1').value.trim()||'小南AI';
+      ai2=document.getElementById('ai2').value.trim()||'小西AI';
+      ai3=document.getElementById('ai3').value.trim()||'小北AI';
     }
-    this.showDice();
+    const names=[name,ai1,ai2,ai3];
+
+    const _launchGame=()=>{
+      this.initRound(names,[1,2,3],this.settings.money,0,1,'東');
+      document.getElementById('lobby').style.display='none';
+      const gEl=document.getElementById('game');
+      gEl.classList.add('show');
+      setTimeout(updateTblVars, 50);
+      document.getElementById('pause-btn').style.display='block';
+      document.getElementById('speed-panel').style.display='flex';
+      this._initDustParticles();
+      if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
+      const winds=['東','南','西','北'];
+      for(let i=0;i<4;i++){
+        document.getElementById(`wb${i}`).textContent=winds[i];
+        document.getElementById(`pn${i}`).textContent=names[i];
+      }
+      this.showDice();
+    };
+
+    if(Matchmaking.enabled){
+      // Hide lobby immediately, show matchmaking screen
+      document.getElementById('lobby').style.display='none';
+      Matchmaking.show(name,[ai1,ai2,ai3],_launchGame);
+    } else {
+      _launchGame();
+    }
   },
 
   initRound(names,aiIdx,money,dealer=0,roundNum=1,roundWind='東'){
