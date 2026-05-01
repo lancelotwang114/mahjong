@@ -1841,6 +1841,94 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .z-td .t::before, .z-bd .t::before,
 .z-ld .t::before, .z-rd .t::before { display: none; }
 
+/* ══ THEME VARIANTS ═══════════════════════════════════════ */
+[data-theme="wood"] {
+  --felt:#1a0f08; --felt-d:#0e0804;
+  --wood:#2d1a0e; --wood2:#3d2418; --wood3:#4e3020;
+  --wood-hi:rgba(180,120,60,.12);
+  --gold:#c4954a; --gold2:#e0b060; --gold3:#f0c878;
+  --man:#b81818; --pin:#1550a0; --sou:#0c5e24;
+}
+[data-theme="jade"] {
+  --felt:#081a10; --felt-d:#040e08;
+  --wood:#0d2a18; --wood2:#143820; --wood3:#1c4e2c;
+  --wood-hi:rgba(60,180,100,.10);
+  --gold:#50c878; --gold2:#70e898; --gold3:#90f8b0;
+}
+[data-theme="noir"] {
+  --felt:#08060e; --felt-d:#040308;
+  --wood:#100e18; --wood2:#18162a; --wood3:#22203e;
+  --wood-hi:rgba(120,90,220,.10);
+  --gold:#9878e8; --gold2:#b898f8; --gold3:#d0b8ff;
+}
+
+/* ══ THEME SELECTOR BUTTONS ═══════════════════════════════ */
+.theme-btn {
+  width:36px; height:36px; border-radius:50%; border:2px solid rgba(212,168,67,.3);
+  cursor:pointer; transition:all .2s; outline:none;
+}
+.theme-btn:hover { transform:scale(1.15); border-color:rgba(212,168,67,.7); }
+.theme-btn.active { border:3px solid var(--gold); box-shadow:0 0 10px rgba(212,168,67,.5); }
+
+/* ══ 3D DICE ANIMATIONS ═══════════════════════════════════ */
+@keyframes dice3dSpin {
+  0%  { transform: perspective(200px) rotateX(0deg)   rotateY(0deg)   rotateZ(0deg); }
+  33% { transform: perspective(200px) rotateX(120deg) rotateY(60deg)  rotateZ(40deg); }
+  66% { transform: perspective(200px) rotateX(240deg) rotateY(150deg) rotateZ(80deg); }
+  100%{ transform: perspective(200px) rotateX(360deg) rotateY(240deg) rotateZ(120deg); }
+}
+.dice-el.spinning { animation: dice3dSpin 0.12s linear infinite; }
+
+@keyframes diceLand {
+  0%   { transform: scale(1.2) translateY(-6px); }
+  40%  { transform: scale(0.92) translateY(2px); }
+  70%  { transform: scale(1.04) translateY(-2px); }
+  100% { transform: scale(1) translateY(0); }
+}
+.dice-el.landing { animation: diceLand 0.38s cubic-bezier(.36,.07,.19,.97) forwards; }
+
+@keyframes diceRing {
+  0%   { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+.dice-ring {
+  position: absolute; width: 80px; height: 80px; border-radius: 50%;
+  border: 3px solid var(--gold); pointer-events: none;
+  animation: diceRing 0.6s ease-out forwards;
+  top: 50%; left: 50%; transform-origin: center; margin: -40px 0 0 -40px;
+}
+@keyframes sparkFly {
+  0%   { transform: translate(0,0) scale(1); opacity:1; }
+  100% { transform: translate(var(--dx),var(--dy)) scale(0); opacity:0; }
+}
+.dice-spark {
+  position: absolute; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold); pointer-events: none;
+  animation: sparkFly 0.5s ease-out forwards;
+  top: 50%; left: 50%;
+}
+
+/* spotlight pulse behind dice */
+@keyframes spotPulse {
+  0%,100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+#dov::before {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(212,168,67,.06), transparent 70%);
+  animation: spotPulse 1.2s ease-in-out infinite;
+  pointer-events:none;
+}
+
+/* ══ MATCH SUMMARY OVERLAY ════════════════════════════════ */
+#match-ov { position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:8500; }
+.match-card { background:linear-gradient(160deg,rgba(12,6,2,.98),rgba(22,11,4,.96));border:2px solid rgba(180,130,55,.6);border-radius:16px;padding:28px 32px;min-width:380px;max-width:90vw;text-align:center; }
+.match-title { font-family:'Noto Serif TC';font-size:1.8rem;font-weight:900;color:var(--gold);margin-bottom:18px; }
+.rank-row { display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid rgba(212,168,67,.1); }
+.rank-num { font-size:1.4rem;font-weight:900;min-width:36px; }
+.rank-name { flex:1;text-align:left;font-size:.95rem; }
+.rank-chip { font-size:1rem;font-weight:700; }
+
 </style>
 </head>
 <body>
@@ -1851,7 +1939,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG · 單機版</div>
-    <div class="lver">v1.3.8</div>
+    <div class="lver">v1.4.0</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -1861,6 +1949,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       <div class="sc"><span class="sc-v" id="st-best">0台</span><span class="sc-l">最高台數</span></div>
     </div>
     <div class="stats-reset" onclick="Stats.reset()">重置記錄</div>
+    <div id="stats-chart" style="min-height:20px"></div>
 
     <div class="fg">
       <label class="fl">你的名字</label>
@@ -1929,11 +2018,41 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     </div>
     <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;text-align:center">語速可在遊戲中透過 AI 速度面板調整</div>
 
+    <div class="sec-title">🎨 桌面主題</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px">
+      <button class="theme-btn active" data-theme="" onclick="Game.setTheme('')" title="深海藍" style="background:radial-gradient(#0e1e36,#06111e)"></button>
+      <button class="theme-btn" data-theme="wood" onclick="Game.setTheme('wood')" title="木桌棕" style="background:radial-gradient(#2d1a0e,#160c06)"></button>
+      <button class="theme-btn" data-theme="jade" onclick="Game.setTheme('jade')" title="翠竹綠" style="background:radial-gradient(#0d2a18,#050e09)"></button>
+      <button class="theme-btn" data-theme="noir" onclick="Game.setTheme('noir')" title="暗夜紫" style="background:radial-gradient(#18162a,#08060e)"></button>
+    </div>
+
     <div class="sec-title">🤖 AI對手名稱（選填）</div>
     <div class="sgrid" style="grid-template-columns:1fr 1fr 1fr">
       <div class="fg" style="margin:0"><label class="fl">南家</label><input class="fi" id="ai1" value="小南AI" maxlength="8"></div>
       <div class="fg" style="margin:0"><label class="fl">西家</label><input class="fi" id="ai2" value="小西AI" maxlength="8"></div>
       <div class="fg" style="margin:0"><label class="fl">北家</label><input class="fi" id="ai3" value="小北AI" maxlength="8"></div>
+    </div>
+
+    <div class="sec-title">🧠 AI 個性</div>
+    <div class="sgrid" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="fg" style="margin:0">
+        <label class="fl">南家個性</label>
+        <select class="fi" id="ai1-style">
+          <option value="balanced">均衡</option><option value="attack">攻擊型</option><option value="defense">防守型</option>
+        </select>
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">西家個性</label>
+        <select class="fi" id="ai2-style">
+          <option value="balanced">均衡</option><option value="attack">攻擊型</option><option value="defense">防守型</option>
+        </select>
+      </div>
+      <div class="fg" style="margin:0">
+        <label class="fl">北家個性</label>
+        <select class="fi" id="ai3-style">
+          <option value="balanced">均衡</option><option value="attack">攻擊型</option><option value="defense">防守型</option>
+        </select>
+      </div>
     </div>
 
     <button class="btn bp" style="margin-top:16px" onclick="Game.start()">▶ 開始遊戲</button>
@@ -2130,6 +2249,18 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 
 
+
+<div id="match-ov" style="display:none">
+  <div class="match-card">
+    <div class="match-title">🏆 東風局完賽</div>
+    <div id="match-ranks"></div>
+    <div id="match-chart"></div>
+    <div style="display:flex;gap:12px;margin-top:18px;justify-content:center">
+      <button class="btn bp" onclick="Game.playAgain()">再來一局</button>
+      <button class="btn" onclick="Game.returnLobby()">返回大廳</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════════════
@@ -2328,21 +2459,89 @@ const Snd={
 };
 
 // ══════════════════════════════════════════════════════════
+// BLOCK SCORE (shanten helper)
+// ══════════════════════════════════════════════════════════
+function calcBlockScore(hand) {
+  const tiles = sortH(hand.filter(t=>!t.fl));
+  const used = new Array(tiles.length).fill(false);
+  let score = 0;
+  // Find complete sequences
+  for(let i=0;i<tiles.length;i++){
+    if(used[i])continue;
+    if(tiles[i].s==='honor')continue;
+    const j=tiles.findIndex((t,k)=>k>i&&!used[k]&&t.s===tiles[i].s&&t.v===tiles[i].v+1);
+    if(j<0)continue;
+    const k=tiles.findIndex((t,l)=>l>j&&!used[l]&&t.s===tiles[j].s&&t.v===tiles[j].v+1);
+    if(k<0)continue;
+    used[i]=used[j]=used[k]=true;score+=3;
+  }
+  // Find complete triplets
+  for(let i=0;i<tiles.length;i++){
+    if(used[i])continue;
+    const sames=tiles.map((t,k)=>k).filter(k=>k!==i&&!used[k]&&tiles[k].s===tiles[i].s&&tiles[k].v===tiles[i].v);
+    if(sames.length>=2){used[i]=used[sames[0]]=used[sames[1]]=true;score+=3;}
+  }
+  // Find partial: pairs
+  for(let i=0;i<tiles.length;i++){
+    if(used[i])continue;
+    const j=tiles.findIndex((t,k)=>k>i&&!used[k]&&t.s===tiles[i].s&&t.v===tiles[i].v);
+    if(j>=0){used[i]=used[j]=true;score+=2;}
+  }
+  // Find partial: adjacent (t+1)
+  for(let i=0;i<tiles.length;i++){
+    if(used[i]||tiles[i].s==='honor')continue;
+    const j=tiles.findIndex((t,k)=>k>i&&!used[k]&&t.s===tiles[i].s&&t.v===tiles[i].v+1);
+    if(j>=0){used[i]=used[j]=true;score+=1;}
+  }
+  // Find partial: kanchan (t+2)
+  for(let i=0;i<tiles.length;i++){
+    if(used[i]||tiles[i].s==='honor')continue;
+    const j=tiles.findIndex((t,k)=>k>i&&!used[k]&&t.s===tiles[i].s&&t.v===tiles[i].v+2);
+    if(j>=0){used[i]=used[j]=true;score+=1;}
+  }
+  return score;
+}
+
+// ══════════════════════════════════════════════════════════
 // STATS (localStorage)
 // ══════════════════════════════════════════════════════════
 const Stats={
   _k:'mj_stats_v1',
-  data:{games:0,wins:0,chipNet:0,bestTai:0},
-  load(){try{const d=localStorage.getItem(this._k);if(d)this.data={...this.data,...JSON.parse(d)};}catch(e){}},
+  data:{games:0,wins:0,chipNet:0,bestTai:0,history:[]},
+  load(){try{const d=localStorage.getItem(this._k);if(d)this.data={...this.data,...JSON.parse(d)};if(!this.data.history)this.data.history=[];}catch(e){}},
   save(){try{localStorage.setItem(this._k,JSON.stringify(this.data));}catch(e){}},
   record(win,chipChange,tai=0){
     this.data.games++;
     if(win)this.data.wins++;
     this.data.chipNet+=chipChange;
     if(tai>this.data.bestTai)this.data.bestTai=tai;
+    if(!this.data.history)this.data.history=[];
+    this.data.history.push({win,chipChange,tai});
+    if(this.data.history.length>20)this.data.history=this.data.history.slice(-20);
     this.save();this.render();
   },
-  reset(){this.data={games:0,wins:0,chipNet:0,bestTai:0};this.save();this.render();},
+  reset(){this.data={games:0,wins:0,chipNet:0,bestTai:0,history:[]};this.save();this.render();},
+  renderChart(){
+    const el=document.getElementById('stats-chart');
+    if(!el||!this.data.history?.length)return;
+    const h=this.data.history;
+    let running=0;
+    const points=h.map(e=>{running+=e.chipChange;return running;});
+    if(points.length<2){el.innerHTML='';return;}
+    const W=340,H=60;
+    const minP=Math.min(0,...points),maxP=Math.max(0,...points);
+    const range=Math.max(maxP-minP,1);
+    const xs=points.map((_,i)=>(i/(points.length-1))*W);
+    const ys=points.map(p=>H-4-((p-minP)/range)*(H-8));
+    const path='M'+xs.map((x,i)=>`${x.toFixed(1)},${ys[i].toFixed(1)}`).join('L');
+    const lastColor=points[points.length-1]>=0?'#2ecc71':'#e74c3c';
+    const zeroY=H-4-((0-minP)/range)*(H-8);
+    el.innerHTML=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;margin:6px auto">
+      <line x1="0" y1="${zeroY.toFixed(1)}" x2="${W}" y2="${zeroY.toFixed(1)}" stroke="rgba(212,168,67,.2)" stroke-width="1" stroke-dasharray="4,4"/>
+      <path d="${path}" fill="none" stroke="${lastColor}" stroke-width="2" opacity=".85"/>
+      <circle cx="${xs[xs.length-1].toFixed(1)}" cy="${ys[ys.length-1].toFixed(1)}" r="4" fill="${lastColor}"/>
+    </svg>`;
+  },
   render(){
     const d=this.data;
     const rate=d.games?Math.round(d.wins/d.games*100)+'%':'-';
@@ -2352,6 +2551,7 @@ const Stats={
     el('st-rate',rate);
     el('st-net',(d.chipNet>=0?'$':'-$')+Math.abs(d.chipNet).toLocaleString());
     el('st-best',d.bestTai+'台');
+    this.renderChart();
   },
 };
 
@@ -2359,13 +2559,13 @@ const Stats={
 // AI
 // ══════════════════════════════════════════════════════════
 const AI={
-  discard(hand,melds,allDiscards,allMelds,tenpaiFlags){
+  discard(hand,melds,allDiscards,allMelds,tenpaiFlags,style='balanced'){
     const p=hand.filter(t=>!t.fl);if(!p.length)return hand[0];
-    const sc=p.map(t=>({t,s:this.val(t,p,melds,allDiscards,allMelds,tenpaiFlags)}));
+    const sc=p.map(t=>({t,s:this.val(t,p,melds,allDiscards,allMelds,tenpaiFlags,style)}));
     sc.sort((a,b)=>a.s-b.s);
     return sc[0].t;
   },
-  val(tile,hand,melds,allDiscards,allMelds,tenpaiFlags){
+  val(tile,hand,melds,allDiscards,allMelds,tenpaiFlags,style='balanced'){
     // 基礎手牌價值
     let base;
     if(tile.s==='honor'){
@@ -2402,15 +2602,45 @@ const AI={
           if(honorDisc===0)danger+=2;
         }
       }
+      if(style==='defense')danger*=2; // defense AI strongly avoids dangerous tiles
       base+=danger; // 危險牌分數提高 → 排後面，優先打出安全牌
     }
     return base;
   },
-  meld(opts,hand,melds){
-    const win=opts.find(o=>o.type==='win');if(win)return win;  // 永遠胡牌
+  meld(opts,hand,melds,style='balanced'){
+    const win=opts.find(o=>o.type==='win');if(win)return win;
+    if(style==='attack'){
+      const ko=opts.find(o=>o.type==='kong');if(ko)return ko;
+      const po=opts.find(o=>o.type==='pong');if(po)return po;
+      const ch=opts.find(o=>o.type==='chi');if(ch)return ch;
+      return null;
+    }
+    if(style==='defense'){
+      const ko=opts.find(o=>o.type==='kong');if(ko)return ko;
+      const po=opts.find(o=>o.type==='pong');
+      if(po){
+        const handAfterPong=hand.filter(t=>!po.tiles.find(p=>p.id===t.id));
+        const hasTenpai=typeof tenpaiTiles==='function'?tenpaiTiles(handAfterPong).length>0:false;
+        if(hasTenpai)return po;
+      }
+      return null;
+    }
+    // balanced
     const ko=opts.find(o=>o.type==='kong');if(ko&&Math.random()>.3)return ko;
-    const po=opts.find(o=>o.type==='pong');if(po&&Math.random()>.45)return po;
-    const ch=opts.find(o=>o.type==='chi');if(ch&&Math.random()>.65)return ch;
+    const po=opts.find(o=>o.type==='pong');
+    if(po&&Math.random()>.45){
+      const handAfterPong=hand.filter(t=>!po.tiles.find(p=>p.id===t.id));
+      const scoreBefore=calcBlockScore(hand);
+      const scoreAfter=calcBlockScore(handAfterPong);
+      if(scoreAfter>=scoreBefore-1)return po;
+    }
+    const ch=opts.find(o=>o.type==='chi');
+    if(ch&&Math.random()>.65){
+      const handAfterChi=hand.filter(t=>!ch.tiles.find(p=>p.id===t.id));
+      const scoreBefore=calcBlockScore(hand);
+      const scoreAfter=calcBlockScore(handAfterChi);
+      if(scoreAfter>=scoreBefore-1)return ch;
+    }
     return null;
   },
   selfKong(hand,melds){
@@ -2628,6 +2858,14 @@ const Game={
     });
   },
 
+  setTheme(name){
+    document.body.dataset.theme=name;
+    localStorage.setItem('mj_theme',name);
+    document.querySelectorAll('.theme-btn').forEach(b=>{
+      b.classList.toggle('active',b.dataset.theme===name);
+    });
+  },
+
   start(){
     const name=document.getElementById('pname').value.trim()||'玩家';
     const ai1=document.getElementById('ai1').value.trim()||'小南AI';
@@ -2640,6 +2878,12 @@ const Game={
       time:+document.getElementById('stime').value,
       voice:document.getElementById('svoice').value,
       rate:1.05,
+      aiStyle:[
+        null,
+        document.getElementById('ai1-style')?.value||'balanced',
+        document.getElementById('ai2-style')?.value||'balanced',
+        document.getElementById('ai3-style')?.value||'balanced',
+      ],
     };
     // Sync volume from slider
     const volEl=document.getElementById('svol');
@@ -2691,6 +2935,8 @@ const Game={
       last:null,lastP:-1,roundWind:roundWind,roundNum:roundNum,
       log:[],dice:null,
       firstRound:true,   // 天胡/地胡 用：第一圈未有人打牌前為 true
+      aiStyle:this.settings.aiStyle||[null,'balanced','balanced','balanced'],
+      _afterKong:false,_kongWin:false,
     };
   },
 
@@ -2756,12 +3002,15 @@ const Game={
     const d1=1+~~(Math.random()*6),d2=1+~~(Math.random()*6);
     this.st.dice=[d1,d2];
 
-    const mkDiceEl=()=>{const d=document.createElement('div');d.className='dice-el';return d;};
+    const mkDiceEl=()=>{const d=document.createElement('div');d.className='dice-el';d.style.position='relative';return d;};
     const e1=mkDiceEl(), e2=mkDiceEl();
     dov.style.display='flex';
     dbig.innerHTML=''; dbig.appendChild(e1); dbig.appendChild(e2);
     e1.innerHTML=this._diceSVG(1,90); e2.innerHTML=this._diceSVG(1,90);
     dtxt.textContent='擲骰中...'; dok.style.display='none';
+
+    // 3D spinning during roll
+    e1.classList.add('spinning'); e2.classList.add('spinning');
 
     // Deceleration schedule (ms per frame): fast → slow → slam
     const frames=[75,75,80,85,95,110,130,160,200,260];
@@ -2771,32 +3020,33 @@ const Game={
     const doRoll=()=>{
       const r1=1+~~(Math.random()*6), r2=1+~~(Math.random()*6);
       e1.innerHTML=this._diceSVG(r1,86);
-      e1.classList.remove('rolling'); void e1.offsetWidth; e1.classList.add('rolling');
       const lag=Math.floor(frames[step]*0.45);
-      setTimeout(()=>{
-        e2.innerHTML=this._diceSVG(r2,86);
-        e2.classList.remove('rolling'); void e2.offsetWidth; e2.classList.add('rolling');
-      },lag);
+      setTimeout(()=>{ e2.innerHTML=this._diceSVG(r2,86); },lag);
+      // Higher-pitched ping after each face change
+      Snd.play(1200+step*40,.03,'sine',.05);
       step++;
       if(step<frames.length){
         setTimeout(doRoll, frames[step-1]);
       } else {
         // — Final reveal —
         setTimeout(()=>{
-          // Show final values with bounce animation
-          e1.className='dice-el';
+          // Remove spinning, show final values with landing animation
+          e1.className='dice-el'; e1.style.position='relative';
           e1.innerHTML=this._diceSVG(d1,104);
           void e1.offsetWidth;
-          e1.classList.add('reveal');
+          e1.classList.add('landing');
           Snd.play(500,.12,'square',.08);
+          // Add ring + sparks to e1
+          this._addDiceFx(e1);
           setTimeout(()=>{
-            e2.className='dice-el';
+            e2.className='dice-el'; e2.style.position='relative';
             e2.innerHTML=this._diceSVG(d2,104);
             void e2.offsetWidth;
-            e2.classList.add('reveal');
+            e2.classList.add('landing');
             Snd.play(660,.18,'sine',.22);
+            this._addDiceFx(e2);
           },110);
-          // Gold glow + sum reveal
+          // Gold glow + sum typewriter reveal
           setTimeout(()=>{
             e1.classList.add('glow');
             e2.classList.add('glow');
@@ -2804,7 +3054,16 @@ const Game={
             setTimeout(()=>Snd.play(1100,.15,'sine',.15),120);
             const sum=d1+d2;
             const dealer=this.st.names[this.st.dealer??0];
-            dtxt.innerHTML=`骰子 <span style="color:var(--gold);font-weight:700;font-size:1.05em">${d1}＋${d2}＝${sum}</span>　莊家：${dealer}`;
+            const fullText=`骰子 ${d1}＋${d2}＝${sum}　莊家：${dealer}`;
+            dtxt.innerHTML='';
+            let ci=0;
+            const typeNext=()=>{
+              if(ci<fullText.length){
+                dtxt.textContent=fullText.slice(0,++ci);
+                setTimeout(typeNext,28);
+              }
+            };
+            typeNext();
             this.st.phase='playing';
             this.render();
             setTimeout(()=>dok.style.display='inline-block',340);
@@ -2813,6 +3072,25 @@ const Game={
       }
     };
     doRoll();
+  },
+
+  _addDiceFx(diceEl){
+    // Ring
+    const ring=document.createElement('div');
+    ring.className='dice-ring';
+    diceEl.appendChild(ring);
+    setTimeout(()=>ring.remove(),700);
+    // Sparks
+    const dirs=[{dx:'40px',dy:'-30px'},{dx:'-40px',dy:'-30px'},{dx:'35px',dy:'35px'},
+                {dx:'-35px',dy:'35px'},{dx:'50px',dy:'5px'},{dx:'-50px',dy:'5px'}];
+    dirs.forEach(({dx,dy})=>{
+      const sp=document.createElement('div');
+      sp.className='dice-spark';
+      sp.style.setProperty('--dx',dx);
+      sp.style.setProperty('--dy',dy);
+      diceEl.appendChild(sp);
+      setTimeout(()=>sp.remove(),600);
+    });
   },
 
   // Flower replacement: plays out on the board, each player in turn order
@@ -2910,6 +3188,9 @@ const Game={
     if(s.phase!=='playing')return;
     const p=s.turn;
     const isAI=s.ai.includes(p);
+    // Track 槓上開花 flag
+    s._kongWin=s._afterKong||false;
+    s._afterKong=false;
 
     // Draw tile — guard: hand should be exactly (16 - melds*3) before draw
     const expectedBeforeDraw=16-s.melds[p].length*3;
@@ -3008,8 +3289,31 @@ const Game={
     if(winNow){this.doWin(p,true);return;}  // AI 永遠宣胡
     const sk=AI.selfKong(s.hands[p],s.melds[p]);
     if(sk&&Math.random()>.5){this.doSelfKong(p,sk);return;}
-    const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai);
+    const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');
     this.doDiscard(p,d.id);
+  },
+
+  _flyTile(tileId,targetDcId,done){
+    const ht0=document.getElementById('ht0');
+    const tileEl=Array.from(ht0.querySelectorAll('.t')).find(el=>+el.dataset.id===tileId);
+    const dcEl=document.getElementById(targetDcId);
+    if(!tileEl||!dcEl){done();return;}
+    const fr=tileEl.getBoundingClientRect();
+    const dr=dcEl.getBoundingClientRect();
+    const tx=dr.left+dr.width*0.7;
+    const ty=dr.top+dr.height*0.65;
+    const clone=tileEl.cloneNode(true);
+    clone.style.cssText=`position:fixed;left:${fr.left}px;top:${fr.top}px;width:${fr.width}px;height:${fr.height}px;z-index:9998;pointer-events:none;transition:none;border-radius:4px;`;
+    document.body.appendChild(clone);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      const scale=0.55;
+      clone.style.transition='left 0.2s cubic-bezier(0.3,0,0.6,1), top 0.2s cubic-bezier(0.3,0,0.6,1), transform 0.2s, opacity 0.15s 0.1s';
+      clone.style.left=tx+'px';
+      clone.style.top=ty+'px';
+      clone.style.transform=`scale(${scale}) rotate(${(Math.random()-0.5)*12}deg)`;
+      clone.style.opacity='0';
+    }));
+    setTimeout(()=>{clone.remove();done();},230);
   },
 
   doDiscard(p,tileId){
@@ -3039,8 +3343,12 @@ const Game={
     } else {
       Snd.say(tile.n);
     }
-    this.render();
-    this.checkReactions(tile,p);
+    if(p===0){
+      this._flyTile(tileId,'dc0',()=>{this.render();this.checkReactions(tile,p);});
+    } else {
+      this.render();
+      this.checkReactions(tile,p);
+    }
   },
 
   checkReactions(tile,discP){
@@ -3073,7 +3381,7 @@ const Game={
     let aiActed=false;
     for(const r of rr){
       if(!s.ai.includes(r.p)) continue;
-      const dec=AI.meld(r.opts,s.hands[r.p],s.melds[r.p]);
+      const dec=AI.meld(r.opts,s.hands[r.p],s.melds[r.p],s.aiStyle?.[r.p]||'balanced');
       if(dec){
         const mTiles=r.opts.find(o=>o.type===dec.type)?.tiles||[];
         // AI pong/kong takes priority over human chi
@@ -3325,7 +3633,7 @@ const Game={
     this.ann(type);
     this.render();
     if(type==='kong'){setTimeout(()=>this.doTurn(),this.spd('meld'));return;}
-    if(s.ai.includes(p)){const d=AI.discard(s.hands[p],s.melds[p],s.discards);const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));setTimeout(()=>this.doDiscard(p,d.id),_dMs);}
+    if(s.ai.includes(p)){const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));setTimeout(()=>this.doDiscard(p,d.id),_dMs);}
     else{
       this.checkTenpai(p);
       if(s.tenpai[0]&&s.tenpaiT[0]) setTimeout(()=>this.showTenpai(s.tenpaiT[0]),250);
@@ -3383,6 +3691,7 @@ const Game={
       s.turn=p;s.drawnId=null;
       this.log(`${s.names[p]} 暗槓`);this.ann('kong');this.render();
     }
+    s._afterKong=true;
     setTimeout(()=>this.doTurn(),this.spd('meld'));
   },
 
@@ -3488,6 +3797,28 @@ const Game={
 
     // ⑭ 莊家加台 +1
     if(p === (s.dealer??0)) add(1,'莊家 +1台');
+
+    // ⑮ 海底撈月 +1 (self-draw on very last tile from deck)
+    if(selfDraw && s.deck.length === 0) add(1,'海底撈月 +1台');
+
+    // ⑯ 河底撈魚 +1 (win on discard when deck is empty)
+    if(!selfDraw && s.deck.length === 0) add(1,'河底撈魚 +1台');
+
+    // ⑰ 槓上開花 +2 (self-draw win on supplemental tile after kong)
+    if(selfDraw && s._kongWin) add(2,'槓上開花 +2台');
+
+    // ⑱ 十三么 +13 (thirteen orphans)
+    const isShiSanYao=(()=>{
+      const required=[
+        {s:'man',v:1},{s:'man',v:9},{s:'pin',v:1},{s:'pin',v:9},
+        {s:'sou',v:1},{s:'sou',v:9},
+        {s:'honor',v:0},{s:'honor',v:1},{s:'honor',v:2},{s:'honor',v:3},
+        {s:'honor',v:4},{s:'honor',v:5},{s:'honor',v:6}
+      ];
+      if(allTiles.length!==14&&allTiles.length!==13)return false;
+      return required.every(r=>allTiles.some(t=>t.s===r.s&&t.v===r.v));
+    })();
+    if(isShiSanYao && !hasOpenMeld) add(13,'十三么 +13台');
 
     // ── Payment ──────────────────────────────────────────────
     const perTai=this.settings.tai||100;
@@ -4235,11 +4566,65 @@ const Game={
     const nextRound=prevRound+1;
     const winds=['東','東','東','東','南','南','南','南','西','西','西','西','北','北','北','北'];
     const nextWind=winds[Math.min(nextRound-1,winds.length-1)]||'東';
+    // After 4 rounds of East wind, show match summary
+    if(prevRound>=4){
+      this._showMatchSummary();
+      return;
+    }
     this.initRound(prevSt.names,prevSt.ai,null,nextDealer,nextRound,nextWind);
     this.render();
     updateTblVars();setTimeout(()=>this.showDice(),200);
   },
-  returnLobby(){document.getElementById('wov').style.display='none';document.getElementById('game').classList.remove('show');document.getElementById('speed-panel').style.display='none';document.getElementById('lobby').style.display='flex';speechSynthesis&&speechSynthesis.cancel();},
+  _showMatchSummary(){
+    const s=this.st;
+    document.getElementById('wov').style.display='none';
+    const ranked=[0,1,2,3].sort((a,b)=>s.money[b]-s.money[a]);
+    const medals=['🥇','🥈','🥉','　'];
+    const ranks=document.getElementById('match-ranks');
+    ranks.innerHTML=ranked.map((pi,ri)=>{
+      const m=s.money[pi];
+      const delta=m-(this.settings.money||10000);
+      return`<div class="rank-row">
+        <span class="rank-num">${medals[ri]}</span>
+        <span class="rank-name">${s.names[pi]}</span>
+        <span class="rank-chip" style="color:${m>=this.settings.money?'#2ecc71':'#e74c3c'}">
+          $${m.toLocaleString()} <small>(${delta>=0?'+':''}${delta.toLocaleString()})</small>
+        </span>
+      </div>`;
+    }).join('');
+    // SVG chip chart
+    const chart=document.getElementById('match-chart');
+    const maxM=Math.max(...s.money);
+    const minM=Math.min(...s.money);
+    const range=Math.max(maxM-minM,1);
+    const W=320,H=80,barW=60,gap=16;
+    const bars=[0,1,2,3].map((pi,i)=>{
+      const m=s.money[pi];
+      const h=Math.max(4,((m-minM)/range)*60);
+      const x=i*(barW+gap)+10;
+      const color=m>=this.settings.money?'#2ecc71':'#e74c3c';
+      return`<rect x="${x}" y="${H-h-8}" width="${barW}" height="${h}" rx="4" fill="${color}" opacity=".8"/>
+             <text x="${x+barW/2}" y="${H-2}" text-anchor="middle" font-size="9" fill="rgba(212,168,67,.7)">${s.names[pi].slice(0,4)}</text>`;
+    }).join('');
+    chart.innerHTML=`<svg width="${W}" height="${H}" style="margin:12px auto;display:block">${bars}</svg>`;
+    document.getElementById('match-ov').style.display='flex';
+  },
+  playAgain(){
+    document.getElementById('match-ov').style.display='none';
+    const s=this.st;
+    this.winStats=[0,0,0,0];this.rounds=0;
+    this.initRound(s.names,s.ai,this.settings.money,0,1,'東');
+    this.render();updateTblVars();
+    setTimeout(()=>this.showDice(),200);
+  },
+  returnLobby(){
+    document.getElementById('wov').style.display='none';
+    document.getElementById('match-ov').style.display='none';
+    document.getElementById('game').classList.remove('show');
+    document.getElementById('speed-panel').style.display='none';
+    document.getElementById('lobby').style.display='flex';
+    speechSynthesis&&speechSynthesis.cancel();
+  },
 
   // ── TENPAI PANEL ─────────────────────────────────────
   showTenpai(wt){
@@ -4299,6 +4684,16 @@ const Game={
 
 // Load persistent stats on startup
 Stats.load(); Stats.render();
+
+// Restore saved theme
+(function(){
+  const savedTheme=localStorage.getItem('mj_theme')||'';
+  document.body.dataset.theme=savedTheme;
+  // update active button once DOM is ready
+  document.querySelectorAll('.theme-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.theme===savedTheme);
+  });
+})();
 
 // init sound + preload TTS voices on first interaction
 document.addEventListener('click',()=>{ Snd.init(); },{once:true});

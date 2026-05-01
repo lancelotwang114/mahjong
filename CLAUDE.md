@@ -1,7 +1,7 @@
 # CLAUDE.md — 台灣麻將單機版 開發指引
 
 > 給 Claude（AI 助手）的專案說明，讓每次對話都能快速掌握架構、規則與注意事項。
-> 當前版本：**v1.3.8**
+> 當前版本：**v1.4.0**
 
 ---
 
@@ -190,9 +190,48 @@ python3 -m http.server 8080
 
 ---
 
+## v1.4.0 新增功能
+
+### 骰子 3D 動畫（`showDice()`）
+- CSS `perspective` 旋轉 + 落定彈跳 + 金色光環（`diceRing`）+ 火花粒子（`sparkFly`，每顆骰子 6 顆）
+- `_addDiceFx(el)` 在骰子外側建立粒子與光環 DOM
+- 點數字元用 `charReveal` 動畫逐一飛入
+
+### 打牌飛行動畫（`_flyTile(tileId, targetDcId, done)`）
+- 克隆手牌元素，以 `getBoundingClientRect()` 取得視窗座標（已含 `transform:scale`）
+- 設為 `position:fixed`，以 CSS transition 飛至棄牌區後淡出移除
+- `doDiscard()` 中 p===0 路徑：先呼叫 `_flyTile`，動畫結束才呼叫 `render()` + `checkReactions()`
+
+### 主題換皮
+- CSS `[data-theme="wood/jade/noir"]` 覆蓋 `--felt/--wood/--felt2` 等變數
+- `Game.setTheme(name)` 設定 `document.documentElement.dataset.theme` 並存 localStorage
+- 頁面載入時從 localStorage 還原主題
+
+### 完整台型計分
+- 海底撈月（自摸最後一張）+1、河底撈魚（打出最後一張）+1
+- 槓上開花 +2（`s._afterKong` + `s._kongWin` 旗標）
+- 十三么 +13（`isShiSanYao` 偵測，不含開放副露）
+
+### AI 個性（`AI.meld(opts, hand, melds, style)` / `AI.discard(..., style)`）
+- `style`: `'attack'`（積極鳴牌）/ `'balanced'`（依 block score 決策）/ `'defense'`（僅可聽牌時鳴）
+- 大廳三個 AI 玩家各有獨立個性選單
+
+### `calcBlockScore(hand)`
+- 貪心計算牌型分數：完整順子/刻子 +3，搭子 +2，對子 +1
+- 用於 AI 鳴牌與打牌決策
+
+### 東風局完賽結算（`_showMatchSummary()`）
+- `newRound()` 偵測 `prevRound >= 4` → 改呼叫 `_showMatchSummary()`
+- `#match-ov` 全螢幕 overlay 顯示四人排名與最終籌碼
+- 「再來一局」重新 `initRound()`；「回大廳」顯示 `#lobby`
+
+### 統計折線圖（`Stats.renderChart()`）
+- `Stats.data.history[]` 記錄每局累積損益
+- SVG 折線圖繪製於 `#stats-chart`
+
+---
+
 ## 待辦 / 未來功能
 
-- [ ] 花牌揭示動畫
-- [ ] 聲音音量控制
 - [ ] 行動版適配（目前僅 transform:scale 縮放）
-- [ ] 統計資料持久化（localStorage）
+- [ ] 多人連線版整合
