@@ -4,6 +4,19 @@
 
 ---
 
+## [多人版 sync] — 2026-05-01
+
+### 多人版（index.html + js/）同步更新
+- **計分補全（js/game.js）**：新增對對胡 +3、混一色 +2、海底撈月 +1、河底撈魚 +1、槓上開花 +2（`_afterKong` 旗標）、十三么 +13（`isShiSanYao` 偵測）
+- **AI 升級（js/ai.js）**：`tileValue` 加入對手聽牌危險牌評估；新增 `calcBlockScore()` 貪心分塊計分；`decideMeld` 加入 `style` 個性參數（attack/balanced/defense）
+- **胡牌手型著色（index.html）**：win overlay 胡牌者手牌按順子（綠）/刻子（紫）/雀頭（橙）三色高亮
+- **提示按鈕（index.html）**：人類玩家回合末尾出現「💡 提示」按鈕，高亮 AI 建議打牌 3 秒
+- **背景音樂（index.html）**：`const Bgm` 程式生成環境音（drone+撥弦+白噪音），大廳開關控制
+- **氛圍粒子（index.html）**：進入遊戲後注入 10 顆金塵漂浮粒子
+- **AI 隨機名稱（index.html）**：AI 補位時從 24 人名稱池隨機抽取暱稱
+
+---
+
 ## [1.5.2] — 2026-05-01
 
 ### 新增

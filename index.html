@@ -395,6 +395,14 @@ select.form-input { cursor:pointer; }
   .tile { width:38px; height:52px; }
   #table-grid { grid-template-rows: minmax(50px,11vh) minmax(32px,7vh) 1fr minmax(32px,7vh) minmax(60px,13vh); }
 }
+
+/* Dust particles */
+@keyframes dustFloat {
+  0%   { transform: translateY(0);      opacity:0; }
+  10%  { opacity: .35; }
+  90%  { opacity: .35; }
+  100% { transform: translateY(-100vh); opacity:0; }
+}
 </style>
 </head>
 <body>
@@ -474,7 +482,11 @@ select.form-input { cursor:pointer; }
         </div>
       </div>
 
-      <button class="btn btn-primary" style="margin-top:16px" onclick="App.startGame()">▶ 開始遊戲（AI補位）</button>
+      <div style="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px 12px;background:rgba(80,180,80,.08);border:1px solid rgba(80,200,80,.2);border-radius:8px">
+        <span style="flex:1;font-size:.82rem;color:#7dd4a8">🎵 背景音樂</span>
+        <input type="checkbox" id="bgm-toggle-multi" onchange="Bgm.setEnabled(this.checked)">
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="App.startGame()">▶ 開始遊戲（AI補位）</button>
       <button class="btn btn-secondary" onclick="App.leaveRoom()">離開房間</button>
       <div id="status-msg2"></div>
     </div>
@@ -739,9 +751,13 @@ const App = {
 
   startGame() {
     if (!this.isHost) return;
+    const _AI_NAME_POOL = ['阿財','阿嬌','老王','麻將王','阿祥','阿玲','大頭','小虎','阿花','阿福','老李','三叔公','阿珠','老陳','阿明','小婷','阿土','阿蘭','老張','阿鳳','大俠','阿勇','小燕','老趙'];
+    const usedNames = new Set(this.peers.map(p=>p.name));
+    const availableNames = _AI_NAME_POOL.filter(n=>!usedNames.has(n));
+    let nameIdx = 0;
     while (this.peers.length < 4) {
-      const aiNames = ['小東AI','小南AI','小西AI','小北AI'];
-      this.peers.push({id:null, name:aiNames[this.peers.length], isAI:true});
+      const aiName = nameIdx < availableNames.length ? availableNames[nameIdx++] : `AI${this.peers.length}`;
+      this.peers.push({id:null, name:aiName, isAI:true});
     }
     this.aiPlayers = this.peers.map((p,i)=>p.isAI?i:null).filter(i=>i!==null);
     const playerNames = this.peers.map(p=>p.name);
@@ -816,6 +832,25 @@ const App = {
       document.getElementById(`money-${rel}`).textContent = `$${money.toLocaleString()}`;
     }
     this.addChatMsg('系統','遊戲開始！',true);
+    setTimeout(()=>this._initDustParticles(), 100);
+  },
+
+  _initDustParticles() {
+    const game = document.getElementById('game'); if (!game) return;
+    game.querySelectorAll('.dust-p').forEach(e=>e.remove());
+    for (let i = 0; i < 10; i++) {
+      const d = document.createElement('div');
+      d.className = 'dust-p';
+      d.style.cssText = `
+        position:absolute; border-radius:50%; pointer-events:none; z-index:0;
+        width:${2+Math.random()*3}px; height:${2+Math.random()*3}px;
+        background:rgba(212,168,67,.22);
+        left:${Math.random()*100}%;
+        top:${Math.random()*100}%;
+        animation: dustFloat ${20+Math.random()*15}s ${Math.random()*20}s linear infinite;
+      `;
+      game.appendChild(d);
+    }
   },
 
   showDiceAndStart() {
@@ -900,6 +935,8 @@ const App = {
       if (btns.length) { btns.push({type:'skip',label:'跳過'}); this.showActionButtons(btns); }
       if (s.tenpai[cur] && s.tenpaiTiles[cur]) this.showTenpaiPanel(s.tenpaiTiles[cur], s.discards);
       else this.hideTenpaiPanel();
+      // Hint button
+      this._appendHintButton(cur);
     }
   },
 
@@ -998,6 +1035,7 @@ const App = {
     s.melds[playerIndex].push({type:'kong',tiles:[...tiles]});
     s.gameLog.push(`${s.playerNames[playerIndex]} 暗槓`);
     s.turn=playerIndex; s.drawnTileId=null;
+    s._afterKong = true;
     this.showActionAnnounce('kong', s.playerNames[playerIndex]);
     clearTimeout(this.meldTimeout); this.clearActionButtons(); this.stopTimer();
     this.broadcastGameState();
@@ -1335,7 +1373,76 @@ const App = {
     });
   },
 
+  _appendHintButton(playerIndex) {
+    const hintBtn = document.createElement('button');
+    hintBtn.className = 'action-btn';
+    hintBtn.style.cssText = 'border-color:#5dade2;color:#5dade2;font-size:0.9rem;padding:8px 16px';
+    hintBtn.textContent = '💡 提示';
+    hintBtn.onclick = () => {
+      const s = this.isHost ? MahjongGame.state : this.state;
+      if (!s) return;
+      const myHand = this.isHost ? s.hands[this.myIndex] : (s.myHand || []);
+      const myMelds = this.isHost ? s.melds[this.myIndex] : (s.myMelds || []);
+      const suggested = MahjongAI.chooseDiscard(myHand.filter(t=>!t.isFlower), myMelds, s);
+      if (suggested) {
+        const handEl = document.getElementById('hand-0');
+        Array.from(handEl.querySelectorAll('.tile')).forEach(el => {
+          if (parseInt(el.dataset.id) === suggested.id) {
+            el.style.outline = '3px solid #5dade2';
+            el.style.boxShadow = '0 0 12px rgba(93,173,226,0.8)';
+            setTimeout(()=>{ el.style.outline=''; el.style.boxShadow=''; }, 3000);
+          }
+        });
+        this.showToast(`💡 建議打出：${suggested.name}`, 2500);
+      }
+    };
+    document.getElementById('action-panel').appendChild(hintBtn);
+  },
+
   clearActionButtons() { document.getElementById('action-panel').innerHTML=''; },
+
+  // === WIN HAND COLORIZER ===
+  _analyzeWinHandColors(hand) {
+    // Returns array of {ids:[], color:string}
+    // Green=順子, Purple=刻子, Orange=雀頭
+    const groups = [];
+    const used = new Set();
+    const tiles = [...hand].sort((a,b)=>{ const o={man:0,pin:1,sou:2,honor:3,flower:4}; if(a.suit!==b.suit) return o[a.suit]-o[b.suit]; return a.value-b.value; });
+    // Find triplets first
+    const cnt = {};
+    tiles.forEach(t=>{ const k=t.suit+'_'+t.value; cnt[k]=cnt[k]||[]; cnt[k].push(t.id); });
+    for (const k in cnt) {
+      if (cnt[k].length >= 3) {
+        const ids = cnt[k].slice(0,3);
+        groups.push({ids, color:'#9b59b6'});
+        ids.forEach(id=>used.add(id));
+      }
+    }
+    // Find pairs (雀頭)
+    for (const k in cnt) {
+      const rem = cnt[k].filter(id=>!used.has(id));
+      if (rem.length >= 2) {
+        const ids = rem.slice(0,2);
+        groups.push({ids, color:'#e67e22'});
+        ids.forEach(id=>used.add(id));
+      }
+    }
+    // Find sequences
+    const remTiles = tiles.filter(t=>!used.has(t.id));
+    for (let i=0; i<remTiles.length; i++) {
+      if (used.has(remTiles[i].id)) continue;
+      const t = remTiles[i];
+      if (t.suit==='honor') continue;
+      const n1 = remTiles.find((x,j)=>j>i&&!used.has(x.id)&&x.suit===t.suit&&x.value===t.value+1);
+      if (!n1) continue;
+      const n2 = remTiles.find((x,j)=>remTiles.indexOf(x)>remTiles.indexOf(n1)&&!used.has(x.id)&&x.suit===t.suit&&x.value===t.value+2);
+      if (!n2) continue;
+      const ids=[t.id, n1.id, n2.id];
+      groups.push({ids, color:'#2ecc71'});
+      ids.forEach(id=>used.add(id));
+    }
+    return groups;
+  },
 
   // === WIN OVERLAY ===
   showWinOverlay(playerIndex, winData) {
@@ -1374,10 +1481,23 @@ const App = {
       sec.appendChild(lbl);
       const row=document.createElement('div'); row.className='hand-row';
       pm.forEach(meld=>{
-        meld.tiles.forEach(t=>{const e=this.createTileEl(t,false,0);e.classList.add('small');e.style.outline='2px solid #3498db';row.appendChild(e);});
+        const meldColor = (meld.type==='pong'||meld.type==='kong') ? '#9b59b6' : '#3498db';
+        meld.tiles.forEach(t=>{const e=this.createTileEl(t,false,0);e.classList.add('small');e.style.outline=`2px solid ${meldColor}`;row.appendChild(e);});
         const sp=document.createElement('span');sp.style.width='6px';row.appendChild(sp);
       });
-      ph.forEach(t=>{const e=this.createTileEl(t,false,0);e.classList.add('small');if(pi===playerIndex)e.style.outline='2px solid var(--gold)';row.appendChild(e);});
+      if (pi===playerIndex && ph.length > 0) {
+        // Colorize hand: find triplets, sequences, pair
+        const handGroups = this._analyzeWinHandColors(ph);
+        ph.forEach(t=>{
+          const e=this.createTileEl(t,false,0); e.classList.add('small');
+          const grp = handGroups.find(g=>g.ids.includes(t.id));
+          if (grp) e.style.outline = `2px solid ${grp.color}`;
+          else e.style.outline='2px solid var(--gold)';
+          row.appendChild(e);
+        });
+      } else {
+        ph.forEach(t=>{const e=this.createTileEl(t,false,0);e.classList.add('small');row.appendChild(e);});
+      }
       sec.appendChild(row); handsEl.appendChild(sec);
     });
     overlay.style.display='flex';
@@ -1437,7 +1557,85 @@ window.addEventListener('load',()=>{
   const p=new URLSearchParams(location.search);
   const room=p.get('room'),host=p.get('host');
   if(room&&host){document.getElementById('room-code-input').value=room;document.getElementById('status-msg').textContent=`收到邀請，房間: ${room}`;}
+  // Restore BGM setting
+  const bgmToggle = document.getElementById('bgm-toggle-multi');
+  if (bgmToggle && localStorage.getItem('mj_multi_bgm')==='1') {
+    bgmToggle.checked = true;
+    Bgm.setEnabled(true);
+  }
 });
+
+const Bgm = {
+  ctx: null, gain: null, playing: false, volume: 0.25, enabled: false, _nodes: [],
+  start() {
+    try {
+      if (!this.ctx) this.ctx = new (window.AudioContext||window.webkitAudioContext)();
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+      this._nodes.forEach(n => { try{n.stop();}catch(e){} });
+      this._nodes = [];
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+      g.connect(this.ctx.destination);
+      this.gain = g;
+      // Drone
+      const drone = this.ctx.createOscillator();
+      const dg = this.ctx.createGain();
+      drone.frequency.value = 55; drone.type = 'sine';
+      dg.gain.value = 0.03 * this.volume;
+      drone.connect(dg); dg.connect(g); drone.start();
+      this._nodes.push(drone);
+      // LFO
+      const lfo = this.ctx.createOscillator();
+      const lg = this.ctx.createGain();
+      lfo.frequency.value = 0.25; lg.gain.value = 3;
+      lfo.connect(lg); lg.connect(drone.frequency); lfo.start();
+      this._nodes.push(lfo);
+      // White noise
+      const bufSize = this.ctx.sampleRate * 2;
+      const buf = this.ctx.createBuffer(1, bufSize, this.ctx.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
+      const noise = this.ctx.createBufferSource();
+      const ng = this.ctx.createGain();
+      noise.buffer = buf; noise.loop = true;
+      ng.gain.value = 0.004 * this.volume;
+      noise.connect(ng); ng.connect(g); noise.start();
+      this._nodes.push(noise);
+      // Pentatonic plucks
+      const notes = [130, 146, 165, 196, 220];
+      const pluck = () => {
+        if (!this.playing) return;
+        try {
+          const o = this.ctx.createOscillator();
+          const pg = this.ctx.createGain();
+          o.frequency.value = notes[Math.floor(Math.random()*notes.length)];
+          o.type = 'sine';
+          const v = (0.04 + Math.random()*0.04) * this.volume;
+          pg.gain.setValueAtTime(v, this.ctx.currentTime);
+          pg.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.5);
+          o.connect(pg); pg.connect(g); o.start(); o.stop(this.ctx.currentTime + 1.5);
+        } catch(e) {}
+        setTimeout(pluck, 2500 + Math.random() * 2500);
+      };
+      setTimeout(pluck, 1000);
+      this.playing = true;
+    } catch(e) { console.warn('[BGM]', e); }
+  },
+  stop() {
+    this.playing = false;
+    this._nodes.forEach(n => { try{n.stop();}catch(e){} });
+    this._nodes = [];
+  },
+  setEnabled(on) {
+    this.enabled = on;
+    localStorage.setItem('mj_multi_bgm', on ? '1' : '0');
+    if (on) { this.stop(); this.start(); } else this.stop();
+  },
+  setVolume(v) {
+    this.volume = v;
+    if (this.gain) this.gain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.1);
+  }
+};
 </script>
 </body>
 </html>

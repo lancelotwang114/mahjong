@@ -1,3 +1,24 @@
+// ===== HELPER FUNCTIONS =====
+function isShiSanYao(hand) {
+  // honor values: 0=東,1=南,2=西,3=北,4=中,5=白,6=發
+  const required = [
+    {suit:'man',value:1},{suit:'man',value:9},
+    {suit:'pin',value:1},{suit:'pin',value:9},
+    {suit:'sou',value:1},{suit:'sou',value:9},
+    {suit:'honor',value:0},{suit:'honor',value:1},{suit:'honor',value:2},{suit:'honor',value:3},
+    {suit:'honor',value:4},{suit:'honor',value:5},{suit:'honor',value:6},
+  ];
+  const counts = {};
+  hand.forEach(t=>{ const k=t.suit+'_'+t.value; counts[k]=(counts[k]||0)+1; });
+  let pairs=0, misses=0;
+  required.forEach(r=>{
+    const c=counts[r.suit+'_'+r.value]||0;
+    if(c===0) misses++;
+    else if(c>=2) pairs++;
+  });
+  return misses===0 && pairs===1;
+}
+
 // ===== GAME STATE MANAGER v2 =====
 window.MahjongGame = {
   state: null,
@@ -53,6 +74,7 @@ window.MahjongGame = {
       winner: null,
       winData: null,
       diceResult: null,
+      _afterKong: false,
     };
     return this.state;
   },
@@ -89,6 +111,9 @@ window.MahjongGame = {
 
   drawTile(playerIndex) {
     const state = this.state;
+    // Read and clear the _afterKong flag before drawing
+    const wasAfterKong = state._afterKong;
+    state._afterKong = false;
     if (state.deck.length === 0) { state.phase = 'draw'; return null; }
     let tile = state.deck.shift();
     while (tile && tile.isFlower) {
@@ -100,6 +125,8 @@ window.MahjongGame = {
     // Append to end (rightmost), do NOT sort yet
     state.hands[playerIndex].push(tile);
     state.drawnTileId = tile.id;
+    // Restore _afterKong so declareWin can see it
+    state._afterKong = wasAfterKong;
     return tile;
   },
 
@@ -178,7 +205,7 @@ window.MahjongGame = {
     state.hands[playerIndex] = window.MahjongEngine.sortTiles(state.hands[playerIndex]);
     const label = {pong:'碰',chi:'吃',kong:'槓'}[meldType]||meldType;
     state.gameLog.push(`${state.playerNames[playerIndex]} ${label} ${discardedTile.name}`);
-    if (meldType === 'kong') return 'draw_extra';
+    if (meldType === 'kong') { state._afterKong = true; return 'draw_extra'; }
     return 'discard';
   },
 
@@ -204,10 +231,45 @@ window.MahjongGame = {
 
     const allTiles = [...hand];
     melds.forEach(m => allTiles.push(...m.tiles));
-    if (isSevenPairs(allTiles.filter(t=>!t.isFlower))) { tai += 3; bonuses.push('七對 3台'); }
-    const suits = new Set(allTiles.filter(t=>!t.isFlower).map(t=>t.suit));
+    const nonFlower = allTiles.filter(t=>!t.isFlower);
+
+    if (isSevenPairs(nonFlower)) { tai += 3; bonuses.push('七對 3台'); }
+    const suits = new Set(nonFlower.map(t=>t.suit));
     if (suits.size===1 && !suits.has('honor')) { tai += 3; bonuses.push('清一色 3台'); }
-    if (allTiles.every(t=>t.suit==='honor')) { tai += 5; bonuses.push('字一色 5台'); }
+    if (nonFlower.every(t=>t.suit==='honor')) { tai += 5; bonuses.push('字一色 5台'); }
+
+    // 對對胡 +3：所有面子都是刻子/槓
+    const allMeldsAreTriplets = melds.length > 0 && melds.every(m => m.type === 'pong' || m.type === 'kong');
+    if (allMeldsAreTriplets && melds.length >= 1) {
+      // Check hand tiles (excluding pair) form no sequences
+      let handNoSeq = true;
+      const sorted = [...hand].sort((a,b)=>{ const o={man:0,pin:1,sou:2,honor:3}; if(a.suit!==b.suit) return o[a.suit]-o[b.suit]; return a.value-b.value; });
+      // Look for triplets only in remaining hand
+      const tempCounts = {};
+      sorted.forEach(t=>{ const k=t.suit+'_'+t.value; tempCounts[k]=(tempCounts[k]||0)+1; });
+      const vals = Object.values(tempCounts);
+      // All hand tiles should form triplets + one pair (no sequences)
+      const hasTriplet = vals.some(v=>v>=3);
+      const hasPair = vals.some(v=>v>=2);
+      if (vals.every(v=>v===3||v===2) && hasPair && !nonFlower.every(t=>t.suit==='honor')) {
+        tai += 3; bonuses.push('對對胡 3台');
+      }
+    }
+
+    // 混一色 +2：只有一種數牌花色 + 字牌
+    if (suits.size === 2 && suits.has('honor')) { tai += 2; bonuses.push('混一色 2台'); }
+
+    // 海底撈月 +1：自摸且牌堆已空
+    if (isSelfDraw && state.deck.length === 0) { tai += 1; bonuses.push('海底撈月 1台'); }
+    // 河底撈魚 +1：對胡且牌堆已空
+    if (!isSelfDraw && state.deck.length === 0) { tai += 1; bonuses.push('河底撈魚 1台'); }
+    // 槓上開花 +2：自摸且在槓後摸牌胡
+    if (isSelfDraw && state._afterKong) { tai += 2; bonuses.push('槓上開花 2台'); }
+    // 清掉旗標
+    state._afterKong = false;
+
+    // 十三么 +13：無副露且手牌包含全部么九牌各一 + 一張重複作對子
+    if (melds.length === 0 && isShiSanYao(hand)) { tai += 13; bonuses.push('十三么 13台'); }
 
     const perTai = taiVal;
     const total = tai * perTai;
