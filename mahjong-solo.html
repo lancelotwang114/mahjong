@@ -4927,9 +4927,9 @@ const Game={
   onTile(tile){
     const s=this.st;
     if(!s||s.phase!=='playing'||s.turn!==0)return;
-    // If action buttons showing (not just timer), ignore tile click
+    // If action buttons showing (not just timer/hint), ignore tile click
     const ap=document.getElementById('ap');
-    const hasBtns=ap.querySelectorAll('.ab').length>0;
+    const hasBtns=ap.querySelectorAll('.ab:not(.hint)').length>0;
     if(hasBtns)return;
     this.clearBtns();this.sel=tile.id;
     this.doDiscard(0,tile.id);
@@ -5721,7 +5721,7 @@ document.addEventListener('keydown',e=>{
 
   function _hasBtns(){
     const ap=document.getElementById('ap');
-    return ap&&ap.querySelectorAll('.ab').length>0;
+    return ap&&ap.querySelectorAll('.ab:not(.hint)').length>0;
   }
 
   function _startGhost(el, cx, cy){

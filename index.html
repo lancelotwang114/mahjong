@@ -1467,9 +1467,10 @@ const App = {
     if (!s||s.phase!=='playing') return;
     if (s.turn!==this.myIndex) { this.showToast('還沒輪到你！'); return; }
     // If action buttons are showing (win/kong options), don't intercept
+    // Exclude hint-btn — it's a helper, not a pending action
     const panel = document.getElementById('action-panel');
-    const hasSpecialBtns = panel.innerHTML && !panel.innerHTML.includes('取消選取');
-    if (hasSpecialBtns && panel.innerHTML) return;
+    const hasSpecialBtns = panel.querySelector('.action-btn:not(.hint-btn)') !== null;
+    if (hasSpecialBtns) return;
     // Single click = discard immediately (hover already shows the lifted state)
     this.clearActionButtons();
     this.selectedTile = tile;
@@ -1512,7 +1513,7 @@ const App = {
 
   _appendHintButton(playerIndex) {
     const hintBtn = document.createElement('button');
-    hintBtn.className = 'action-btn';
+    hintBtn.className = 'action-btn hint-btn';
     hintBtn.style.cssText = 'border-color:#5dade2;color:#5dade2;font-size:0.9rem;padding:8px 16px';
     hintBtn.textContent = '💡 提示';
     hintBtn.onclick = () => {
