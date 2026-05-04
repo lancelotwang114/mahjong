@@ -567,31 +567,52 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   z-index: 2;
   overflow: hidden;
 }
-/* Pool discard zones — position:absolute inside #pool */
+/* Pool discard zones — 雀魂式 6×N 河池網格 */
 #pool #dc0, #pool #dc1, #pool #dc2, #pool #dc3 {
   position: absolute !important;
-  display: flex !important;
-  flex-wrap: wrap !important;
+  display: grid !important;
   gap: 2px !important;
   overflow: hidden !important;
-  /* clear any tile spacing that conflicts */
-  padding: 0 !important;
+  padding: 6px !important;
+  background: rgba(0,0,0,.18);
+  border-radius: 4px;
+  border: 1px solid rgba(212,168,67,.06);
 }
-#pool #dc2 { /* top discards (p2) — 3 rows of 39px = 125px */
-  top: 5px; left: 65px; right: 65px; height: 128px;
-  align-content: flex-start; justify-content: center; flex-direction: row;
+#pool #dc2 { /* top discards (p2) — fill UP toward opponent (closest row to compass first) */
+  top: 5px; left: 50%; transform: translateX(-50%);
+  height: 128px;
+  grid-template-columns: repeat(6, 30px) !important;
+  grid-auto-rows: 41px !important;
+  grid-auto-flow: row !important;
+  align-content: flex-end !important;
+  justify-content: center !important;
 }
-#pool #dc0 { /* bottom discards (p0) */
-  bottom: 5px; left: 65px; right: 65px; height: 128px;
-  align-content: flex-end; justify-content: center; flex-direction: row;
+#pool #dc0 { /* bottom discards (p0) — 6 cols */
+  bottom: 5px; left: 50%; transform: translateX(-50%);
+  height: 128px;
+  grid-template-columns: repeat(6, 30px) !important;
+  grid-auto-rows: 41px !important;
+  grid-auto-flow: row !important;
+  align-content: flex-start !important;
+  justify-content: center !important;
 }
-#pool #dc3 { /* left discards (p3) — 2 cols of 28px = 60px */
-  top: 138px; bottom: 138px; left: 5px; width: 64px;
-  flex-direction: row; align-content: flex-start; justify-content: flex-start;
+#pool #dc3 { /* left discards (p3) — 6 rows, fills column by column */
+  top: 50%; left: 5px; transform: translateY(-50%);
+  width: 128px; height: 154px;
+  grid-template-rows: repeat(6, 24px) !important;
+  grid-auto-columns: 32px !important;
+  grid-auto-flow: column !important;
+  align-content: center !important;
+  justify-content: flex-start !important;
 }
 #pool #dc1 { /* right discards (p1) */
-  top: 138px; bottom: 138px; right: 5px; width: 64px;
-  flex-direction: row; align-content: flex-start; justify-content: flex-end;
+  top: 50%; right: 5px; transform: translateY(-50%);
+  width: 128px; height: 154px;
+  grid-template-rows: repeat(6, 24px) !important;
+  grid-auto-columns: 32px !important;
+  grid-auto-flow: column-reverse !important;
+  align-content: center !important;
+  justify-content: flex-end !important;
 }
 /* ── Compass score badges: 4 player scores at N/S/E/W of the pool ── */
 .pool-score {
@@ -914,6 +935,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 .t.drawn{
   transform: translateY(-8px);
+  margin-left: 14px;
   position: relative;
   z-index: 2;
   box-shadow:
@@ -924,6 +946,17 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     0 0 36px rgba(212,168,67,.6),
     0 0 72px rgba(212,168,67,.25);
   animation: drawnGlow 1.8s ease-in-out infinite;
+}
+/* Visual separator line between normal hand and drawn tile */
+.t.drawn::after{
+  content:'';
+  position:absolute;
+  left:-9px; top:8px; bottom:8px;
+  width:2px;
+  background:linear-gradient(to bottom,transparent 0%,rgba(212,168,67,.55) 30%,rgba(212,168,67,.85) 50%,rgba(212,168,67,.55) 70%,transparent 100%);
+  border-radius:1px;
+  pointer-events:none;
+  box-shadow:0 0 6px rgba(212,168,67,.5);
 }
 @keyframes drawnGlow {
   0%,100%{ box-shadow:0 2px 0 #fff9ee inset,1px 0 0 #fff2d8 inset,-1px 0 0 #d4aa60 inset,0 -5px 0 #a87820 inset,3px 8px 14px rgba(20,10,0,.6),0 0 16px rgba(212,168,67,.9),0 0 36px rgba(212,168,67,.5),0 0 72px rgba(212,168,67,.2); }
@@ -1167,6 +1200,90 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 .dice-el.glow{animation:diceGlow .7s ease-out forwards}
 
+/* ══ DICE BOWL (shake before reveal) ════════════════════════ */
+.dice-bowl {
+  position: relative;
+  width: 130px; height: 110px;
+  display: flex; align-items: center; justify-content: center;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,.55));
+}
+.dice-bowl::before {
+  content: '';
+  position: absolute;
+  inset: 6px 4px 0 4px;
+  background:
+    radial-gradient(ellipse at 30% 35%, #c4945a 0%, #8b5a2b 35%, #4a2c12 75%, #2a160a 100%);
+  border-radius: 50% 50% 48% 48% / 60% 60% 40% 40%;
+  border: 2.5px solid #2a160a;
+  box-shadow:
+    inset 0 6px 8px rgba(255,220,160,.3),
+    inset 0 -10px 16px rgba(0,0,0,.55),
+    inset -8px 0 14px rgba(0,0,0,.4);
+}
+.dice-bowl::after {
+  content: '';
+  position: absolute;
+  top: 4px; left: 8px; right: 8px;
+  height: 14px;
+  background: radial-gradient(ellipse, #1a0d05 0%, #2a160a 60%, transparent 100%);
+  border-radius: 50%;
+  box-shadow: inset 0 3px 6px rgba(0,0,0,.8);
+}
+.dice-bowl .bowl-rim {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 18px;
+  background: linear-gradient(180deg, #6b3f1c 0%, #4a2c12 100%);
+  border-radius: 50%;
+  border: 2px solid #2a160a;
+  box-shadow: inset 0 -3px 4px rgba(0,0,0,.5), inset 0 2px 3px rgba(255,200,140,.35);
+  z-index: 2;
+}
+.dice-bowl .bowl-glyph {
+  position: absolute;
+  bottom: 16px; left: 50%; transform: translateX(-50%);
+  font-family: 'Noto Serif TC', serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: rgba(212,168,67,.85);
+  text-shadow: 0 1px 0 rgba(0,0,0,.6), 0 0 8px rgba(212,168,67,.4);
+  z-index: 3;
+  letter-spacing: .1em;
+}
+@keyframes bowlShake {
+  0%   { transform: translate(0,0) rotate(0deg); }
+  10%  { transform: translate(-6px,-2px) rotate(-7deg); }
+  20%  { transform: translate(7px,-3px) rotate(8deg); }
+  30%  { transform: translate(-8px,1px) rotate(-9deg); }
+  40%  { transform: translate(6px,-2px) rotate(7deg); }
+  50%  { transform: translate(-5px,-1px) rotate(-6deg); }
+  60%  { transform: translate(7px,-3px) rotate(8deg); }
+  70%  { transform: translate(-6px,1px) rotate(-7deg); }
+  80%  { transform: translate(5px,-2px) rotate(6deg); }
+  90%  { transform: translate(-4px,-1px) rotate(-5deg); }
+  100% { transform: translate(0,0) rotate(0deg); }
+}
+@keyframes bowlLift {
+  0%   { transform: translateY(0) scale(1); opacity: 1; }
+  60%  { transform: translateY(-50px) scale(1.08); opacity: .7; }
+  100% { transform: translateY(-90px) scale(1.2); opacity: 0; }
+}
+.dice-bowl.shaking { animation: bowlShake .14s linear infinite; }
+.dice-bowl.lifting { animation: bowlLift .42s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes bowlPuff {
+  0%   { transform: translate(-50%,0) scale(.4); opacity: .8; }
+  100% { transform: translate(-50%,-30px) scale(2.2); opacity: 0; }
+}
+.bowl-puff {
+  position: absolute; left: 50%; top: 30%;
+  width: 60px; height: 60px;
+  background: radial-gradient(circle, rgba(220,200,170,.7) 0%, rgba(180,150,110,.3) 50%, transparent 80%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: bowlPuff .55s ease-out forwards;
+}
+
 /* ══ TOAST ═══════════════════════════════════════════════ */
 #toast{
   position:absolute; left:50%; bottom:185px;
@@ -1396,6 +1513,31 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   border-color: rgba(212,168,67,.4);
   transform: scale(1.05);
 }
+
+/* ══ DISCARD PREVIEW (hover-to-simulate) ═══════════════════ */
+#discard-preview {
+  position: fixed;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 9px;
+  background: rgba(6,14,28,.97);
+  border: 1.5px solid rgba(180,130,50,.7);
+  border-radius: 10px;
+  z-index: 400;
+  pointer-events: none;
+  box-shadow: 0 6px 22px rgba(0,0,0,.78), 0 0 14px rgba(180,130,50,.25);
+  font-family: 'Noto Serif TC', serif;
+  white-space: nowrap;
+}
+#discard-preview.show { display: flex; }
+#discard-preview.dp-yes { border-color: rgba(46,204,113,.7); box-shadow: 0 6px 22px rgba(0,0,0,.78), 0 0 16px rgba(46,204,113,.35); }
+#discard-preview.dp-no  { border-color: rgba(231,76,60,.6); }
+#discard-preview .dp-head { font-size: .72rem; color: rgba(232,212,168,.92); letter-spacing: .04em; }
+#discard-preview.dp-yes .dp-head strong { color: #5fe39a; font-size: .82rem; }
+#discard-preview.dp-no  .dp-head strong { color: #ff8a7a; }
+#discard-preview .dp-tiles { display: flex; gap: 1px; align-items: flex-end; }
 
 /* ══ RIICHI / 聽牌 BUTTON ═══════════════════════════════════ */
 .ab.riichi { border-color:#2ecc71; color:#2ecc71; }
@@ -3794,13 +3936,45 @@ const Game={
     e1.innerHTML=this._diceSVG(1,90); e2.innerHTML=this._diceSVG(1,90);
     dtxt.textContent='擲骰中...'; dok.style.display='none';
 
-    // 3D spinning during roll
-    e1.classList.add('spinning'); e2.classList.add('spinning');
+    // ── 骰盅搖動 phase ────────────────────────────────
+    // Hide dice during shake, show bowl over them
+    e1.style.opacity='0'; e2.style.opacity='0';
+    const bowl=document.createElement('div');
+    bowl.className='dice-bowl shaking';
+    bowl.innerHTML='<div class="bowl-rim"></div><div class="bowl-glyph">骰</div>';
+    bowl.style.cssText+=';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);';
+    dbig.style.position='relative';
+    dbig.appendChild(bowl);
+    dtxt.textContent='搖骰中...';
+    // Shake sounds
+    const shakeBeat=()=>{ Snd.play(180+Math.random()*80,.04,'square',.06); };
+    const shakeT1=setInterval(shakeBeat,90);
+    setTimeout(()=>{
+      clearInterval(shakeT1);
+      // Lift bowl
+      bowl.classList.remove('shaking');
+      bowl.classList.add('lifting');
+      // Puff dust
+      const puff=document.createElement('div');
+      puff.className='bowl-puff';
+      dbig.appendChild(puff);
+      setTimeout(()=>puff.remove(),600);
+      Snd.play(420,.18,'sine',.18);
+      setTimeout(()=>{
+        bowl.remove();
+        dbig.style.position='';
+        e1.style.opacity=''; e2.style.opacity='';
+        dtxt.textContent='擲骰中...';
+        // 3D spinning during roll
+        e1.classList.add('spinning'); e2.classList.add('spinning');
+        Snd.dice();
+        startRoll();
+      },380);
+    },950);
 
     // Deceleration schedule (ms per frame): fast → slow → slam
     const frames=[75,75,80,85,95,110,130,160,200,260];
     let step=0;
-    Snd.dice();
 
     const doRoll=()=>{
       const r1=1+~~(Math.random()*6), r2=1+~~(Math.random()*6);
@@ -3856,7 +4030,7 @@ const Game={
         },200);
       }
     };
-    doRoll();
+    const startRoll=doRoll;
   },
 
   _addDiceFx(diceEl){
@@ -4379,6 +4553,56 @@ const Game={
     if(tip){tip.classList.remove('show','interactive');tip.onmouseenter=null;tip.onmouseleave=null;tip.innerHTML='';}
   },
 
+  // ── Hover preview: simulate discarding a tile and show tenpai result
+  _showDiscardPreview(tileEl,tile,waiting){
+    let tip=document.getElementById('discard-preview');
+    if(!tip){
+      tip=document.createElement('div');
+      tip.id='discard-preview';
+      document.body.appendChild(tip);
+    }
+    tip.innerHTML='';
+    const head=document.createElement('div');
+    head.className='dp-head';
+    if(waiting&&waiting.length){
+      head.innerHTML=`若打出 → 聽 <strong>${waiting.length}</strong> 張`;
+      tip.classList.remove('dp-no');
+      tip.classList.add('dp-yes');
+    } else {
+      head.innerHTML='若打出 → <strong>未聽牌</strong>';
+      tip.classList.remove('dp-yes');
+      tip.classList.add('dp-no');
+    }
+    tip.appendChild(head);
+    if(waiting&&waiting.length){
+      const row=document.createElement('div');
+      row.className='dp-tiles';
+      waiting.slice(0,8).forEach(t=>{
+        const e=mkTile(t,'');
+        e.style.cssText+='zoom:0.42;cursor:default;flex-shrink:0;pointer-events:none;';
+        row.appendChild(e);
+      });
+      tip.appendChild(row);
+    }
+    // Position above the tile, centered
+    const r=tileEl.getBoundingClientRect();
+    tip.classList.add('show');
+    // Recompute width after content set
+    requestAnimationFrame(()=>{
+      const w=tip.offsetWidth, h=tip.offsetHeight;
+      let left=r.left+r.width/2-w/2;
+      let top=r.top-h-12;
+      if(top<8) top=r.bottom+10;
+      left=Math.max(8, Math.min(left, window.innerWidth-w-8));
+      tip.style.left=left+'px';
+      tip.style.top=top+'px';
+    });
+  },
+  _hideDiscardPreview(){
+    const tip=document.getElementById('discard-preview');
+    if(tip)tip.classList.remove('show');
+  },
+
   showChiPicker(chiOpts,discTile){
     const picker=document.getElementById('chi-picker');
     if(!picker)return;
@@ -4880,8 +5104,30 @@ const Game={
         const drawnId=s.drawnId;
         const normal=drawnId?s.hands[0].filter(t=>t.id!==drawnId):s.hands[0];
         const drawn=drawnId?s.hands[0].find(t=>t.id===drawnId):null;
-        normal.forEach(t=>{const e=mkTile(t,'',()=>this.onTile(t));ht.appendChild(e);});
-        if(drawn){const e=mkTile(drawn,'drawn',()=>this.onTile(drawn));ht.appendChild(e);}
+        const allHandTiles=s.hands[0];
+        const myMeldCount=s.melds[0].length;
+        const expectedTenpaiCount=16-myMeldCount*3;
+        const attachHover=(el,tile)=>{
+          el.addEventListener('mouseenter',()=>{
+            if(s.turn!==0||s.phase!=='playing')return;
+            // Simulate discarding this tile (only meaningful if hand size matches)
+            const remaining=allHandTiles.filter(t=>t.id!==tile.id&&!t.fl);
+            if(remaining.length!==expectedTenpaiCount)return;
+            const waiting=(typeof tenpaiTiles==='function')?tenpaiTiles(remaining):null;
+            this._showDiscardPreview(el,tile,waiting);
+          });
+          el.addEventListener('mouseleave',()=>this._hideDiscardPreview());
+        };
+        normal.forEach(t=>{
+          const e=mkTile(t,'',()=>this.onTile(t));
+          attachHover(e,t);
+          ht.appendChild(e);
+        });
+        if(drawn){
+          const e=mkTile(drawn,'drawn',()=>this.onTile(drawn));
+          attachHover(e,drawn);
+          ht.appendChild(e);
+        }
         // Re-apply meld highlight if active
         if(this._meldHighlightIds) setTimeout(()=>this._applyMeldHighlight(),0);
         // Flowers now shown in meld area (ma0), clear old fld span

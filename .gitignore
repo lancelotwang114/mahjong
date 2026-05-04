@@ -20,5 +20,8 @@ flower-preview.html
 images/
 tiles-sprite.css
 
+# AI 開發指引（本地用，不進 repo）
+CLAUDE.md
+
 # Node（如果未來加入）
 node_modules/

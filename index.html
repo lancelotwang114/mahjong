@@ -376,6 +376,24 @@ select.form-input { cursor:pointer; }
 .action-btn.skip-btn:hover { background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.7); border-color:rgba(255,255,255,0.4); }
 .action-btn.discard-btn { border-color:var(--gold); background:linear-gradient(135deg,rgba(212,168,67,0.2),rgba(212,168,67,0.05)); }
 
+/* ===== DISCARD PREVIEW (hover tenpai hint) ===== */
+#discard-preview {
+  position:fixed; display:none; flex-direction:column; align-items:center;
+  gap:6px; padding:8px 12px 9px;
+  background:rgba(6,14,28,.97);
+  border:1.5px solid rgba(180,130,50,.7);
+  border-radius:10px; z-index:400; pointer-events:none;
+  box-shadow:0 6px 22px rgba(0,0,0,.78),0 0 14px rgba(180,130,50,.25);
+  font-family:'Noto Serif TC',serif; white-space:nowrap;
+}
+#discard-preview.show { display:flex; }
+#discard-preview.dp-yes { border-color:rgba(46,204,113,.7); box-shadow:0 6px 22px rgba(0,0,0,.78),0 0 16px rgba(46,204,113,.35); }
+#discard-preview.dp-no  { border-color:rgba(231,76,60,.6); }
+#discard-preview .dp-head { font-size:.72rem; color:rgba(232,212,168,.92); letter-spacing:.04em; }
+#discard-preview.dp-yes .dp-head strong { color:#5fe39a; font-size:.82rem; }
+#discard-preview.dp-no  .dp-head strong { color:#ff8a7a; }
+#discard-preview .dp-tiles { display:flex; gap:1px; align-items:flex-end; }
+
 /* ===== ACTION ANNOUNCEMENT ===== */
 #action-announce {
   position:fixed; top:50%; left:50%;
@@ -1347,10 +1365,24 @@ const App = {
         const drawnId = s.drawnTileId;
         const normal = drawnId ? myHand.filter(t=>t.id!==drawnId) : myHand;
         const drawn = drawnId ? myHand.find(t=>t.id===drawnId) : null;
+        const myMeldCount = (s.myMelds||[]).length;
+        const attachDiscardHover = (el, tile) => {
+          if (!isMyTurn) return;
+          el.addEventListener('mouseenter', () => {
+            const allTiles = s.myHand||[];
+            const remaining = allTiles.filter(t => t.id!==tile.id && !t.isFlower);
+            const expectedLen = 16 - myMeldCount * 3;
+            if (remaining.length !== expectedLen) return;
+            const waiting = window.MahjongEngine?.findTenpaiTiles(remaining) || [];
+            this._showDiscardPreview(el, tile, waiting);
+          });
+          el.addEventListener('mouseleave', () => this._hideDiscardPreview());
+        };
         normal.forEach(tile => {
           const el = this.createTileEl(tile, true, rel);
           el.onclick = () => this.onTileClick(tile);
           if (this.selectedTile?.id===tile.id) el.classList.add('selected');
+          attachDiscardHover(el, tile);
           handEl.appendChild(el);
         });
         if (drawn) {
@@ -1359,6 +1391,7 @@ const App = {
           el.classList.add('just-drawn');
           el.onclick = () => this.onTileClick(drawn);
           if (this.selectedTile?.id===drawn.id) el.classList.add('selected');
+          attachDiscardHover(el, drawn);
           handEl.appendChild(el);
         }
         // Flowers
@@ -1538,6 +1571,45 @@ const App = {
   },
 
   clearActionButtons() { document.getElementById('action-panel').innerHTML=''; },
+
+  _showDiscardPreview(tileEl, tile, waiting) {
+    let tip = document.getElementById('discard-preview');
+    if (!tip) { tip = document.createElement('div'); tip.id='discard-preview'; document.body.appendChild(tip); }
+    tip.innerHTML = '';
+    const head = document.createElement('div'); head.className='dp-head';
+    if (waiting && waiting.length) {
+      head.innerHTML = `若打出 → 聽 <strong>${waiting.length}</strong> 張`;
+      tip.classList.remove('dp-no'); tip.classList.add('dp-yes');
+    } else {
+      head.innerHTML = '若打出 → <strong>未聽牌</strong>';
+      tip.classList.remove('dp-yes'); tip.classList.add('dp-no');
+    }
+    tip.appendChild(head);
+    if (waiting && waiting.length) {
+      const row = document.createElement('div'); row.className='dp-tiles';
+      waiting.slice(0,8).forEach(t => {
+        const e = this.createTileEl(t, false, 0);
+        e.style.cssText += 'zoom:0.42;cursor:default;flex-shrink:0;pointer-events:none;';
+        row.appendChild(e);
+      });
+      tip.appendChild(row);
+    }
+    const r = tileEl.getBoundingClientRect();
+    tip.classList.add('show');
+    requestAnimationFrame(() => {
+      const w=tip.offsetWidth, h=tip.offsetHeight;
+      let left = r.left + r.width/2 - w/2;
+      let top  = r.top - h - 12;
+      if (top < 8) top = r.bottom + 10;
+      left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+      tip.style.left = left+'px'; tip.style.top = top+'px';
+    });
+  },
+
+  _hideDiscardPreview() {
+    const tip = document.getElementById('discard-preview');
+    if (tip) tip.classList.remove('show');
+  },
 
   // === WIN HAND COLORIZER ===
   _analyzeWinHandColors(hand) {
