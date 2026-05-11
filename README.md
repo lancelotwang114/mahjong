@@ -8,7 +8,7 @@
 
 ## 畫面截圖
 
-![遊戲畫面](preview.png)
+![遊戲畫面](preview.jpg)
 
 ---
 

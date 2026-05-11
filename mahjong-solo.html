@@ -508,10 +508,15 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   background-size:6px 6px;
   background-position:0 0,0 3px,3px -3px,-3px 0px;
 }
-/* Pool inner texture overlay (z-index above bg, below tiles) */
+/* Pool inner texture overlay — depth gradient (遠暗近亮) + 細格紋 */
 #pool::after{
   content:'';position:absolute;inset:0;pointer-events:none;z-index:0;
   background:
+    linear-gradient(to bottom,
+      rgba(0,0,0,.52) 0%,
+      rgba(0,0,0,.18) 38%,
+      rgba(0,0,0,.04) 62%,
+      transparent 80%),
     repeating-linear-gradient(0deg,transparent,transparent 18px,rgba(0,0,0,.04) 18px,rgba(0,0,0,.04) 19px),
     repeating-linear-gradient(90deg,transparent,transparent 18px,rgba(0,0,0,.03) 18px,rgba(0,0,0,.03) 19px);
   border-radius:10px;
@@ -566,6 +571,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow: 0 0 50px rgba(0,0,0,.55), inset 0 0 25px rgba(0,0,0,.35);
   z-index: 2;
   overflow: hidden;
+  /* 俯視透視：桌面往遠端傾斜，底部（自己這側）最近 */
+  transform: perspective(1400px) rotateX(16deg);
+  transform-origin: 50% 82%;
 }
 /* Pool discard zones — 雀魂式 6×N 河池網格 */
 #pool #dc0, #pool #dc1, #pool #dc2, #pool #dc3 {
@@ -586,6 +594,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   grid-auto-flow: row !important;
   align-content: flex-end !important;
   justify-content: center !important;
+  opacity: 0.78; /* 遠端略淡，強化深度感 */
 }
 #pool #dc0 { /* bottom discards (p0) — 6 cols */
   bottom: 5px; left: 50%; transform: translateX(-50%);
@@ -596,22 +605,22 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   align-content: flex-start !important;
   justify-content: center !important;
 }
-#pool #dc3 { /* left discards (p3) — 6 rows, fills column by column */
+#pool #dc3 { /* left discards (p3) — 4 columns, rows of 41px, top→down */
   top: 50%; left: 5px; transform: translateY(-50%);
-  width: 128px; height: 154px;
-  grid-template-rows: repeat(6, 24px) !important;
-  grid-auto-columns: 32px !important;
-  grid-auto-flow: column !important;
-  align-content: center !important;
+  width: 128px; height: 210px;
+  grid-template-columns: repeat(4, 28px) !important;
+  grid-auto-rows: 41px !important;
+  grid-auto-flow: row !important;
+  align-content: flex-start !important;
   justify-content: flex-start !important;
 }
-#pool #dc1 { /* right discards (p1) */
+#pool #dc1 { /* right discards (p1) — 4 columns, rows of 41px, top→down */
   top: 50%; right: 5px; transform: translateY(-50%);
-  width: 128px; height: 154px;
-  grid-template-rows: repeat(6, 24px) !important;
-  grid-auto-columns: 32px !important;
-  grid-auto-flow: column-reverse !important;
-  align-content: center !important;
+  width: 128px; height: 210px;
+  grid-template-columns: repeat(4, 28px) !important;
+  grid-auto-rows: 41px !important;
+  grid-auto-flow: row !important;
+  align-content: flex-start !important;
   justify-content: flex-end !important;
 }
 /* ── Compass score badges: 4 player scores at N/S/E/W of the pool ── */
@@ -785,11 +794,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pa3 .pbar { flex-shrink: 0; font-size: .68rem; padding: 3px 6px; gap: 3px; }
 #pa3 .ma {
   flex-shrink: 0; display: flex !important;
-  flex-direction: row !important; flex-wrap: wrap;
-  gap: 2px; justify-content: center; padding: 2px 4px;
+  flex-direction: column !important; flex-wrap: nowrap !important;
+  gap: 3px; align-items: flex-end; padding: 4px 2px 4px 4px;
   max-width: 100%; overflow: visible;
 }
-#pa3 .ma .mg { flex-direction: row !important; flex-wrap: nowrap; }
+#pa3 .ma .mg { flex-direction: row !important; flex-wrap: nowrap; justify-content: flex-end; }
 #ht3 {
   flex: 1; min-height: 0;
   display: flex !important; flex-direction: column !important;
@@ -814,11 +823,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pa1 .pbar { flex-shrink: 0; font-size: .68rem; padding: 3px 6px; gap: 3px; }
 #pa1 .ma {
   flex-shrink: 0; display: flex !important;
-  flex-direction: row !important; flex-wrap: wrap;
-  gap: 2px; justify-content: center; padding: 2px 4px;
+  flex-direction: column !important; flex-wrap: nowrap !important;
+  gap: 3px; align-items: flex-start; padding: 4px 4px 4px 2px;
   max-width: 100%; overflow: visible;
 }
-#pa1 .ma .mg { flex-direction: row !important; flex-wrap: nowrap; }
+#pa1 .ma .mg { flex-direction: row !important; flex-wrap: nowrap; justify-content: flex-start; }
 #ht1 {
   flex: 1; min-height: 0;
   display: flex !important; flex-direction: column !important;
@@ -2045,9 +2054,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 
 /* ══ PLAYER CORNER BADGES ══════════════════════════════════════ */
-/* Player 2 pbar: top-right corner of its area */
+/* Player 2 pbar: centered in top area */
 #pa2-area .pbar {
-  position: absolute; top: 6px; right: 8px; z-index: 10;
+  /* naturally centered by parent #pa2-area flex align-items:center */
 }
 /* Player 3 pbar: at top of left area */
 #pa3-area .pbar { max-width: 188px; }
