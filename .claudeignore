@@ -1,0 +1,76 @@
+# Claude 自動忽略清單 — 不要把這些檔案載入 context
+# 來源精神:claude-token-optimizer (https://github.com/nadimtuhin/claude-token-optimizer)
+# 目的:節省 token,讓 context 留給真正需要的程式碼
+
+# === 套件 / 編譯產物(永遠不該載入) ===
+node_modules/**
+dist/**
+build/**
+.next/**
+out/**
+target/**
+__pycache__/**
+*.pyc
+
+# === 壓縮 / 二進位檔案 ===
+*.zip
+*.7z
+*.tar
+*.gz
+*.exe
+*.dll
+*.so
+
+# === 大型資料檔案(超過 1MB 的通常不該整份載入) ===
+*.csv
+!data/*.csv  # 例外:data/ 下的 CSV 可能是核心資料
+
+# === 歷史 / 封存文件(載入只浪費 token) ===
+docs/archive/**
+_legacy/**
+_old/**
+backup/**
+.claude/completions/**
+.claude/sessions/**
+
+# === 環境變數 / 機密 ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/**
+
+# === Git 內部 ===
+.git/**
+
+# === IDE / OS 設定 ===
+.vscode/**
+.idea/**
+.DS_Store
+Thumbs.db
+
+# === 日誌 ===
+*.log
+logs/**
+
+# === 媒體(通常不該載入文字內容) ===
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.mov
+
+# === 鎖檔(只要用 package.json / requirements.txt 即可) ===
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+Cargo.lock
+poetry.lock
+Pipfile.lock
+
+# === 本專案特定的(視需要加) ===
+# [此處列出你專案特有的不該載入的檔案,例如:]
+# old-notes.md
+# meeting-2024-*.md

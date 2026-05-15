@@ -1915,6 +1915,61 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   z-index: 60;
 }
 
+/* ── Waiting state indicator (after p0 discard, before AI resolves) ── */
+#wait-dots {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg,rgba(10,5,1,.72),rgba(20,10,3,.68));
+  border: 1px solid rgba(180,130,55,.28);
+  border-radius: 16px;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+#wait-dots.show { display: flex; }
+#wait-dots span {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: rgba(212,168,67,.75);
+  animation: waitBounce 0.85s ease-in-out infinite;
+}
+#wait-dots span:nth-child(2) { animation-delay: 0.17s; }
+#wait-dots span:nth-child(3) { animation-delay: 0.34s; }
+@keyframes waitBounce {
+  0%,80%,100% { transform: scale(0.65); opacity: 0.35; }
+  40%         { transform: scale(1.2);  opacity: 1; }
+}
+
+/* ── Tenpai flash banner (auto-dismiss 3s, above hand) ── */
+#tenpai-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 178px;
+  transform: translateX(-50%) translateY(8px);
+  background: linear-gradient(135deg,rgba(4,18,8,.97),rgba(8,35,14,.94));
+  border: 1.5px solid #2ecc71;
+  border-radius: 22px;
+  padding: 5px 20px;
+  font-family: 'Noto Serif TC', serif;
+  font-size: .84rem;
+  font-weight: 900;
+  color: #2ecc71;
+  letter-spacing: .05em;
+  text-shadow: 0 0 12px rgba(46,204,113,.55);
+  white-space: nowrap;
+  z-index: 200;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s, transform 0.22s;
+  box-shadow: 0 0 18px rgba(46,204,113,.28), 0 4px 14px rgba(0,0,0,.55);
+}
+#tenpai-banner.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 #hand-bar {
   display: none;
   align-items: center;
@@ -2795,6 +2850,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
   <!-- Action overlay: floats above player hand on right side (above drawn tile) -->
   <div id="action-overlay">
+    <div id="wait-dots"><span></span><span></span><span></span></div>
     <div id="hand-bar">
       <div id="tbadge">
         <svg width="40" height="40" viewBox="0 0 44 44">
@@ -2808,6 +2864,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     </div>
     <div id="ap"></div>
   </div>
+
+  <!-- Tenpai flash banner (auto-dismisses, above hand) -->
+  <div id="tenpai-banner"></div>
 
   <!-- v1.5 assist panel -->
   <button id="assist-toggle" onclick="Game.toggleAssistPanel()" title="輔助面板">⚙</button>
@@ -4298,8 +4357,12 @@ const Game={
     this.checkTenpai(p);
     // 玩家打牌後立即更新聽牌面板（不等下次摸牌）
     if(p===0){
-      if(s.tenpai[0]&&s.tenpaiT[0]) setTimeout(()=>this.showTenpai(s.tenpaiT[0]),250);
-      else this.hideTenpai();
+      if(s.tenpai[0]&&s.tenpaiT[0]){
+        const totalRem=s.tenpaiT[0].reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards),0);
+        setTimeout(()=>{this.showTenpai(s.tenpaiT[0]);this._showTenpaiBanner(totalRem,s.tenpaiT[0].length);},250);
+      } else {
+        this.hideTenpai();
+      }
     }
     this.log(`${s.names[p]} 打出 ${tile.n}`);
     Snd.discard();
@@ -4313,7 +4376,12 @@ const Game={
       Snd.say(tile.n);
     }
     if(p===0){
-      this._flyTile(tileId,'dc0',()=>{this.render();this.checkReactions(tile,p);});
+      this._flyTile(tileId,'dc0',()=>{
+        // Show waiting indicator while AI resolves reactions
+        const wd=document.getElementById('wait-dots');
+        if(wd){wd.classList.add('show');document.getElementById('action-overlay').classList.add('active');}
+        this.render();this.checkReactions(tile,p);
+      });
     } else {
       this.render();
       this.checkReactions(tile,p);
@@ -5242,6 +5310,8 @@ const Game={
   },
   clearBtns(){
     clearTimeout(this._tipLeaveTimer); this._tipLeaveTimer=null; // ① 防止殘留 timer 干擾
+    // Hide waiting indicator
+    document.getElementById('wait-dots')?.classList.remove('show');
     this.hideChiPicker();
     this._hideCandidateTooltip();
     // Remove candidate highlights from hand tiles
@@ -5306,24 +5376,63 @@ const Game={
       document.getElementById('wmon').innerHTML=s.names.map((n,i)=>{
         const m=s.money[i];return`<span style="margin:0 6px;color:${m<0?'#e74c3c':'#2ecc71'}">${n}: $${m.toLocaleString()}</span>`;
       }).join('');
-      // 顯示聽牌者的手牌
+      // 流局罰款說明
       const wh=document.getElementById('whands');wh.innerHTML='';
+      const drawBase=this.settings.base||1;const drawPerTai=this.settings.tai||100;
+      const drawPay=drawBase*drawPerTai;
+      if(tenpaiPs.length&&noTenpaiPs.length){
+        const formula=document.createElement('div');
+        formula.style.cssText='font-size:.74rem;color:rgba(212,168,67,.75);text-align:center;margin-bottom:8px;letter-spacing:.04em;background:rgba(212,168,67,.07);border-radius:8px;padding:5px 12px';
+        const collectAmt=drawPay*noTenpaiPs.length;
+        const payAmt=drawPay*tenpaiPs.length;
+        formula.textContent=`有聽×${tenpaiPs.length} 各收 ¥${collectAmt}　 無聽×${noTenpaiPs.length} 各付 ¥${payAmt}`;
+        wh.appendChild(formula);
+      } else if(!tenpaiPs.length){
+        wh.innerHTML='<div style="color:rgba(212,168,67,.5);text-align:center;font-size:.8rem;margin-bottom:8px">無人聽牌，無籌碼交換</div>';
+      }
       if(tenpaiPs.length){
-        const info=document.createElement('div');
-        info.style.cssText='font-size:.72rem;color:rgba(212,168,67,.7);text-align:center;margin-bottom:6px';
-        info.textContent=`有聽：${tenpaiPs.map(i=>s.names[i]).join('、')}　無聽：${noTenpaiPs.map(i=>s.names[i]).join('、')||'無'}`;
-        wh.appendChild(info);
         tenpaiPs.forEach(pi=>{
           const sec=document.createElement('div');sec.className='whs';
           const lbl=document.createElement('div');lbl.className='whl';
-          lbl.textContent=`🀇 ${s.names[pi]} — 聽牌`;sec.appendChild(lbl);
+          lbl.style.color='#2ecc71';
+          lbl.textContent=`✓ ${s.names[pi]} — 聽牌`;sec.appendChild(lbl);
           const row=document.createElement('div');row.className='whr';
-          s.melds[pi].forEach(m=>{m.tiles.forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});});
+          s.melds[pi].forEach(m=>{
+            m.tiles.forEach(t=>{const e=mkTile(t,'sm');e.style.outline='2px solid #3498db';e.style.cursor='default';row.appendChild(e);});
+            const sp=document.createElement('span');sp.style.width='4px';row.appendChild(sp);
+          });
           s.hands[pi].filter(x=>!x.fl).forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
-          sec.appendChild(row);wh.appendChild(sec);
+          sec.appendChild(row);
+          // Show waiting tiles
+          const wt=s.tenpaiT&&s.tenpaiT[pi];
+          if(wt&&wt.length){
+            const waitRow=document.createElement('div');
+            waitRow.style.cssText='display:flex;align-items:center;gap:6px;margin-top:5px;justify-content:center';
+            const waitLbl=document.createElement('span');
+            waitLbl.style.cssText='font-size:.68rem;color:rgba(46,204,113,.7);flex-shrink:0';
+            waitLbl.textContent='等：';waitRow.appendChild(waitLbl);
+            wt.forEach((wt2,wi)=>{
+              const rem=discRemaining(wt2,s.discards);
+              const te=mkTile({...wt2,id:77700+pi*100+wi},'ti');te.style.cursor='default';
+              if(rem===0)te.style.opacity='0.35';
+              const cnt=document.createElement('div');
+              cnt.style.cssText=`font-size:.6rem;color:${rem===0?'#e74c3c':rem<=2?'#e67e22':'#2ecc71'}`;
+              cnt.textContent=`×${rem}`;
+              const wrap=document.createElement('div');
+              wrap.style.cssText='display:flex;flex-direction:column;align-items:center;gap:1px';
+              wrap.appendChild(te);wrap.appendChild(cnt);waitRow.appendChild(wrap);
+            });
+            sec.appendChild(waitRow);
+          }
+          wh.appendChild(sec);
         });
-      } else {
-        wh.innerHTML='<div style="color:rgba(212,168,67,.5);text-align:center;font-size:.8rem">無人聽牌，無籌碼交換</div>';
+        // Show non-tenpai players briefly
+        if(noTenpaiPs.length){
+          const noRow=document.createElement('div');
+          noRow.style.cssText='font-size:.7rem;color:rgba(220,80,60,.7);text-align:center;margin-top:4px';
+          noRow.textContent=`✗ 無聽：${noTenpaiPs.map(i=>s.names[i]).join('、')}`;
+          wh.appendChild(noRow);
+        }
       }
       // Record stats for draw
       Stats.record(false,0,0);
@@ -5344,34 +5453,54 @@ const Game={
       const sec=document.createElement('div');sec.className='whs';
       const lbl=document.createElement('div');lbl.className='whl';
       lbl.textContent=(pi===wd.p?'🀇 ':'')+s.names[pi]+(pi===wd.p?' — 胡牌者':'');
+      if(pi===wd.p)lbl.style.color='var(--gold)';
       sec.appendChild(lbl);
       const row=document.createElement('div');row.className='whr';
+      // Declared melds (blue border) with spacer after each group
       s.melds[pi].forEach(m=>{
         m.tiles.forEach(t=>{const e=mkTile(t,'sm');e.style.outline='2px solid #3498db';e.style.cursor='default';row.appendChild(e);});
-        const sp=document.createElement('span');sp.style.width='4px';row.appendChild(sp);
+        const sp=document.createElement('span');sp.style.cssText='width:6px;flex-shrink:0';row.appendChild(sp);
       });
-      s.hands[pi].filter(x=>!x.fl).forEach(t=>{
-        const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);
-      });
-      sec.appendChild(row);wh.appendChild(sec);
-      // Colour-code winning hand sets
       if(pi===wd.p){
+        // Winner: analyse hand into groups, render in group order with colours & spacers
         const pureHand=s.hands[pi].filter(x=>!x.fl);
         const analysis=this._analyseHandGroups(pureHand);
-        if(analysis&&analysis.melds){
-          const seqIds=new Set(),triIds=new Set(),pairIds=new Set();
-          analysis.melds.forEach(m=>m.tiles.forEach(t=>m.triple?triIds.add(t.id):seqIds.add(t.id)));
-          if(analysis.pair){
-            pureHand.filter(t=>t.s===analysis.pair.s&&t.v===analysis.pair.v).slice(0,2).forEach(t=>pairIds.add(t.id));
-          }
-          Array.from(row.querySelectorAll('.t')).forEach(el=>{
-            const id=+el.dataset.id;
-            if(pairIds.has(id)) el.classList.add('ws-pair');
-            else if(triIds.has(id)) el.classList.add('ws-tri');
-            else if(seqIds.has(id)) el.classList.add('ws-seq');
+        const usedIds=new Set();
+        if(analysis&&analysis.melds&&analysis.melds.length){
+          analysis.melds.forEach(m=>{
+            m.tiles.forEach(t=>{
+              usedIds.add(t.id);
+              const e=mkTile(t,'sm');e.style.cursor='default';
+              e.classList.add(m.triple?'ws-tri':'ws-seq');
+              row.appendChild(e);
+            });
+            const sp=document.createElement('span');sp.style.cssText='width:5px;flex-shrink:0';row.appendChild(sp);
           });
+          if(analysis.pair){
+            pureHand.filter(t=>t.s===analysis.pair.s&&t.v===analysis.pair.v&&!usedIds.has(t.id)).slice(0,2).forEach(t=>{
+              usedIds.add(t.id);
+              const e=mkTile(t,'sm');e.style.cursor='default';e.classList.add('ws-pair');row.appendChild(e);
+            });
+          }
+          // Fallback: any tiles not placed (e.g. 7-pairs)
+          pureHand.filter(t=>!usedIds.has(t.id)).forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
+        } else {
+          // 七對子 or analysis failed — plain render
+          pureHand.forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
         }
+      } else {
+        // Other players: plain render
+        s.hands[pi].filter(x=>!x.fl).forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
       }
+      sec.appendChild(row);
+      // Colour legend for winner
+      if(pi===wd.p){
+        const leg=document.createElement('div');
+        leg.style.cssText='display:flex;gap:10px;justify-content:center;margin-top:5px;font-size:.65rem;opacity:.7';
+        leg.innerHTML='<span style="color:#2ecc71">■ 順子</span><span style="color:#9b59b6">■ 刻子/槓</span><span style="color:#e67e22">■ 雀頭</span><span style="color:#3498db">■ 副露</span>';
+        sec.appendChild(leg);
+      }
+      wh.appendChild(sec);
     });
     ov.style.display='flex';
   },
@@ -5705,7 +5834,17 @@ const Game={
   hideTenpai(){
     document.getElementById('tpanel').style.display='none';
     this._tenpaiWaiting=null;
+    clearTimeout(this._tenpaiBannerTimer);
+    document.getElementById('tenpai-banner')?.classList.remove('show');
     this._updateHandBar();
+  },
+  _showTenpaiBanner(remCount, waitTileCount){
+    clearTimeout(this._tenpaiBannerTimer);
+    const b=document.getElementById('tenpai-banner');
+    if(!b)return;
+    b.textContent=`聽牌！等${waitTileCount}張（剩${remCount}）`;
+    b.classList.add('show');
+    this._tenpaiBannerTimer=setTimeout(()=>b.classList.remove('show'),3000);
   },
 
   // ── ANNOUNCE ─────────────────────────────────────────
@@ -5945,6 +6084,57 @@ document.addEventListener('keydown',e=>{
   if(e.key==='s'||e.key==='S'){
     if(Game._assist&&Game._assist.sort&&Game.st&&Game.st.turn===0){
       Game.sortHand();
+    }
+  }
+});
+
+// ── Space key → skip / 跳過 button ────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'&&!e.target.matches('input,textarea,select,button')){
+    const btn=document.querySelector('#ap .ab.ask');
+    if(btn){e.preventDefault();btn.click();}
+  }
+});
+
+// ── H → 胡, ←/→ → navigate hand tiles, Enter → discard ──
+document.addEventListener('keydown',e=>{
+  if(e.target.matches('input,textarea,select,button'))return;
+  const s=Game.st;
+  if(!s||s.phase!=='playing')return;
+
+  // H → 胡！button (self-draw or discard win)
+  if(e.key==='h'||e.key==='H'){
+    const btn=document.querySelector('#ap .ab.aw');
+    if(btn){e.preventDefault();btn.click();}
+    return;
+  }
+
+  // ←/→/Enter: only when it's player's turn, no meld buttons active
+  if(s.turn!==0)return;
+  const ap=document.getElementById('ap');
+  if(ap&&ap.querySelectorAll('.ab:not(.hint)').length>0)return;
+  const ht=document.getElementById('ht0');
+  if(!ht||!ht.classList.contains('my-turn'))return;
+  const tEls=Array.from(ht.querySelectorAll('.t[data-id]'));
+  if(!tEls.length)return;
+
+  if(e.key==='ArrowRight'||e.key==='ArrowLeft'){
+    e.preventDefault();
+    const cur=tEls.findIndex(el=>el.classList.contains('sel'));
+    tEls.forEach(el=>el.classList.remove('sel'));
+    let nxt;
+    if(cur<0) nxt=e.key==='ArrowRight'?0:tEls.length-1;
+    else nxt=e.key==='ArrowRight'?(cur+1)%tEls.length:(cur-1+tEls.length)%tEls.length;
+    tEls[nxt].classList.add('sel');
+    return;
+  }
+
+  if(e.key==='Enter'){
+    const selEl=ht.querySelector('.t.sel');
+    if(selEl){
+      e.preventDefault();
+      const tile=s.hands[0].find(t=>t.id===+selEl.dataset.id);
+      if(tile)Game.onTile(tile);
     }
   }
 });
