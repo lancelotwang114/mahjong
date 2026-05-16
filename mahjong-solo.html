@@ -490,6 +490,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .mode-card{background:linear-gradient(160deg,rgba(18,36,22,.95),rgba(10,22,12,.98));border:1.5px solid rgba(212,168,67,.35);border-radius:12px;padding:14px 8px;cursor:pointer;transition:all .2s;text-align:center;font-family:'Noto Serif TC';color:var(--txt);display:flex;flex-direction:column;align-items:center;gap:4px}
 .mode-card:hover{transform:translateY(-3px);border-color:var(--gold);box-shadow:0 6px 24px rgba(212,168,67,.3),0 0 0 1px rgba(212,168,67,.15)}
 .mode-card:active{transform:translateY(-1px)}
+.mode-card.active,.score-mode-btn.active{border-color:var(--gold);background:linear-gradient(160deg,rgba(28,50,28,.98),rgba(15,35,15,.98));box-shadow:0 0 14px rgba(212,168,67,.35),0 0 0 1px rgba(212,168,67,.18)}
+.pbar{position:relative}
 .mode-card-icon{font-size:2rem;line-height:1}
 .mode-card-title{font-size:.95rem;font-weight:700;color:var(--gold);letter-spacing:.1em}
 .mode-card-desc{font-size:.68rem;color:rgba(212,168,67,.55);letter-spacing:.08em}
@@ -571,9 +573,6 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow: 0 0 50px rgba(0,0,0,.55), inset 0 0 25px rgba(0,0,0,.35);
   z-index: 2;
   overflow: hidden;
-  /* 俯視透視：桌面往遠端傾斜，底部（自己這側）最近 */
-  transform: perspective(1400px) rotateX(16deg);
-  transform-origin: 50% 82%;
 }
 /* Pool discard zones — 雀魂式 6×N 河池網格 */
 #pool #dc0, #pool #dc1, #pool #dc2, #pool #dc3 {
@@ -944,7 +943,6 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 .t.drawn{
   transform: translateY(-8px);
-  margin-left: 14px;
   position: relative;
   z-index: 2;
   box-shadow:
@@ -1786,6 +1784,49 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 @keyframes hintBlink { 0%,100%{box-shadow:0 0 4px rgba(93,173,226,.3)} 50%{box-shadow:0 0 18px rgba(93,173,226,.9)} }
 .t.hint-glow { outline:2px solid #5dade2!important; box-shadow:0 0 14px rgba(93,173,226,.7)!important; animation:hintBlink 1s ease-in-out 3; }
 
+/* ── Drawn tile slide-in ── */
+@keyframes tileSlideIn {
+  from { transform:translateY(-14px) scale(0.85); opacity:0; }
+  to   { transform:translateY(0) scale(1); opacity:1; }
+}
+.t.drawn-in { animation:tileSlideIn .22s cubic-bezier(.34,1.3,.64,1) forwards; }
+
+/* D2: 胡牌碎紙花粒子 */
+.confetti-particle {
+  position:fixed;pointer-events:none;z-index:9999;
+  border-radius:2px;
+  animation:confettiFall var(--dur,1.8s) ease-in var(--del,0s) forwards;
+}
+@keyframes confettiFall {
+  0%  { transform:translateY(0) rotate(0deg) scale(1); opacity:1; }
+  80% { opacity:1; }
+  100%{ transform:translateY(var(--dy,600px)) translateX(var(--dx,0px)) rotate(var(--rot,360deg)) scale(0.4); opacity:0; }
+}
+
+/* D4: AI 思考動畫（名牌閃爍） */
+.pbar.ai-thinking { animation:aiThink 0.9s ease-in-out infinite; }
+@keyframes aiThink { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* D5: 棄牌落地彈跳 */
+@keyframes discLand {
+  0%  { transform:scale(1.25) translateY(-6px); }
+  55% { transform:scale(0.95) translateY(1px); }
+  80% { transform:scale(1.04); }
+  100%{ transform:scale(1); }
+}
+.t.disc-land { animation:discLand 0.28s cubic-bezier(.36,.07,.19,.97) forwards; }
+
+/* E4: AI 聊天泡泡 */
+.chat-bubble {
+  position:absolute;background:rgba(8,20,10,.92);border:1px solid rgba(200,160,60,.55);
+  border-radius:12px;padding:4px 10px;font-size:.72rem;color:var(--gold);
+  white-space:nowrap;pointer-events:none;z-index:500;
+  animation:bubblePop .2s cubic-bezier(.34,1.5,.64,1) forwards, bubbleFade .3s ease .2s forwards reverse;
+  transform-origin:bottom center;
+}
+@keyframes bubblePop { from{transform:scale(0.5);opacity:0} to{transform:scale(1);opacity:1} }
+@keyframes bubbleFade { from{opacity:1} to{opacity:0} }
+
 /* ══ WIN HAND SET COLOURS ═════════════════════════════════ */
 .whr .t.ws-seq  { outline:2px solid #2ecc71!important; box-shadow:0 0 6px rgba(46,204,113,.4)!important; }
 .whr .t.ws-tri  { outline:2px solid #9b59b6!important; box-shadow:0 0 6px rgba(155,89,182,.4)!important; }
@@ -1946,7 +1987,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #tenpai-banner {
   position: absolute;
   left: 50%;
-  bottom: 178px;
+  bottom: 248px;
   transform: translateX(-50%) translateY(8px);
   background: linear-gradient(135deg,rgba(4,18,8,.97),rgba(8,35,14,.94));
   border: 1.5px solid #2ecc71;
@@ -2285,6 +2326,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .danger-mid  .danger-dot { background:#f39c12; }
 .danger-high .danger-dot { background:#e74c3c; }
 
+/* ── Low deck pulse ── */
+@keyframes deckUrgent { 0%,100%{opacity:1} 50%{opacity:.35} }
+#ib-deck.deck-low  { color:#e67e22!important; }
+#ib-deck.deck-crit { color:#e74c3c!important; animation:deckUrgent .7s ease-in-out infinite; }
+
 /* Tile tracker overlay */
 #tracker-btn {
   position:absolute; right:14px; bottom:200px;
@@ -2497,7 +2543,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG · 單機版</div>
-    <div class="lver">v1.5.2</div>
+    <div class="lver">v1.5.4</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -2508,10 +2554,35 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     </div>
     <div class="stats-reset" onclick="Stats.reset()">重置記錄</div>
     <div id="stats-chart" style="min-height:20px"></div>
+    <!-- E2: 牌局歷史 -->
+    <details style="margin-top:6px">
+      <summary style="cursor:pointer;font-size:.72rem;color:rgba(212,168,67,.55);letter-spacing:.08em;padding:4px 0">📋 最近對局記錄</summary>
+      <div id="hist-list" style="max-height:180px;overflow-y:auto;margin-top:4px;border-radius:8px;background:rgba(0,0,0,.25)"></div>
+    </details>
 
     <div class="fg">
       <label class="fl">你的名字</label>
       <input class="fi" id="pname" value="玩家" maxlength="8" placeholder="輸入暱稱">
+    </div>
+
+    <!-- E3: 計分模式 -->
+    <div class="sec-title">🎯 計分模式</div>
+    <div class="mode-cards" style="grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+      <button class="mode-card score-mode-btn active" data-mode="simple" onclick="Game._setScoringMode('simple',this)">
+        <div class="mode-card-icon" style="font-size:1.2rem">🌱</div>
+        <div class="mode-card-title" style="font-size:.8rem">簡化</div>
+        <div class="mode-card-desc" style="font-size:.65rem">基本台型</div>
+      </button>
+      <button class="mode-card score-mode-btn" data-mode="standard" onclick="Game._setScoringMode('standard',this)">
+        <div class="mode-card-icon" style="font-size:1.2rem">🀄</div>
+        <div class="mode-card-title" style="font-size:.8rem">標準</div>
+        <div class="mode-card-desc" style="font-size:.65rem">台灣規則</div>
+      </button>
+      <button class="mode-card score-mode-btn" data-mode="expert" onclick="Game._setScoringMode('expert',this)">
+        <div class="mode-card-icon" style="font-size:1.2rem">🏆</div>
+        <div class="mode-card-title" style="font-size:.8rem">完整</div>
+        <div class="mode-card-desc" style="font-size:.65rem">含本場/清龍</div>
+      </button>
     </div>
 
     <div class="sec-title">💰 籌碼設定</div>
@@ -2569,7 +2640,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <label class="fl">音效音量</label>
         <div class="vol-row">
           <input type="range" id="svol" min="0" max="100" value="80"
-            oninput="document.getElementById('svol-val').textContent=this.value+'%';Snd.volume=this.value/100">
+            oninput="document.getElementById('svol-val').textContent=this.value+'%';Snd.volume=this.value/100;localStorage.setItem('mj_svol_v1',this.value)">
           <span id="svol-val" class="vol-val">80%</span>
         </div>
       </div>
@@ -2602,6 +2673,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       <label for="quick-start-toggle">⚡ 快速開局（跳過動畫）</label>
       <label class="qs-toggle">
         <input type="checkbox" id="quick-start-toggle" onchange="Game.settings.quickStart=this.checked;localStorage.setItem('mj_quick_v1',this.checked?'1':'0')">
+        <span class="qs-sl"></span>
+      </label>
+    </div>
+    <div class="quick-start-row">
+      <label for="confirm-discard-toggle">👆 雙擊確認打牌（防手滑）</label>
+      <label class="qs-toggle">
+        <input type="checkbox" id="confirm-discard-toggle" checked onchange="Game.settings.confirmDiscard=this.checked;localStorage.setItem('mj_confirm_v1',this.checked?'1':'0')">
         <span class="qs-sl"></span>
       </label>
     </div>
@@ -2674,6 +2752,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <div class="mode-card-title">南風局</div>
         <div class="mode-card-desc">8 局 · 全場</div>
       </button>
+    </div>
+    <div id="resume-bar" style="display:none;margin-top:14px;padding:10px 16px;background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.4);border-radius:12px;text-align:center">
+      <span style="color:var(--gold);font-size:.85rem;font-weight:700">🔄 偵測到中斷的牌局</span>
+      <div style="margin-top:7px;display:flex;gap:8px;justify-content:center">
+        <button class="btn bp" style="width:auto;padding:6px 18px;font-size:.8rem" onclick="Game.resumeSavedGame()">繼續上局</button>
+        <button class="btn" style="width:auto;padding:6px 14px;font-size:.8rem;background:rgba(255,80,80,.1);border-color:rgba(255,80,80,.35);color:rgba(255,120,120,.8)" onclick="Game.clearSave();document.getElementById('resume-bar').style.display='none'">放棄</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2869,6 +2954,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div id="tenpai-banner"></div>
 
   <!-- v1.5 assist panel -->
+  <button id="hint-btn" onclick="Game.showHint()" title="提示最佳打牌（H鍵）" style="position:absolute;left:12px;bottom:192px;z-index:210;background:rgba(8,20,14,.88);border:1.5px solid rgba(93,173,226,.5);border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;color:rgba(93,173,226,.9);display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">💡</button>
   <button id="assist-toggle" onclick="Game.toggleAssistPanel()" title="輔助面板">⚙</button>
   <div id="assist-panel">
     <div class="assist-row">
@@ -2931,6 +3017,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <button class="btn" style="width:auto;padding:9px 20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--txt)" onclick="Game.returnLobby()">返回大廳</button>
   </div>
 </div></div>
+<button id="peek-return-btn" onclick="Game.peekBoard()" style="display:none;position:fixed;bottom:24px;right:24px;z-index:1001;background:rgba(12,26,14,.95);border:1.5px solid rgba(200,160,60,.7);border-radius:22px;color:var(--gold);padding:9px 20px;font-family:'Noto Serif TC',serif;font-size:.9rem;font-weight:700;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.55),0 0 16px rgba(212,168,67,.25);letter-spacing:.05em">📋 返回結算</button>
 
 <div id="pause-overlay">
   ⏸ 暫停中
@@ -3468,17 +3555,35 @@ const Stats={
   data:{games:0,wins:0,chipNet:0,bestTai:0,history:[]},
   load(){try{const d=localStorage.getItem(this._k);if(d)this.data={...this.data,...JSON.parse(d)};if(!this.data.history)this.data.history=[];}catch(e){}},
   save(){try{localStorage.setItem(this._k,JSON.stringify(this.data));}catch(e){}},
-  record(win,chipChange,tai=0){
+  record(win,chipChange,tai=0,bonLabels=[]){
     this.data.games++;
     if(win)this.data.wins++;
     this.data.chipNet+=chipChange;
     if(tai>this.data.bestTai)this.data.bestTai=tai;
     if(!this.data.history)this.data.history=[];
-    this.data.history.push({win,chipChange,tai});
-    if(this.data.history.length>20)this.data.history=this.data.history.slice(-20);
-    this.save();this.render();
+    this.data.history.push({win,chipChange,tai,ts:Date.now(),bon:bonLabels.slice(0,4)});
+    if(this.data.history.length>50)this.data.history=this.data.history.slice(-50);
+    this.save();this.render();this.renderHistory();
   },
-  reset(){this.data={games:0,wins:0,chipNet:0,bestTai:0,history:[]};this.save();this.render();},
+  reset(){this.data={games:0,wins:0,chipNet:0,bestTai:0,history:[]};this.save();this.render();this.renderHistory();},
+  renderHistory(){
+    const el=document.getElementById('hist-list');if(!el)return;
+    const h=[...(this.data.history||[])].reverse().slice(0,20);
+    if(!h.length){el.innerHTML='<div style="text-align:center;color:rgba(255,255,255,.3);font-size:.78rem;padding:12px">尚無對局記錄</div>';return;}
+    el.innerHTML=h.map(e=>{
+      const dt=e.ts?new Date(e.ts).toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+      const chip=(e.chipChange>=0?'+$':'-$')+Math.abs(e.chipChange).toLocaleString();
+      const chipCls=e.chipChange>=0?'color:#2ecc71':'color:#e74c3c';
+      const icon=e.win?'🏆':e.tai===0?'🀄':'💀';
+      const lbl=e.win?`${e.tai}台 胡牌`:e.tai===0?'流局':'放槍';
+      return`<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-size:.74rem">
+        <span style="font-size:.9rem">${icon}</span>
+        <span style="flex:1;color:rgba(255,255,255,.65)">${dt}</span>
+        <span style="color:rgba(212,168,67,.8)">${lbl}</span>
+        <span style="${chipCls};font-weight:700;min-width:64px;text-align:right">${chip}</span>
+      </div>`;
+    }).join('');
+  },
   renderChart(){
     const el=document.getElementById('stats-chart');
     if(!el||!this.data.history?.length)return;
@@ -3519,7 +3624,15 @@ const Stats={
 const AI={
   discard(hand,melds,allDiscards,allMelds,tenpaiFlags,style='balanced'){
     const p=hand.filter(t=>!t.fl);if(!p.length)return hand[0];
-    const sc=p.map(t=>({t,s:this.val(t,p,melds,allDiscards,allMelds,tenpaiFlags,style)}));
+    const curSh=calcShanten(hand,melds);
+    const sc=p.map(t=>{
+      const remaining=p.filter(x=>x.id!==t.id);
+      const newSh=calcShanten(remaining,melds);
+      // Heavily penalise any discard that increases shanten
+      const shPenalty=(newSh-curSh)*12;
+      const safetyScore=this.val(t,p,melds,allDiscards,allMelds,tenpaiFlags,style);
+      return{t,s:shPenalty+safetyScore};
+    });
     sc.sort((a,b)=>a.s-b.s);
     return sc[0].t;
   },
@@ -3583,21 +3696,24 @@ const AI={
       }
       return null;
     }
-    // balanced
-    const ko=opts.find(o=>o.type==='kong');if(ko&&Math.random()>.3)return ko;
+    // balanced — pure shanten-based decision, no randomness
+    const curSh=calcShanten(hand,melds);
+    const ko=opts.find(o=>o.type==='kong');
+    if(ko){
+      // Kong always reduces shanten or keeps tenpai (free draw) — take it
+      const handAfterKong=hand.filter(t=>!ko.tiles.find(q=>q.id===t.id));
+      if(calcShanten(handAfterKong,[...melds,{type:'kong',tiles:ko.tiles}])<=curSh)return ko;
+    }
     const po=opts.find(o=>o.type==='pong');
-    if(po&&Math.random()>.45){
-      const handAfterPong=hand.filter(t=>!po.tiles.find(p=>p.id===t.id));
-      const scoreBefore=calcBlockScore(hand);
-      const scoreAfter=calcBlockScore(handAfterPong);
-      if(scoreAfter>=scoreBefore-1)return po;
+    if(po){
+      const handAfterPong=hand.filter(t=>!po.tiles.find(q=>q.id===t.id));
+      if(calcShanten(handAfterPong,[...melds,{type:'pong',tiles:po.tiles}])<=curSh)return po;
     }
     const ch=opts.find(o=>o.type==='chi');
-    if(ch&&Math.random()>.65){
-      const handAfterChi=hand.filter(t=>!ch.tiles.find(p=>p.id===t.id));
-      const scoreBefore=calcBlockScore(hand);
-      const scoreAfter=calcBlockScore(handAfterChi);
-      if(scoreAfter>=scoreBefore-1)return ch;
+    if(ch){
+      const handAfterChi=hand.filter(t=>!ch.tiles.find(q=>q.id===t.id));
+      // Chi only if strictly improves shanten (more conservative than pong)
+      if(calcShanten(handAfterChi,[...melds,{type:'chi',tiles:ch.tiles}])<curSh)return ch;
     }
     return null;
   },
@@ -3893,7 +4009,73 @@ const Game={
     }
   },
 
-  initRound(names,aiIdx,money,dealer=0,roundNum=1,roundWind='東'){
+  // E4: AI 聊天泡泡
+  _aiSay(p,text,duration=2200){
+    // Find the player bar area to anchor the bubble
+    const anchors={0:null,1:'pbar1',2:'pbar2',3:'pbar3'};
+    const anchorId=anchors[p];if(!anchorId)return;
+    const anchor=document.getElementById(anchorId);if(!anchor)return;
+    // Remove existing bubble for this player
+    const existing=document.getElementById(`bubble-p${p}`);if(existing)existing.remove();
+    const bubble=document.createElement('div');
+    bubble.id=`bubble-p${p}`;
+    bubble.className='chat-bubble';
+    bubble.textContent=text;
+    bubble.style.cssText+='animation-duration:0.25s,'+duration+'ms;animation-fill-mode:forwards,forwards;';
+    anchor.style.position='relative';
+    anchor.appendChild(bubble);
+    setTimeout(()=>{if(bubble.parentNode)bubble.remove();},duration);
+  },
+  // AI 台詞庫
+  _aiLines:{
+    pong:['碰！','不客氣😄','正好','來了！'],
+    chi: ['吃！','謝謝','剛好缺這張','接走了'],
+    kong:['槓！','多一次機會','大槓！','槓起來'],
+    win: ['胡了！','謝謝招待','收了','手氣好'],
+    draw:['流局...','啊，沒人胡','可惜','再來一局'],
+    tenpai:['聽牌了','快了快了','等一張','靠近了'],
+    discard:['考慮一下','嗯...','這張','就這個'],
+  },
+  _aiQuip(p,event){
+    const lines=this._aiLines[event];if(!lines||!lines.length)return;
+    this._aiSay(p,lines[~~(Math.random()*lines.length)]);
+  },
+
+  // E3: 計分模式切換
+  _scoringMode:'standard',
+  _setScoringMode(mode,btn){
+    this._scoringMode=mode;
+    localStorage.setItem('mj_score_mode_v1',mode);
+    document.querySelectorAll('.score-mode-btn').forEach(b=>b.classList.toggle('active',b===btn));
+  },
+
+  resumeSavedGame(){
+    const snap=this.loadSave();if(!snap){this.clearSave();return;}
+    this.restoreGame(snap);
+    document.getElementById('resume-bar').style.display='none';
+    document.getElementById('lobby').style.display='none';
+    const gEl=document.getElementById('game');gEl.classList.add('show');
+    setTimeout(updateTblVars,50);
+    document.getElementById('pause-btn').style.display='block';
+    document.getElementById('speed-panel').style.display='flex';
+    this._initDustParticles();
+    if(Bgm.enabled){Bgm.stop();Bgm.start();}
+    const winds=['東','南','西','北'];
+    const names=this.st.names||['玩家','AI1','AI2','AI3'];
+    for(let i=0;i<4;i++){
+      const wb=document.getElementById(`wb${i}`);if(wb)wb.textContent=winds[i];
+      const pn=document.getElementById(`pn${i}`);if(pn)pn.textContent=names[i];
+    }
+    this.render();
+    this.toast('已恢復上局牌局',2000);
+    // Re-enter playing state: it's whoever's turn it was
+    const s=this.st;
+    if(s.phase==='playing'&&s.turn!==0){
+      setTimeout(()=>this.doTurn(),800);
+    }
+  },
+
+  initRound(names,aiIdx,money,dealer=0,roundNum=1,roundWind='東',honba=0){
     const deck=shuffle(mkDeck());
     const hands=[[],[],[],[]],flowers=[[],[],[],[]];
     let pos=0;
@@ -3922,6 +4104,7 @@ const Game={
       firstRound:true,   // 天胡/地胡 用：第一圈未有人打牌前為 true
       aiStyle:this.settings.aiStyle||[null,'balanced','balanced','balanced'],
       _afterKong:false,_kongWin:false,
+      honba:honba,       // 本場點：連莊累積
     };
   },
 
@@ -4242,7 +4425,21 @@ const Game={
 
     // Check tenpai
     this.checkTenpai(p);
+    // Auto-sort p0's hand (always, so drawn tile lands in right position)
+    if(p===0) s.hands[0]=sortH(s.hands[0]);
     this.render();
+    // Animate drawn tile for p0
+    if(p===0){
+      requestAnimationFrame(()=>{
+        const ht=document.getElementById('ht0');
+        const el=ht&&ht.querySelector(`.t[data-id="${t.id}"]`);
+        if(el){el.classList.add('drawn-in');setTimeout(()=>el.classList.remove('drawn-in'),350);}
+      });
+    }
+
+    // E1: 顯示提示按鈕（僅玩家回合）
+    const hintBtn=document.getElementById('hint-btn');
+    if(hintBtn)hintBtn.style.display=(p===0)?'flex':'none';
 
     if(isAI){
       const winNow=canWin(s.hands[p].filter(x=>!x.fl));
@@ -4314,10 +4511,12 @@ const Game={
 
   doAITurn(p,winNow){
     const s=this.st;
-    if(winNow){this.doWin(p,true);return;}  // AI 永遠宣胡
+    this._setAIThinking(p,true); // D4
+    if(winNow){this._setAIThinking(p,false);this.doWin(p,true);return;}  // AI 永遠宣胡
     const sk=AI.selfKong(s.hands[p],s.melds[p]);
-    if(sk&&Math.random()>.5){this.doSelfKong(p,sk);return;}
+    if(sk&&Math.random()>.5){this._setAIThinking(p,false);this.doSelfKong(p,sk);return;}
     const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');
+    // D4: thinking cleared inside doDiscard→_flyOpponent callback
     this.doDiscard(p,d.id);
   },
 
@@ -4326,10 +4525,11 @@ const Game={
     const tileEl=Array.from(ht0.querySelectorAll('.t')).find(el=>+el.dataset.id===tileId);
     const dcEl=document.getElementById(targetDcId);
     if(!tileEl||!dcEl){done();return;}
+    // F2: getBoundingClientRect already returns visual (post-transform) coords — use directly
     const fr=tileEl.getBoundingClientRect();
     const dr=dcEl.getBoundingClientRect();
-    const tx=dr.left+dr.width*0.7;
-    const ty=dr.top+dr.height*0.65;
+    const tx=dr.left+dr.width*0.5;
+    const ty=dr.top+dr.height*0.5;
     const clone=tileEl.cloneNode(true);
     clone.style.cssText=`position:fixed;left:${fr.left}px;top:${fr.top}px;width:${fr.width}px;height:${fr.height}px;z-index:9998;pointer-events:none;transition:none;border-radius:4px;`;
     document.body.appendChild(clone);
@@ -4342,6 +4542,89 @@ const Game={
       clone.style.opacity='0';
     }));
     setTimeout(()=>{clone.remove();done();},230);
+  },
+
+  // D1: 對手打牌飛牌動畫（從手牌區飛到棄牌區）
+  _flyOpponent(p,tileId,done){
+    const htEl=document.getElementById(`ht${p}`);
+    const dcEl=document.getElementById(`dc${p}`);
+    if(!htEl||!dcEl){done();return;}
+    const hr=htEl.getBoundingClientRect();
+    const dr=dcEl.getBoundingClientRect();
+    // Create a generic back-tile ghost at hand position
+    const ghost=document.createElement('div');
+    ghost.className='t back';
+    // Target center of discard zone
+    const tx=dr.left+dr.width*0.35;
+    const ty=dr.top+dr.height*0.5;
+    const sz=p===2?22:32; // ti vs sm width
+    const sh=p===2?30:44;
+    ghost.style.cssText=`position:fixed;left:${hr.left+hr.width/2-sz/2}px;top:${hr.top+hr.height/2-sh/2}px;width:${sz}px;height:${sh}px;z-index:9997;pointer-events:none;transition:none;border-radius:3px;background:var(--felt);border:1px solid rgba(200,160,60,.4);`;
+    document.body.appendChild(ghost);
+    const scale=p===2?0.7:0.85;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      ghost.style.transition='left 0.18s cubic-bezier(0.4,0,0.6,1),top 0.18s cubic-bezier(0.4,0,0.6,1),transform 0.18s,opacity 0.12s 0.1s';
+      ghost.style.left=tx+'px';ghost.style.top=ty+'px';
+      ghost.style.transform=`scale(${scale}) rotate(${(Math.random()-0.5)*10}deg)`;
+      ghost.style.opacity='0';
+    }));
+    setTimeout(()=>{ghost.remove();done();},210);
+  },
+
+  // D2: 胡牌碎紙花特效
+  _burstConfetti(){
+    const colors=['#d4a843','#2ecc71','#e74c3c','#3498db','#9b59b6','#f39c12','#fff'];
+    const cx=window.innerWidth/2,cy=window.innerHeight*0.35;
+    for(let i=0;i<60;i++){
+      const el=document.createElement('div');el.className='confetti-particle';
+      const angle=Math.random()*Math.PI*2;
+      const speed=120+Math.random()*280;
+      el.style.cssText=`
+        left:${cx}px;top:${cy}px;
+        width:${5+Math.random()*7}px;height:${3+Math.random()*5}px;
+        background:${colors[~~(Math.random()*colors.length)]};
+        --dy:${(Math.sin(angle)*speed+200).toFixed(0)}px;
+        --dx:${(Math.cos(angle)*speed).toFixed(0)}px;
+        --rot:${-180+Math.random()*360}deg;
+        --dur:${(1.2+Math.random()*1.2).toFixed(2)}s;
+        --del:${(Math.random()*0.25).toFixed(2)}s;
+      `;
+      document.body.appendChild(el);
+      setTimeout(()=>el.remove(),(2.2+Math.random()*0.5)*1000);
+    }
+  },
+
+  // D3: 流局翻牌動畫（依序顯示各家手牌）
+  _revealDrawHands(callback){
+    // Already shown in the draw overlay; add sequential fade-in
+    const secs=document.querySelectorAll('#whands .whs');
+    secs.forEach((sec,i)=>{
+      sec.style.opacity='0';sec.style.transform='translateY(8px)';sec.style.transition='none';
+      setTimeout(()=>{
+        sec.style.transition='opacity 0.3s,transform 0.3s';
+        sec.style.opacity='1';sec.style.transform='none';
+      },i*280);
+    });
+    if(callback)setTimeout(callback,secs.length*280+200);
+  },
+
+  // D4: AI思考中 — 名牌閃爍
+  _setAIThinking(p,on){
+    const pb=document.getElementById(`pbar${p}`);
+    if(!pb)return;
+    if(on)pb.classList.add('ai-thinking');
+    else pb.classList.remove('ai-thinking');
+  },
+
+  // D5: 棄牌落地彈跳 — 對最新進入棄牌區的牌加動畫
+  _animLastDiscard(dcId){
+    const dc=document.getElementById(dcId);if(!dc)return;
+    const tiles=dc.querySelectorAll('.t');if(!tiles.length)return;
+    const last=tiles[tiles.length-1];
+    last.classList.remove('disc-land');
+    void last.offsetWidth; // force reflow
+    last.classList.add('disc-land');
+    setTimeout(()=>last.classList.remove('disc-land'),320);
   },
 
   doDiscard(p,tileId){
@@ -4380,12 +4663,23 @@ const Game={
         // Show waiting indicator while AI resolves reactions
         const wd=document.getElementById('wait-dots');
         if(wd){wd.classList.add('show');document.getElementById('action-overlay').classList.add('active');}
-        this.render();this.checkReactions(tile,p);
+        this.render();
+        // D5: 棄牌落地彈跳
+        setTimeout(()=>this._animLastDiscard('dc0'),0);
+        this.checkReactions(tile,p);
       });
     } else {
-      this.render();
-      this.checkReactions(tile,p);
+      // D1: 對手打牌動畫
+      this._setAIThinking(p,false);
+      this._flyOpponent(p,tileId,()=>{
+        this.render();
+        // D5: 棄牌落地彈跳
+        setTimeout(()=>this._animLastDiscard(`dc${p}`),0);
+        this.checkReactions(tile,p);
+      });
     }
+    // 局中存檔
+    setTimeout(()=>this.saveGame(),0);
   },
 
   checkReactions(tile,discP){
@@ -4523,8 +4817,31 @@ const Game={
     }
     ov.classList.add('active');
 
-    const tt=this.settings.time||0;
-    if(tt>0)this._meldTimeout=setTimeout(()=>{this.hideMeldPreview();this.clearBtns();this.nextTurn();},tt*1000);
+    // C4: 鳴牌倒數 — 固定 10 秒自動跳過（含視覺進度條）
+    this._startMeldCountdown(10);
+  },
+
+  // C4: 鳴牌倒數計時器（帶進度條）
+  _startMeldCountdown(sec){
+    clearInterval(this._meldCountInterval);clearTimeout(this._meldTimeout);
+    let bar=document.getElementById('meld-timer-bar');
+    if(!bar){
+      bar=document.createElement('div');bar.id='meld-timer-bar';
+      bar.style.cssText='position:absolute;bottom:0;left:0;height:3px;background:var(--gold);transition:width 1s linear;border-radius:0 0 3px 3px;';
+      document.getElementById('action-overlay').appendChild(bar);
+    }
+    bar.style.transition='none';bar.style.width='100%';
+    let rem=sec;
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      bar.style.transition=`width ${sec}s linear`;bar.style.width='0%';
+    }));
+    const skip=()=>{
+      clearInterval(this._meldCountInterval);
+      if(bar)bar.style.width='0%';
+      this.hideMeldPreview();this.clearBtns();this.nextTurn();
+    };
+    this._meldCountInterval=setInterval(()=>{rem--;if(rem<=0){clearInterval(this._meldCountInterval);skip();}},1000);
+    this._meldTimeout=setTimeout(skip,sec*1000);
   },
 
   // Apply .meld-candidate class + hover/click handlers to hand tiles
@@ -4718,6 +5035,8 @@ const Game={
     const lbl={pong:'碰',chi:'吃',kong:'槓'}[type]||type;
     this.log(`${s.names[p]} ${lbl} ${disc.n}`);
     this.ann(type);
+    // E4: AI 台詞
+    if(s.ai.includes(p))this._aiQuip(p,type==='pong'?'pong':type==='chi'?'chi':'kong');
     this.render();
     if(type==='kong'){setTimeout(()=>this.doTurn(),this.spd('meld'));return;}
     if(s.ai.includes(p)){const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));setTimeout(()=>this.doDiscard(p,d.id),_dMs);}
@@ -4795,6 +5114,10 @@ const Game={
     let tai=this.settings.base||1;
     const bon=[`底 ${tai}台`];
     const add=(n,label)=>{tai+=n;bon.push(label);};
+    // E3: 計分模式 — simple=基本台型, standard=+役牌/七對, expert=+清龍/大四喜/本場
+    const mode=this._scoringMode||'standard';
+    const hasMed=mode==='standard'||mode==='expert'; // 役牌、七對、幺九刻 等
+    const hasAdv=mode==='expert'; // 清龍、大四喜/小四喜、三槓子、本場
 
     // ① 花牌 +1 per flower
     if(fc>0) add(fc,`花牌 ${fc}台`);
@@ -4874,24 +5197,68 @@ const Game={
       if(numSuits.size===1 && !hasHonor) add(3,'清一色 +3台');
 
       // ⑬ 幺九刻 +1 each (triplet containing 1, 9, or honor)
-      let yj=0;
-      triplets.forEach(g=>{
-        const t=g.tiles&&g.tiles[0];
-        if(t&&(t.s==='honor'||t.v===1||t.v===9)) yj++;
-      });
-      if(yj>0) add(yj,`幺九刻 +${yj}台`);
+      if(hasMed){
+        let yj=0;
+        triplets.forEach(g=>{
+          const t=g.tiles&&g.tiles[0];
+          if(t&&(t.s==='honor'||t.v===1||t.v===9)) yj++;
+        });
+        if(yj>0) add(yj,`幺九刻 +${yj}台`);
+      }
+
+      // ⑭ 役牌：圈風刻子 +1 / 自風刻子 +1
+      if(hasMed){
+        const windNames=['東','南','西','北'];
+        const roundWindV=windNames.indexOf(s.roundWind||'東');
+        const seatWindV=(p-(s.dealer??0)+4)%4;
+        triplets.forEach(g=>{
+          const t=g.tiles&&g.tiles[0];
+          if(!t||t.s!=='honor'||t.v>3)return;
+          if(t.v===roundWindV) add(1,`圈風（${windNames[t.v]}）刻子 +1台`);
+          if(t.v===seatWindV)  add(1,`自風（${windNames[t.v]}）刻子 +1台`);
+        });
+      }
+
+      // ⑮ 三槓子 +3 (three kongs in allGroups)
+      if(hasAdv){
+        const kongCount=allGroups.filter(g=>g.type==='kong').length;
+        if(kongCount>=3) add(3,`三槓子 +3台`);
+      }
+
+      // ⑯ 清龍 +3 (sequences 1-2-3, 4-5-6, 7-8-9 same suit across all groups)
+      if(hasAdv){
+        for(const suit of ['man','pin','sou']){
+          const suitSeqs=allGroups.filter(g=>isSeq(g)&&g.tiles&&g.tiles[0].s===suit);
+          const hasBlock=(mn)=>suitSeqs.some(g=>{
+            const vs=g.tiles.map(t=>t.v).sort((a,b)=>a-b);
+            return vs[0]===mn&&vs[1]===mn+1&&vs[2]===mn+2;
+          });
+          if(hasBlock(1)&&hasBlock(4)&&hasBlock(7)){add(3,'清龍 +3台');break;}
+        }
+      }
+
+      // ⑰ 大四喜 +6 / 小四喜 +3
+      if(hasAdv){
+        const windTripVals=new Set(
+          triplets.filter(g=>g.tiles&&g.tiles[0]&&g.tiles[0].s==='honor'&&g.tiles[0].v<=3)
+                  .map(g=>g.tiles[0].v)
+        );
+        const pairIsWind=pair&&pair.s==='honor'&&pair.v<=3;
+        if(windTripVals.size===4)                          add(6,'大四喜 +6台');
+        else if(windTripVals.size===3&&pairIsWind)         add(3,'小四喜 +3台');
+      }
     }
 
-    // ⑭ 莊家加台 +1
+    // ⑱ 莊家加台 +1
     if(p === (s.dealer??0)) add(1,'莊家 +1台');
 
-    // ⑮ 海底撈月 +1 (self-draw on very last tile from deck)
+    // ⑲ 海底撈月 +1 (self-draw on very last tile from deck)
     if(selfDraw && s.deck.length === 0) add(1,'海底撈月 +1台');
 
-    // ⑯ 河底撈魚 +1 (win on discard when deck is empty)
+    // ⑳ 河底撈魚 +1 (win on discard when deck is empty)
     if(!selfDraw && s.deck.length === 0) add(1,'河底撈魚 +1台');
 
-    // ⑰ 槓上開花 +2 (self-draw win on supplemental tile after kong)
+    // ㉑ 槓上開花 +2 (self-draw win on supplemental tile after kong)
     if(selfDraw && s._kongWin) add(2,'槓上開花 +2台');
 
     // ⑱ 十三么 +13 (thirteen orphans)
@@ -4917,7 +5284,18 @@ const Game={
       s.money[payer]-=total*3;
       s.money[p]+=total*3;
     }
-    s.winData={p,selfDraw,tai,bon,perTai,total,payer:selfDraw?-1:s.lastP};
+    // 本場加計：每本場 100 籌，各人額外支付（僅 expert 模式）
+    const honba=(hasAdv)?s.honba||0:0;
+    if(honba>0){
+      const honbaPay=honba*100;
+      if(selfDraw){
+        for(let i=0;i<4;i++){if(i!==p){s.money[i]-=honbaPay;s.money[p]+=honbaPay;}}
+      } else {
+        s.money[s.lastP]-=honbaPay*3;s.money[p]+=honbaPay*3;
+      }
+      bon.push(`本場 ${honba}本 ×100`);
+    }
+    s.winData={p,selfDraw,tai,bon,perTai,total,payer:selfDraw?-1:s.lastP,honba};
     this.winStats[p]=(this.winStats[p]||0)+1;this.rounds++;
     this.log(`🎉 ${s.names[p]} 胡牌！${tai}台`);
     // 記錄統計
@@ -4932,6 +5310,10 @@ const Game={
     // Voice: 自摸 announcement
     if(selfDraw) setTimeout(()=>Snd.say('自摸'),600);
 
+    this.clearSave();
+    if(p===0||selfDraw)setTimeout(()=>this._burstConfetti(),600); // D2
+    // E4: AI 胡牌台詞
+    if(s.ai.includes(p))this._aiQuip(p,'win');
     this.ann('win');Snd.win();
     this.render();
     setTimeout(()=>this.showWin(),1400);
@@ -5078,7 +5460,9 @@ const Game={
     // Info box (top-right)
     const roundLabel=s.roundNum?`${s.roundWind||'東'}${s.roundNum%4||4}局`:(s.roundWind||'東')+'風';
     document.getElementById('ib-wind').textContent=roundLabel;
-    document.getElementById('ib-deck').textContent=s.deck.length;
+    const deckEl=document.getElementById('ib-deck');
+    deckEl.textContent=s.deck.length;
+    deckEl.className=s.deck.length<=4?'deck-crit':s.deck.length<=10?'deck-low':'';
     if(s.dice) document.getElementById('ib-dice').textContent=nums[s.dice[0]]+nums[s.dice[1]];
     const isMe=s.turn===0&&s.phase==='playing';
     document.getElementById('ib-turn').textContent=isMe?'👉 你的回合':`⟳ ${s.names[s.turn]} 出牌中`;
@@ -5099,7 +5483,7 @@ const Game={
       return`<div class="ib-sc"><span class="sn">${n.slice(0,5)}</span><span class="sm${m<0?' neg':''}">${m>=0?'$':'-$'}${Math.abs(m).toLocaleString()}${w?' 🏆'+w:''}</span></div>`;
     }).join('');
     // Center panel
-    document.getElementById('rwind').textContent=(s.roundWind||'東')+'風';
+    document.getElementById('rwind').textContent=(s.roundWind||'東')+'風'+(s.honba>0?` ${s.honba}本`:'');
     if(s.dice) document.getElementById('cdice').textContent=nums[s.dice[0]]+nums[s.dice[1]];
     // Compass score badges: p2=N, p3=W, p0=S(me), p1=E
     [{id:'ps-N',p:2},{id:'ps-S',p:0},{id:'ps-W',p:3},{id:'ps-E',p:1}].forEach(({id,p})=>{
@@ -5176,18 +5560,16 @@ const Game={
       });
       // Hand + discards
       if(i===0){
-        // My hand
-        const ht=document.getElementById('ht0');ht.innerHTML='';
+        // F1: key-based diffing for p0 hand — only rebuild if tile set changed
+        const ht=document.getElementById('ht0');
         const drawnId=s.drawnId;
-        const normal=drawnId?s.hands[0].filter(t=>t.id!==drawnId):s.hands[0];
-        const drawn=drawnId?s.hands[0].find(t=>t.id===drawnId):null;
         const allHandTiles=s.hands[0];
         const myMeldCount=s.melds[0].length;
         const expectedTenpaiCount=16-myMeldCount*3;
+        const newIds=allHandTiles.map(t=>t.id+':'+(drawnId===t.id?'d':'')).join(',');
         const attachHover=(el,tile)=>{
           el.addEventListener('mouseenter',()=>{
             if(s.turn!==0||s.phase!=='playing')return;
-            // Simulate discarding this tile (only meaningful if hand size matches)
             const remaining=allHandTiles.filter(t=>t.id!==tile.id&&!t.fl);
             if(remaining.length!==expectedTenpaiCount)return;
             const waiting=(typeof tenpaiTiles==='function')?tenpaiTiles(remaining):null;
@@ -5195,15 +5577,21 @@ const Game={
           });
           el.addEventListener('mouseleave',()=>this._hideDiscardPreview());
         };
-        normal.forEach(t=>{
-          const e=mkTile(t,'',()=>this.onTile(t));
-          attachHover(e,t);
-          ht.appendChild(e);
-        });
-        if(drawn){
-          const e=mkTile(drawn,'drawn',()=>this.onTile(drawn));
-          attachHover(e,drawn);
-          ht.appendChild(e);
+        if(ht.dataset.tileKey!==newIds){
+          ht.dataset.tileKey=newIds;
+          ht.innerHTML=''; // F3: old elements removed → listeners GC'd
+          allHandTiles.forEach(t=>{
+            const cls=(drawnId&&t.id===drawnId)?'drawn':'';
+            const e=mkTile(t,cls,()=>this.onTile(t));
+            attachHover(e,t);
+            ht.appendChild(e);
+          });
+        } else {
+          // Only update drawn highlight without full rebuild
+          ht.querySelectorAll('.t').forEach(el=>{
+            const tid=+el.dataset.id;
+            el.classList.toggle('drawn',!!(drawnId&&tid===drawnId));
+          });
         }
         // Re-apply meld highlight if active
         if(this._meldHighlightIds) setTimeout(()=>this._applyMeldHighlight(),0);
@@ -5254,6 +5642,22 @@ const Game={
     const ap=document.getElementById('ap');
     const hasBtns=ap.querySelectorAll('.ab:not(.hint)').length>0;
     if(hasBtns)return;
+    // C5: 打牌確認（雙擊模式）— 首次點擊選中，再次點擊打出
+    const ht0=document.getElementById('ht0');
+    const already=ht0.querySelector('.t.sel');
+    const clickedEl=ht0.querySelector(`.t[data-id="${tile.id}"]`);
+    if(this.settings.confirmDiscard!==false){
+      // 有已選中的牌：若點的是同一張 → 打出，否則換選
+      if(already&&already===clickedEl){
+        ht0.querySelectorAll('.t').forEach(e=>e.classList.remove('sel'));
+        this.clearBtns();this.sel=tile.id;
+        this.doDiscard(0,tile.id);
+        return;
+      }
+      ht0.querySelectorAll('.t').forEach(e=>e.classList.remove('sel'));
+      if(clickedEl)clickedEl.classList.add('sel');
+      return;
+    }
     this.clearBtns();this.sel=tile.id;
     this.doDiscard(0,tile.id);
   },
@@ -5310,6 +5714,12 @@ const Game={
   },
   clearBtns(){
     clearTimeout(this._tipLeaveTimer); this._tipLeaveTimer=null; // ① 防止殘留 timer 干擾
+    // E1: 隱藏提示按鈕
+    const hintBtn=document.getElementById('hint-btn');if(hintBtn)hintBtn.style.display='none';
+    // C4: 清除鳴牌倒數
+    clearInterval(this._meldCountInterval);this._meldCountInterval=null;
+    clearTimeout(this._meldTimeout);this._meldTimeout=null;
+    const mtb=document.getElementById('meld-timer-bar');if(mtb)mtb.style.width='0%';
     // Hide waiting indicator
     document.getElementById('wait-dots')?.classList.remove('show');
     this.hideChiPicker();
@@ -5426,17 +5836,30 @@ const Game={
           }
           wh.appendChild(sec);
         });
-        // Show non-tenpai players briefly
+        // Show non-tenpai players' hands
         if(noTenpaiPs.length){
-          const noRow=document.createElement('div');
-          noRow.style.cssText='font-size:.7rem;color:rgba(220,80,60,.7);text-align:center;margin-top:4px';
-          noRow.textContent=`✗ 無聽：${noTenpaiPs.map(i=>s.names[i]).join('、')}`;
-          wh.appendChild(noRow);
+          noTenpaiPs.forEach(pi=>{
+            const sec=document.createElement('div');sec.className='whs';
+            const lbl=document.createElement('div');lbl.className='whl';
+            lbl.style.cssText='color:rgba(220,80,60,.65)';
+            lbl.textContent=`✗ ${s.names[pi]} — 無聽`;sec.appendChild(lbl);
+            const row=document.createElement('div');row.className='whr';
+            row.style.opacity='0.55';
+            s.melds[pi].forEach(m=>{
+              m.tiles.forEach(t=>{const e=mkTile(t,'sm');e.style.outline='2px solid #3498db';e.style.cursor='default';row.appendChild(e);});
+              const sp=document.createElement('span');sp.style.width='4px';row.appendChild(sp);
+            });
+            s.hands[pi].filter(x=>!x.fl).forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
+            sec.appendChild(row);wh.appendChild(sec);
+          });
         }
       }
       // Record stats for draw
       Stats.record(false,0,0);
-      ov.style.display='flex';return;
+      ov.style.display='flex';
+      // D3: 流局翻牌依序顯示
+      requestAnimationFrame(()=>this._revealDrawHands());
+      return;
     }
     const wd=s.winData;if(!wd)return;
     const pn=s.names[wd.p];const isMe=wd.p===0;
@@ -5507,12 +5930,15 @@ const Game={
   // Peek at board from win overlay
   peekBoard(){
     const ov=document.getElementById('wov');
+    const retBtn=document.getElementById('peek-return-btn');
     if(!ov)return;
     const isHidden=ov.style.display==='none';
     if(isHidden){
       ov.style.display='flex';
+      if(retBtn)retBtn.style.display='none';
     } else {
       ov.style.display='none';
+      if(retBtn)retBtn.style.display='block';
     }
   },
 
@@ -5735,19 +6161,23 @@ const Game={
     const prevSt=this.st;
     const prevDealer=prevSt?.dealer??0;
     const winner=prevSt?.winData?.p??-1;
-    const nextDealer=winner===prevDealer ? prevDealer : (prevDealer+1)%4;
+    const isDraw=prevSt?.winData===undefined||prevSt?.winData?.p===-1;
+    const dealerRepeats=winner===prevDealer||isDraw;
+    const nextDealer=dealerRepeats ? prevDealer : (prevDealer+1)%4;
+    // 本場點：連莊+1，換莊歸零
+    const nextHonba=dealerRepeats ? (prevSt?.honba||0)+1 : 0;
     // Round progression: East 1-4 → South 1-4
     const prevRound=prevSt?.roundNum||1;
-    const nextRound=prevRound+1;
+    const nextRound=dealerRepeats ? prevRound : prevRound+1;
     const winds=['東','東','東','東','南','南','南','南','西','西','西','西','北','北','北','北'];
     const nextWind=winds[Math.min(nextRound-1,winds.length-1)]||'東';
     // After maxRounds, show match summary
     const maxRounds=this.settings?.maxRounds||4;
-    if(prevRound>=maxRounds){
+    if(prevRound>=maxRounds&&!dealerRepeats){
       this._showMatchSummary();
       return;
     }
-    this.initRound(prevSt.names,prevSt.ai,null,nextDealer,nextRound,nextWind);
+    this.initRound(prevSt.names,prevSt.ai,null,nextDealer,nextRound,nextWind,nextHonba);
     this.render();
     updateTblVars();setTimeout(()=>this.showDice(),200);
     // v1.5: restart BGM for new round
@@ -5803,6 +6233,46 @@ const Game={
     document.getElementById('lobby').style.display='flex';
     speechSynthesis&&speechSynthesis.cancel();
     Bgm.stop();
+    this.clearSave();
+  },
+
+  // ── C3: 局中存檔 ─────────────────────────────────────────
+  _saveKey:'mj_gstate_v1',
+  saveGame(){
+    if(!this.st||this.st.phase!=='playing')return;
+    try{
+      const snap={
+        st:this.st,
+        settings:this.settings,
+        riichiMode:this.riichiMode,
+        riichiWaiting:this.riichiWaiting,
+        winStats:this.winStats,
+        rounds:this.rounds,
+        ts:Date.now(),
+      };
+      localStorage.setItem(this._saveKey,JSON.stringify(snap));
+    }catch(e){}
+  },
+  loadSave(){
+    try{
+      const raw=localStorage.getItem(this._saveKey);
+      if(!raw)return null;
+      const snap=JSON.parse(raw);
+      // Only restore if less than 12 hours old
+      if(Date.now()-snap.ts>12*3600*1000){localStorage.removeItem(this._saveKey);return null;}
+      return snap;
+    }catch(e){return null;}
+  },
+  clearSave(){
+    try{localStorage.removeItem(this._saveKey);}catch(e){}
+  },
+  restoreGame(snap){
+    this.st=snap.st;
+    this.settings={...this.settings,...snap.settings};
+    this.riichiMode=snap.riichiMode||false;
+    this.riichiWaiting=snap.riichiWaiting||null;
+    this.winStats=snap.winStats||[0,0,0,0];
+    this.rounds=snap.rounds||0;
   },
 
   // ── TENPAI PANEL ─────────────────────────────────────
@@ -6003,6 +6473,15 @@ const Game={
         el.classList.add(cls);
         const dot=document.createElement('div');dot.className='danger-dot';
         el.style.position='relative';
+        // Build tooltip: list which opponents threaten this tile
+        const threats=[];
+        for(let pp=1;pp<4;pp++){
+          let hit=false;
+          (s.melds[pp]||[]).forEach(meld=>meld.tiles.forEach(mt=>{if(mt.s===tile.s&&mt.s!=='honor'&&Math.abs(mt.v-tile.v)<=2)hit=true;}));
+          if(s.tenpai[pp]&&!s.discards[pp].some(d=>d.s===tile.s&&d.v===tile.v))hit=true;
+          if(hit)threats.push(s.names[pp]);
+        }
+        dot.title=threats.length?`危險：${threats.join('、')}`:''
         el.appendChild(dot);
       }
     });
@@ -6036,7 +6515,7 @@ const Game={
 };
 
 // Load persistent stats on startup
-Stats.load(); Stats.render();
+Stats.load(); Stats.render(); Stats.renderHistory();
 
 // Restore saved theme
 (function(){
@@ -6055,6 +6534,8 @@ Stats.load(); Stats.render();
   Snd.setTheme(sndTheme);
   const ssel=document.getElementById('snd-theme-sel');
   if(ssel)ssel.value=sndTheme;
+  const svolSaved=localStorage.getItem('mj_svol_v1');
+  if(svolSaved){const svolEl=document.getElementById('svol');if(svolEl){svolEl.value=svolSaved;document.getElementById('svol-val').textContent=svolSaved+'%';Snd.volume=+svolSaved/100;}}
 
   // Restore BGM settings
   const bgmEnabled=localStorage.getItem('mj_bgm_v1')==='1';
@@ -6077,6 +6558,25 @@ Stats.load(); Stats.render();
 
   // Restore assist settings
   Game.loadAssist();
+
+  // E3: 計分模式還原
+  const smSaved=localStorage.getItem('mj_score_mode_v1')||'standard';
+  Game._scoringMode=smSaved;
+  document.querySelectorAll('.score-mode-btn').forEach(b=>{
+    b.classList.toggle('active',b.dataset.mode===smSaved);
+  });
+
+  // C5: 確認打牌設定
+  const cdEl=document.getElementById('confirm-discard-toggle');
+  const cdSaved=localStorage.getItem('mj_confirm_v1');
+  const cdOn=cdSaved===null?true:cdSaved==='1';
+  if(cdEl)cdEl.checked=cdOn;
+  Game.settings.confirmDiscard=cdOn;
+
+  // C3: 檢查是否有中斷的存檔
+  if(Game.loadSave()){
+    document.getElementById('resume-bar').style.display='block';
+  }
 })();
 
 // ── v1.5: Keyboard shortcut for sort (S key) ──────────────
@@ -6084,6 +6584,23 @@ document.addEventListener('keydown',e=>{
   if(e.key==='s'||e.key==='S'){
     if(Game._assist&&Game._assist.sort&&Game.st&&Game.st.turn===0){
       Game.sortHand();
+    }
+  }
+});
+
+// ── ESC → close win overlay (or return from peek) ─────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const wov=document.getElementById('wov');
+    const retBtn=document.getElementById('peek-return-btn');
+    if(wov&&wov.style.display==='flex'){
+      // Overlay visible → hide it (peek mode)
+      wov.style.display='none';
+      if(retBtn)retBtn.style.display='block';
+    } else if(retBtn&&retBtn.style.display==='block'){
+      // Peek mode → restore overlay
+      if(wov)wov.style.display='flex';
+      retBtn.style.display='none';
     }
   }
 });
