@@ -1381,6 +1381,26 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.45);
 }
 #pause-btn:hover { background:rgba(212,168,67,.18); }
+
+/* Auto-play toggle button */
+#autoplay-btn {
+  position:absolute; top:10px; right:60px; z-index:300;
+  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
+  border:1.5px solid rgba(180,130,55,.4);
+  border-radius:8px; padding:6px 14px; color:rgba(212,168,67,.6);
+  font-family:'Noto Serif TC'; font-size:.82rem; font-weight:700;
+  cursor:pointer; backdrop-filter:blur(6px); display:none;
+  transition:all .2s; box-shadow:0 2px 8px rgba(0,0,0,.45);
+  letter-spacing:.04em;
+}
+#autoplay-btn:hover { border-color:rgba(46,204,113,.6); color:rgba(46,204,113,.8); }
+#autoplay-btn.on {
+  background:linear-gradient(160deg,rgba(4,30,12,.95),rgba(8,40,16,.92));
+  border-color:rgba(46,204,113,.8); color:#2ecc71;
+  box-shadow:0 0 12px rgba(46,204,113,.3), 0 2px 8px rgba(0,0,0,.45);
+  animation:apulse 2s ease-in-out infinite;
+}
+@keyframes apulse{0%,100%{box-shadow:0 0 8px rgba(46,204,113,.3),0 2px 8px rgba(0,0,0,.45)}50%{box-shadow:0 0 18px rgba(46,204,113,.55),0 2px 8px rgba(0,0,0,.45)}}
 #pause-overlay {
   display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
   backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
@@ -2935,6 +2955,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 <!-- UI overlays inside tbl (scale with board) -->
   <button id="pause-btn" onclick="Game.togglePause()">⏸ 暫停</button>
+  <button id="autoplay-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
 
   <div id="speed-panel">
     <span>AI速度</span>
@@ -3936,6 +3957,7 @@ const Game={
   timer:null,timerSec:0,winStats:[0,0,0,0],rounds:0,
   settings:{},paused:false,pausedCb:null,
   riichiMode:false,riichiTile:null,riichiWaiting:null,_tenpaiWaiting:null,
+  autoPlay:false,
   aiSpeed:'normal',
 
   // AI speed config: {draw, discard, meld, reaction}
@@ -4012,6 +4034,7 @@ const Game={
       gEl.classList.add('show');
       setTimeout(updateTblVars, 50);
       document.getElementById('pause-btn').style.display='block';
+      document.getElementById('autoplay-btn').style.display='block';
       document.getElementById('speed-panel').style.display='flex';
       this._initDustParticles();
       if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
@@ -4464,7 +4487,7 @@ const Game={
     const hintBtn=document.getElementById('hint-btn');
     if(hintBtn)hintBtn.style.display=(p===0)?'flex':'none';
 
-    if(isAI){
+    if(isAI || (p===0 && this.autoPlay)){
       const winNow=canWin(s.hands[p].filter(x=>!x.fl));
       if(this.paused){this.pausedCb=()=>this.doAITurn(p,winNow);return;}
       const _drawMs=this.spd('draw')+~~(Math.random()*(this.spd('draw')*.3));
@@ -4768,6 +4791,22 @@ const Game={
     const s=this.st;
     // offerMeld should only be called for human player (p=0); guard anyway
     if(p!==0)return;
+
+    // Auto-play: let AI decide the meld action
+    if(this.autoPlay){
+      const dec=AI.meld(opts,s.hands[0],s.melds[0],s.aiStyle?.[0]||'balanced');
+      const delay=this.spd('reaction');
+      if(dec){
+        const mTiles=opts.find(o=>o.type===dec.type)?.tiles||[];
+        if(dec.type==='win'){setTimeout(()=>this.doWin(0,false),delay);return;}
+        if(dec.type==='pong'){setTimeout(()=>this.doMeld(0,'pong',mTiles),delay);return;}
+        if(dec.type==='kong'){setTimeout(()=>this.doMeld(0,'kong',mTiles),delay);return;}
+        if(dec.type==='chi'){setTimeout(()=>this.doMeld(0,'chi',mTiles),delay);return;}
+      }
+      // AI decided to skip
+      setTimeout(()=>this.nextTurn(),delay);
+      return;
+    }
 
     // ── Human player: highlight candidate tiles, minimal buttons ──
     this.clearBtns();
@@ -6038,6 +6077,30 @@ const Game={
     }
   },
 
+  toggleAutoPlay(){
+    this.autoPlay=!this.autoPlay;
+    const btn=document.getElementById('autoplay-btn');
+    if(this.autoPlay){
+      btn.classList.add('on');
+      btn.textContent='🤖 自動 ON';
+      this.toast('自動打牌已開啟，AI 將代替你出牌',2000);
+      // If it's currently p0's turn, trigger AI immediately
+      const s=this.st;
+      if(s&&s.turn===0){
+        this.clearBtns();
+        document.getElementById('ht0').classList.remove('my-turn','meld-alert');
+        this.stopTimer();
+        const winNow=canWin(s.hands[0].filter(x=>!x.fl));
+        const delay=this.spd('draw')+~~(Math.random()*(this.spd('draw')*.3));
+        setTimeout(()=>this.doAITurn(0,winNow),delay);
+      }
+    } else {
+      btn.classList.remove('on');
+      btn.textContent='🤖 自動';
+      this.toast('自動打牌已關閉',1500);
+    }
+  },
+
   // Find which tiles player can discard to enter tenpai
   findRiichiDiscards(hand,melds){
     const candidates=[];
@@ -6281,6 +6344,9 @@ const Game={
     document.getElementById('match-ov').style.display='none';
     document.getElementById('game').classList.remove('show');
     document.getElementById('speed-panel').style.display='none';
+    document.getElementById('autoplay-btn').style.display='none';
+    this.autoPlay=false;
+    document.getElementById('autoplay-btn').classList.remove('on');
     document.getElementById('lobby').style.display='flex';
     speechSynthesis&&speechSynthesis.cancel();
     Bgm.stop();
