@@ -436,6 +436,7 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
   background:linear-gradient(160deg,rgba(12,6,2,.97),rgba(22,11,4,.95));
   border:2px solid rgba(180,130,55,.6);
   border-radius:14px;padding:18px 24px;width:400px;max-width:96vw;
+  max-height:calc(100vh - 24px);overflow-y:auto;
   text-align:center;
   box-shadow:0 0 80px rgba(212,168,67,.2),0 0 0 6px rgba(60,30,8,.5),inset 0 1px 0 rgba(255,200,100,.08);
 }
@@ -604,23 +605,29 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   align-content: flex-start !important;
   justify-content: center !important;
 }
-#pool #dc3 { /* left discards (p3) — 4 columns, rows of 41px, top→down */
+#pool #dc3 { /* left discards (p3) — 4 columns, rows of 48px, top→down */
   top: 50%; left: 5px; transform: translateY(-50%);
-  width: 128px; height: 210px;
-  grid-template-columns: repeat(4, 28px) !important;
-  grid-auto-rows: 41px !important;
+  width: 150px; height: 210px;
+  padding: 4px !important;
+  grid-template-columns: repeat(4, 34px) !important;
+  grid-auto-rows: 48px !important;
   grid-auto-flow: row !important;
   align-content: flex-start !important;
   justify-content: flex-start !important;
 }
-#pool #dc1 { /* right discards (p1) — 4 columns, rows of 41px, top→down */
+#pool #dc1 { /* right discards (p1) — 4 columns, rows of 48px, top→down */
   top: 50%; right: 5px; transform: translateY(-50%);
-  width: 128px; height: 210px;
-  grid-template-columns: repeat(4, 28px) !important;
-  grid-auto-rows: 41px !important;
+  width: 150px; height: 210px;
+  padding: 4px !important;
+  grid-template-columns: repeat(4, 34px) !important;
+  grid-auto-rows: 48px !important;
   grid-auto-flow: row !important;
   align-content: flex-start !important;
   justify-content: flex-end !important;
+}
+/* Side discard tile size override (larger than dc0/dc2 for readability) */
+#pool #dc1 .t, #pool #dc3 .t {
+  width: 34px !important; height: 46px !important;
 }
 /* ── Compass score badges: 4 player scores at N/S/E/W of the pool ── */
 .pool-score {
@@ -1566,11 +1573,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #speed-panel {
   position:absolute; top:10px; left:10px;
   z-index:310; display:none; align-items:center; gap:6px;
-  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
-  border:1.5px solid rgba(180,130,55,.4);
-  border-radius:9px; padding:5px 13px; backdrop-filter:blur(6px);
-  box-shadow:0 3px 12px rgba(0,0,0,.5);
+  background:linear-gradient(160deg,rgba(22,11,3,.88),rgba(38,20,6,.82));
+  border:1.5px solid rgba(180,130,55,.3);
+  border-radius:9px; padding:4px 10px; backdrop-filter:blur(6px);
+  box-shadow:0 3px 12px rgba(0,0,0,.4);
+  opacity:.4; transition:opacity .25s;
 }
+#speed-panel:hover { opacity:1; }
 #speed-panel span {
   font-family:'Noto Serif TC'; font-size:.72rem; color:rgba(212,168,67,.6);
   white-space:nowrap; margin-right:2px;
@@ -2658,11 +2667,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="bgm-row">
       <label for="bgm-toggle">🎵 背景音樂</label>
       <label class="bgm-toggle-sw">
-        <input type="checkbox" id="bgm-toggle" onchange="Bgm.setEnabled(this.checked)">
+        <input type="checkbox" id="bgm-toggle" onchange="Bgm.setEnabled(this.checked);(function(on){var r=document.getElementById('bgm-vol-row');if(r){r.style.opacity=on?'1':'.38';r.style.pointerEvents=on?'':'none';}})(this.checked)">
         <span class="bgm-sl"></span>
       </label>
     </div>
-    <div class="bgm-vol-row" style="padding:2px 10px">
+    <div class="bgm-vol-row" id="bgm-vol-row" style="padding:2px 10px;transition:opacity .2s;opacity:.38;pointer-events:none">
       <span>音量</span>
       <input type="range" id="bgm-vol" min="0" max="100" value="30" style="flex:1"
         oninput="Bgm.setVolume(this.value/100)">
@@ -2685,11 +2694,23 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     </div>
 
     <div class="sec-title">🎨 桌面主題</div>
-    <div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px">
-      <button class="theme-btn active" data-theme="" onclick="Game.setTheme('')" title="深海藍" style="background:radial-gradient(#0e1e36,#06111e)"></button>
-      <button class="theme-btn" data-theme="wood" onclick="Game.setTheme('wood')" title="木桌棕" style="background:radial-gradient(#2d1a0e,#160c06)"></button>
-      <button class="theme-btn" data-theme="jade" onclick="Game.setTheme('jade')" title="翠竹綠" style="background:radial-gradient(#0d2a18,#050e09)"></button>
-      <button class="theme-btn" data-theme="noir" onclick="Game.setTheme('noir')" title="暗夜紫" style="background:radial-gradient(#18162a,#08060e)"></button>
+    <div style="display:flex;gap:14px;justify-content:center;margin-bottom:8px">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="theme-btn active" data-theme="" onclick="Game.setTheme('')" title="深海藍" style="background:radial-gradient(#0e1e36,#06111e)"></button>
+        <span style="font-size:.6rem;color:rgba(212,168,67,.55);letter-spacing:.04em">深海藍</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="theme-btn" data-theme="wood" onclick="Game.setTheme('wood')" title="木桌棕" style="background:radial-gradient(#2d1a0e,#160c06)"></button>
+        <span style="font-size:.6rem;color:rgba(212,168,67,.55);letter-spacing:.04em">木桌棕</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="theme-btn" data-theme="jade" onclick="Game.setTheme('jade')" title="翠竹綠" style="background:radial-gradient(#0d2a18,#050e09)"></button>
+        <span style="font-size:.6rem;color:rgba(212,168,67,.55);letter-spacing:.04em">翠竹綠</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+        <button class="theme-btn" data-theme="noir" onclick="Game.setTheme('noir')" title="暗夜紫" style="background:radial-gradient(#18162a,#08060e)"></button>
+        <span style="font-size:.6rem;color:rgba(212,168,67,.55);letter-spacing:.04em">暗夜紫</span>
+      </div>
     </div>
 
     <!-- 連線匹配模式 -->
@@ -2746,11 +2767,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <div class="mode-card-icon">🌅</div>
         <div class="mode-card-title">東風局</div>
         <div class="mode-card-desc">4 局 · 快打</div>
+        <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;letter-spacing:.06em">▶ 點擊開始</div>
       </button>
       <button class="mode-card" onclick="Game.start('south')">
         <div class="mode-card-icon">🌄</div>
         <div class="mode-card-title">南風局</div>
         <div class="mode-card-desc">8 局 · 全場</div>
+        <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;letter-spacing:.06em">▶ 點擊開始</div>
       </button>
     </div>
     <div id="resume-bar" style="display:none;margin-top:14px;padding:10px 16px;background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.4);border-radius:12px;text-align:center">
@@ -2954,8 +2977,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div id="tenpai-banner"></div>
 
   <!-- v1.5 assist panel -->
-  <button id="hint-btn" onclick="Game.showHint()" title="提示最佳打牌（H鍵）" style="position:absolute;left:12px;bottom:192px;z-index:210;background:rgba(8,20,14,.88);border:1.5px solid rgba(93,173,226,.5);border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;color:rgba(93,173,226,.9);display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">💡</button>
-  <button id="assist-toggle" onclick="Game.toggleAssistPanel()" title="輔助面板">⚙</button>
+  <button id="hint-btn" onclick="Game.showHint()" title="💡 打牌建議（H鍵）" style="position:absolute;left:12px;bottom:192px;z-index:210;background:rgba(8,20,14,.88);border:1.5px solid rgba(93,173,226,.5);border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;color:rgba(93,173,226,.9);display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">💡</button>
+  <button id="assist-toggle" onclick="Game.toggleAssistPanel()" title="分析面板（向聽數／危險牌／牌追蹤）">📊</button>
   <div id="assist-panel">
     <div class="assist-row">
       <span>向聽數顯示</span>
@@ -4800,13 +4823,41 @@ const Game={
     this._candidateDisc=tile;
     setTimeout(()=>this._applyCandidateHighlights(),0);
 
-    // Show only 胡 + 跳過 as buttons
+    // Show 胡 / 碰 / 吃 / 槓 / 跳過 as explicit buttons
     const ap=document.getElementById('ap');
     const ov=document.getElementById('action-overlay');
     if(winOpt){
       const b=document.createElement('button');b.className='ab aw';b.textContent='胡！';
       b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
         document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,s.drawnId!=null);};
+      ap.appendChild(b);
+    }
+    if(pongOpt){
+      const b=document.createElement('button');b.className='ab apo';b.textContent='碰';
+      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
+        this.doMeld(0,'pong',pongOpt.tiles);};
+      ap.appendChild(b);
+    }
+    if(chiOpts.length){
+      const b=document.createElement('button');b.className='ab ach';b.textContent='吃';
+      b.onclick=()=>{
+        clearTimeout(this._meldTimeout);this.stopTimer();
+        if(chiOpts.length===1){this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',chiOpts[0].tiles);}
+        // Multi-chi: tiles are highlighted; tooltip click handles selection — just stop the timer
+        else { clearInterval(this._meldCountInterval); }
+      };
+      ap.appendChild(b);
+    }
+    if(kongOpt){
+      const b=document.createElement('button');b.className='ab ako';b.textContent='槓';
+      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
+        this.doMeld(0,'kong',kongOpt.tiles);};
+      ap.appendChild(b);
+    }
+    if(skOpt){
+      const b=document.createElement('button');b.className='ab ako';b.textContent='暗槓';
+      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
+        this.doSelfKong(0,skOpt.tiles);};
       ap.appendChild(b);
     }
     {
@@ -6548,6 +6599,9 @@ Stats.load(); Stats.render(); Stats.renderHistory();
   if(bgmVolEl){bgmVolEl.value=Math.round(bgmVol*100);}
   const bgmVolVal=document.getElementById('bgm-vol-val');
   if(bgmVolVal)bgmVolVal.textContent=Math.round(bgmVol*100)+'%';
+  // Sync bgm-vol-row opacity with toggle state
+  const bgmVolRow=document.getElementById('bgm-vol-row');
+  if(bgmVolRow){bgmVolRow.style.opacity=bgmEnabled?'1':'.38';bgmVolRow.style.pointerEvents=bgmEnabled?'':'none';}
 
   // Restore quick start
   const qs=localStorage.getItem('mj_quick_v1')==='1';
