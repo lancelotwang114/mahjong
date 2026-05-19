@@ -449,9 +449,12 @@ html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#
 #ol-room-section { display:none; }
 #ol-room-section.show { display:block; }
 .ol-room-code {
-  font-family:'Noto Serif TC'; font-size:2rem; font-weight:900;
-  color:var(--gold); letter-spacing:.3em; cursor:pointer;
-  text-shadow:0 0 15px rgba(212,168,67,.4);
+  font-family:monospace; font-size:.68rem; font-weight:600;
+  color:var(--gold); letter-spacing:.02em; cursor:pointer;
+  text-shadow:0 0 8px rgba(212,168,67,.3);
+  word-break:break-all; line-height:1.5;
+  padding:6px 8px; background:rgba(0,0,0,.25); border-radius:6px;
+  border:1px solid rgba(212,168,67,.2);
 }
 .ol-player-slot {
   padding:6px 10px; border-radius:6px; margin:3px 0;
@@ -6688,7 +6691,7 @@ const Online = {
       MahjongNetwork.createRoom();
       this.peers=[{id,name}];
       this._inviteUrl=`${location.origin}${location.pathname}?room=${MahjongNetwork.roomId}&host=${id}`;
-      document.getElementById('ol-room-code').textContent=MahjongNetwork.roomId;
+      document.getElementById('ol-room-code').textContent=this._inviteUrl;
       this._updatePlayerList();
       this._status('等待玩家加入…');
       MahjongNetwork.onPlayerJoin=(peerId,peerName)=>{
@@ -6932,7 +6935,7 @@ const MahjongNetwork = {
   if(p.get('host')&&p.get('room')){
     window.addEventListener('DOMContentLoaded',()=>{
       const codeEl=document.getElementById('ol-join-code');
-      if(codeEl) codeEl.value=p.get('room');
+      if(codeEl) codeEl.value=location.href;
       Lobby.showOnline();
       Online.showJoin();
     });
