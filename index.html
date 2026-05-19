@@ -39,8 +39,8 @@ body {
   background: rgba(8,18,10,0.95);
   border: 2px solid var(--gold);
   border-radius: 18px;
-  padding: 36px;
-  width: 460px; max-width: 100%;
+  padding: 30px 28px;
+  width: 360px; max-width: 100%;
   text-align: center;
   box-shadow: 0 0 80px rgba(212,168,67,0.2), inset 0 0 40px rgba(0,0,0,0.4);
 }
@@ -552,85 +552,33 @@ select.form-input { cursor:pointer; }
 <!-- ===== LOBBY ===== -->
 <div id="lobby">
   <div class="lobby-card">
-    <div class="tile-deco">🀇🀙🀀</div>
     <div class="lobby-title">麻將</div>
     <div class="lobby-subtitle">TAIWAN MAHJONG ONLINE</div>
 
+    <!-- Step 1: Name + create/join -->
     <div id="lobby-main">
-      <div class="form-group">
-        <label class="form-label">你的暱稱</label>
-        <input class="form-input" id="player-name" placeholder="輸入暱稱..." maxlength="8" value="玩家">
+      <input class="form-input" id="player-name" placeholder="暱稱" maxlength="8" value="玩家" style="margin-bottom:12px">
+      <button class="btn btn-primary" onclick="App.createRoom()">🏠 建立房間</button>
+      <div class="divider">或</div>
+      <div style="display:flex;gap:8px;align-items:stretch">
+        <input class="form-input" id="room-code-input" placeholder="房間代碼" maxlength="12" style="text-transform:uppercase;letter-spacing:0.15em">
+        <button class="btn btn-secondary" style="width:auto;padding:10px 16px;white-space:nowrap;margin:0" onclick="App.joinRoom()">加入</button>
       </div>
-      <button class="btn btn-primary" onclick="App.createRoom()">🏠 建立新房間</button>
-      <div class="divider">或加入朋友的房間</div>
-      <div class="form-group">
-        <label class="form-label">房間代碼</label>
-        <input class="form-input" id="room-code-input" placeholder="輸入代碼..." maxlength="12" style="text-transform:uppercase;letter-spacing:0.2em">
-      </div>
-      <button class="btn btn-secondary" onclick="App.joinRoom()">🚪 加入房間</button>
-      <div id="status-msg"></div>
+      <div id="status-msg" style="margin-top:8px;font-size:.82rem"></div>
     </div>
 
-    <!-- Room waiting lobby -->
+    <!-- Step 2: Room waiting -->
     <div id="lobby-room" style="display:none">
-      <div class="room-info">
-        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:4px">房間代碼 — 分享給朋友</div>
-        <div class="room-code" id="room-code-display">------</div>
-        <div id="peer-id-display" style="margin-top:6px;font-size:0.72rem;color:rgba(255,255,255,0.35)"></div>
-        <div class="player-list" id="player-list" style="margin-top:12px"></div>
+      <div style="text-align:center;margin-bottom:14px">
+        <div style="font-size:0.68rem;color:rgba(255,255,255,0.35);margin-bottom:4px;letter-spacing:0.1em">房間代碼 — 點擊複製</div>
+        <div class="room-code" id="room-code-display" onclick="App.copyRoomCode()" style="cursor:pointer" title="複製代碼"></div>
       </div>
-
-      <!-- Host settings -->
-      <div id="host-settings" style="display:none;margin-top:16px;text-align:left">
-        <div style="color:var(--gold);font-size:0.8rem;font-weight:700;margin-bottom:8px;letter-spacing:0.1em">▸ 遊戲設定（房主）</div>
-        <div class="settings-grid">
-          <div class="form-group" style="margin:0">
-            <label class="form-label">底</label>
-            <select class="form-input" id="set-base">
-              <option value="1">1台底</option>
-              <option value="2">2台底</option>
-              <option value="3">3台底</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin:0">
-            <label class="form-label">每台金額</label>
-            <select class="form-input" id="set-tai">
-              <option value="50">$50/台</option>
-              <option value="100" selected>$100/台</option>
-              <option value="200">$200/台</option>
-              <option value="500">$500/台</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin:0">
-            <label class="form-label">起始籌碼</label>
-            <select class="form-input" id="set-money">
-              <option value="5000">$5,000</option>
-              <option value="10000" selected>$10,000</option>
-              <option value="20000">$20,000</option>
-              <option value="50000">$50,000</option>
-            </select>
-          </div>
-          <div class="form-group" style="margin:0">
-            <label class="form-label">出牌時限</label>
-            <select class="form-input" id="set-time">
-              <option value="0">無限制</option>
-              <option value="5">5秒</option>
-              <option value="8">8秒</option>
-              <option value="10">10秒</option>
-              <option value="12">12秒</option>
-              <option value="15" selected>15秒</option>
-            </select>
-          </div>
-        </div>
+      <div id="player-list"></div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-primary" id="start-btn" onclick="App.startGame()" style="display:none" disabled>▶ 開始遊戲 (1/4)</button>
+        <button class="btn btn-secondary" onclick="App.leaveRoom()">離開房間</button>
       </div>
-
-      <div style="display:flex;align-items:center;gap:10px;margin:8px 0;padding:8px 12px;background:rgba(80,180,80,.08);border:1px solid rgba(80,200,80,.2);border-radius:8px">
-        <span style="flex:1;font-size:.82rem;color:#7dd4a8">🎵 背景音樂</span>
-        <input type="checkbox" id="bgm-toggle-multi" onchange="Bgm.setEnabled(this.checked)">
-      </div>
-      <button class="btn btn-primary" style="margin-top:8px" onclick="App.startGame()">▶ 開始遊戲（AI補位）</button>
-      <button class="btn btn-secondary" onclick="App.leaveRoom()">離開房間</button>
-      <div id="status-msg2"></div>
+      <div id="status-msg2" style="margin-top:8px;font-size:.82rem"></div>
     </div>
   </div>
 </div>
@@ -833,13 +781,10 @@ const App = {
         this.updateLobbyPlayerList();
       };
       MahjongNetwork.onMessage = (peerId, data) => this.handleMessage(peerId, data);
+      this._inviteUrl = `${location.origin}${location.pathname}?room=${MahjongNetwork.roomId}&host=${id}`;
       document.getElementById('lobby-main').style.display = 'none';
       document.getElementById('lobby-room').style.display = 'block';
-      document.getElementById('host-settings').style.display = 'block';
       document.getElementById('room-code-display').textContent = MahjongNetwork.roomId;
-      const url = `${location.origin}${location.pathname}?room=${MahjongNetwork.roomId}&host=${id}`;
-      document.getElementById('peer-id-display').innerHTML =
-        `<a href="${url}" style="color:var(--gold)" onclick="navigator.clipboard.writeText(this.href);App.showToast('連結已複製！');return false">📋 點此複製邀請連結</a>`;
       this.updateLobbyPlayerList();
       statusEl.textContent = '';
     } catch(e) { statusEl.textContent = '連線失敗，請重試'; console.error(e); }
@@ -862,7 +807,7 @@ const App = {
       document.getElementById('lobby-main').style.display = 'none';
       document.getElementById('lobby-room').style.display = 'block';
       document.getElementById('room-code-display').textContent = code;
-      document.getElementById('peer-id-display').textContent = '等待房主開始...';
+      this.updateLobbyPlayerList();
       statusEl.textContent = '';
     } catch(e) { statusEl.textContent = '加入失敗: ' + e.message; console.error(e); }
   },
@@ -875,49 +820,55 @@ const App = {
       const p = this.peers[i];
       const div = document.createElement('div');
       if (p) {
-        const aiAv = ['🐯','🐉','🦢'];
-        const av = p.isAI ? (aiAv[i-1]||'🤖') : '👤';
-        div.className = `player-slot ${p.isAI?'ai':'filled'}`;
-        div.textContent = `${av} ${seats[i]}: ${p.name}`;
+        div.className = 'player-slot filled';
+        div.textContent = `👤 ${seats[i]}：${p.name}`;
       } else {
         div.className = 'player-slot empty';
-        div.textContent = `${seats[i]}: 等待中...`;
+        div.textContent = `${seats[i]}：等待中…`;
       }
       list.appendChild(div);
     }
+    // Update start button (host only, requires 4 players)
+    const btn = document.getElementById('start-btn');
+    if (btn) {
+      btn.style.display = this.isHost ? 'block' : 'none';
+      const ready = this.peers.length >= 4;
+      btn.disabled = !ready;
+      btn.style.opacity = ready ? '1' : '0.45';
+      btn.textContent = ready ? '▶ 開始遊戲' : `▶ 開始遊戲 (${this.peers.length}/4)`;
+    }
+  },
+
+  copyRoomCode() {
+    const text = this._inviteUrl || document.getElementById('room-code-display').textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(text);
+    const msg = document.getElementById('status-msg2');
+    msg.textContent = this._inviteUrl ? '✓ 邀請連結已複製' : '✓ 代碼已複製';
+    setTimeout(()=>{ msg.textContent=''; }, 2500);
   },
 
   getSettings() {
-    return {
-      base: parseInt(document.getElementById('set-base')?.value||1),
-      taiValue: parseInt(document.getElementById('set-tai')?.value||100),
-      startMoney: parseInt(document.getElementById('set-money')?.value||10000),
-      turnTime: parseInt(document.getElementById('set-time')?.value||20),
-    };
+    return { base:1, taiValue:100, startMoney:10000, turnTime:15 };
   },
 
   startGame() {
     if (!this.isHost) return;
-    const _AI_NAME_POOL = ['阿財','阿嬌','老王','麻將王','阿祥','阿玲','大頭','小虎','阿花','阿福','老李','三叔公','阿珠','老陳','阿明','小婷','阿土','阿蘭','老張','阿鳳','大俠','阿勇','小燕','老趙'];
-    const usedNames = new Set(this.peers.map(p=>p.name));
-    const availableNames = _AI_NAME_POOL.filter(n=>!usedNames.has(n));
-    let nameIdx = 0;
-    while (this.peers.length < 4) {
-      const aiName = nameIdx < availableNames.length ? availableNames[nameIdx++] : `AI${this.peers.length}`;
-      this.peers.push({id:null, name:aiName, isAI:true});
+    if (this.peers.length < 4) {
+      document.getElementById('status-msg2').textContent = '需要 4 位玩家才能開始';
+      return;
     }
-    this.aiPlayers = this.peers.map((p,i)=>p.isAI?i:null).filter(i=>i!==null);
+    this.aiPlayers = [];
     const playerNames = this.peers.map(p=>p.name);
     const settings = this.getSettings();
     this.gameSettings = settings;
     const gameState = MahjongGame.initGame(playerNames, settings);
     this.state = gameState;
-    // Tell peers
+    // Tell all peers
     this.peers.forEach((p,i) => {
-      if (i===0||p.isAI||!p.id) return;
-      MahjongNetwork.sendTo(p.id, {type:'game_start', playerIndex:i, aiPlayers:this.aiPlayers, playerNames, settings});
+      if (i===0||!p.id) return;
+      MahjongNetwork.sendTo(p.id, {type:'game_start', playerIndex:i, aiPlayers:[], playerNames, settings});
     });
-    this.enterGame(0, playerNames, this.aiPlayers, settings);
+    this.enterGame(0, playerNames, [], settings);
     setTimeout(() => this.showDiceAndStart(), 300);
   },
 
@@ -1767,12 +1718,8 @@ window.addEventListener('load',()=>{
   const p=new URLSearchParams(location.search);
   const room=p.get('room'),host=p.get('host');
   if(room&&host){document.getElementById('room-code-input').value=room;document.getElementById('status-msg').textContent=`收到邀請，房間: ${room}`;}
-  // Restore BGM setting
-  const bgmToggle = document.getElementById('bgm-toggle-multi');
-  if (bgmToggle && localStorage.getItem('mj_multi_bgm')==='1') {
-    bgmToggle.checked = true;
-    Bgm.setEnabled(true);
-  }
+  // Restore BGM (auto-enable if previously on)
+  if (localStorage.getItem('mj_multi_bgm')==='1') Bgm.setEnabled(true);
 });
 
 const Bgm = {
