@@ -2761,8 +2761,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
             <button class="lbtn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">離開</button>
           </div>
           <div id="ol-join-view" style="display:none">
+            <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-bottom:6px;text-align:center">貼上房主傳給你的邀請連結</div>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-              <input class="fi" id="ol-join-code" placeholder="房間代碼" maxlength="12" style="text-transform:uppercase;letter-spacing:.15em">
+              <input class="fi" id="ol-join-code" placeholder="https://lancelotwang114.github.io/mahjong/?room=...&host=..." style="font-size:.72rem">
               <button class="lbtn" style="width:auto;padding:8px 16px;white-space:nowrap" onclick="Online.doJoin()">加入</button>
             </div>
             <button class="lbtn" onclick="Online.leave()" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">取消</button>
@@ -6719,13 +6720,17 @@ const Online = {
   },
 
   doJoin(){
-    const code=document.getElementById('ol-join-code')?.value.trim().toUpperCase();
-    if(!code){ this._status('請輸入房間代碼'); return; }
+    const raw=document.getElementById('ol-join-code')?.value.trim();
+    if(!raw){ this._status('請貼上邀請連結'); return; }
+    // Accept full invite URL (preferred) or "CODE:PEERID" shorthand
+    let code, hostId;
+    try {
+      const u = raw.startsWith('http') ? new URL(raw) : new URL('https://x.x/?' + raw.replace(':','&host=').replace(/^/,'room='));
+      code = (u.searchParams.get('room')||'').toUpperCase();
+      hostId = u.searchParams.get('host')||'';
+    } catch(e) { code=''; hostId=''; }
+    if(!code||!hostId){ this._status('請貼上完整邀請連結（包含 ?room=...&host=...）'); return; }
     const name=(document.getElementById('pname')?.value.trim()||'玩家').substring(0,8);
-    const urlParams=new URLSearchParams(location.search);
-    let hostId=urlParams.get('host');
-    if(!hostId){ hostId=prompt('請輸入房主的 Peer ID（或由邀請連結進入）:'); }
-    if(!hostId){ this._status('需要房主 ID 才能加入'); return; }
     this._status('連線中…');
     MahjongNetwork.init(name).then(()=>{
       return MahjongNetwork.joinRoom(code, hostId.trim());
