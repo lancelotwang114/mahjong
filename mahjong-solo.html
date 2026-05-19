@@ -2293,6 +2293,31 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* ══ v1.5.0 NEW STYLES ══════════════════════════════════════ */
 
 /* ── Feature 1: Assist Panel ─────────────────────────────── */
+/* ── In-game audio control ────────────────────────── */
+#audio-btn {
+  position:absolute; right:10px; top:10px; z-index:300;
+  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
+  border:1.5px solid rgba(180,130,55,.4); border-radius:8px;
+  padding:5px 10px; color:rgba(212,168,67,.7);
+  font-family:'Noto Serif TC'; font-size:.78rem; font-weight:700;
+  cursor:pointer; backdrop-filter:blur(6px); display:none;
+  transition:all .2s; box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+#audio-btn:hover { border-color:rgba(212,168,67,.7); color:var(--gold); }
+#audio-panel {
+  position:absolute; right:10px; top:42px; z-index:4000;
+  width:200px; background:rgba(8,4,2,.94);
+  border:1px solid rgba(212,168,67,.4); border-radius:10px;
+  padding:10px 12px; display:none; flex-direction:column; gap:8px;
+  pointer-events:auto; backdrop-filter:blur(8px);
+  box-shadow:0 4px 20px rgba(0,0,0,.6);
+}
+#audio-panel.open { display:flex; }
+.aud-row { display:flex; align-items:center; gap:6px; font-size:.72rem; color:rgba(245,236,215,.75); }
+.aud-row span:first-child { white-space:nowrap; min-width:40px; }
+.aud-row input[type=range] { flex:1; height:4px; cursor:pointer; }
+.aud-row .aud-val { min-width:30px; text-align:right; color:var(--gold); }
+/* ── Assist toggle ────────────────────────────────── */
 #assist-toggle {
   position:absolute; right:14px; top:115px;
   width:30px; height:30px; border-radius:50%;
@@ -2651,64 +2676,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       </div>
     </div>
 
-    <div class="sec-title">🔊 語音 &amp; 音效</div>
-    <div class="sgrid" style="grid-template-columns:1fr 1fr">
-      <div class="fg" style="margin:0">
-        <label class="fl">報牌語音</label>
-        <select class="fi" id="svoice">
-          <option value="auto">自動（最佳）</option>
-          <option value="female">女聲</option>
-          <option value="male">男聲</option>
-          <option value="off">關閉</option>
-        </select>
-      </div>
-      <div class="fg" style="margin:0">
-        <label class="fl">音效音量</label>
-        <div class="vol-row">
-          <input type="range" id="svol" min="0" max="100" value="80"
-            oninput="document.getElementById('svol-val').textContent=this.value+'%';Snd.volume=this.value/100;localStorage.setItem('mj_svol_v1',this.value)">
-          <span id="svol-val" class="vol-val">80%</span>
-        </div>
-      </div>
-    </div>
-    <div class="snd-theme-row">
-      <div class="fg" style="margin:4px 0 0">
-        <label class="fl">音效主題</label>
-        <select class="fi" id="snd-theme-sel" onchange="Snd.setTheme(this.value)">
-          <option value="modern">💎 現代輕牌</option>
-          <option value="classic">🎯 復古木牌</option>
-          <option value="mute">🔕 靜音</option>
-        </select>
-      </div>
-    </div>
-    <div class="bgm-row">
-      <label for="bgm-toggle">🎵 背景音樂</label>
-      <label class="bgm-toggle-sw">
-        <input type="checkbox" id="bgm-toggle" onchange="Bgm.setEnabled(this.checked);(function(on){var r=document.getElementById('bgm-vol-row');if(r){r.style.opacity=on?'1':'.38';r.style.pointerEvents=on?'':'none';}})(this.checked)">
-        <span class="bgm-sl"></span>
-      </label>
-    </div>
-    <div class="bgm-vol-row" id="bgm-vol-row" style="padding:2px 10px;transition:opacity .2s;opacity:.38;pointer-events:none">
-      <span>音量</span>
-      <input type="range" id="bgm-vol" min="0" max="100" value="30" style="flex:1"
-        oninput="Bgm.setVolume(this.value/100)">
-      <span id="bgm-vol-val">30%</span>
-    </div>
-    <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;text-align:center">語速可在遊戲中透過 AI 速度面板調整</div>
-    <div class="quick-start-row">
-      <label for="quick-start-toggle">⚡ 快速開局（跳過動畫）</label>
-      <label class="qs-toggle">
-        <input type="checkbox" id="quick-start-toggle" onchange="Game.settings.quickStart=this.checked;localStorage.setItem('mj_quick_v1',this.checked?'1':'0')">
-        <span class="qs-sl"></span>
-      </label>
-    </div>
-    <div class="quick-start-row">
-      <label for="confirm-discard-toggle">👆 雙擊確認打牌（防手滑）</label>
-      <label class="qs-toggle">
-        <input type="checkbox" id="confirm-discard-toggle" checked onchange="Game.settings.confirmDiscard=this.checked;localStorage.setItem('mj_confirm_v1',this.checked?'1':'0')">
-        <span class="qs-sl"></span>
-      </label>
-    </div>
+    <!-- 音效/BGM 控制已移至牌桌內 🔊 按鈕 -->
 
     <div class="sec-title">🎨 桌面主題</div>
     <div style="display:flex;gap:14px;justify-content:center;margin-bottom:8px">
@@ -2748,33 +2716,18 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <div class="ai-card-avatar">🐯</div>
         <div class="ai-card-label">南家</div>
         <input class="fi" id="ai1" value="小虎" maxlength="8">
-        <select class="fi" id="ai1-style">
-          <option value="attack">攻擊型</option>
-          <option value="balanced">均衡</option>
-          <option value="defense">防守型</option>
-        </select>
       </div>
       <!-- 西家 🐉 -->
       <div class="ai-card">
         <div class="ai-card-avatar">🐉</div>
         <div class="ai-card-label">西家</div>
         <input class="fi" id="ai2" value="小龍" maxlength="8">
-        <select class="fi" id="ai2-style">
-          <option value="balanced">均衡</option>
-          <option value="attack">攻擊型</option>
-          <option value="defense">防守型</option>
-        </select>
       </div>
       <!-- 北家 🦢 -->
       <div class="ai-card">
         <div class="ai-card-avatar">🦢</div>
         <div class="ai-card-label">北家</div>
         <input class="fi" id="ai3" value="小鶴" maxlength="8">
-        <select class="fi" id="ai3-style">
-          <option value="defense">防守型</option>
-          <option value="balanced">均衡</option>
-          <option value="attack">攻擊型</option>
-        </select>
       </div>
     </div>
 
@@ -2953,6 +2906,29 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 <!-- UI overlays inside tbl (scale with board) -->
   <button id="pause-btn" onclick="Game.togglePause()">⏸ 暫停</button>
   <button id="autoplay-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
+  <!-- In-game audio control -->
+  <button id="audio-btn" onclick="Game.toggleAudioPanel()" title="音效 &amp; 音樂">🔊</button>
+  <div id="audio-panel">
+    <div class="aud-row">
+      <span>🔊 音效</span>
+      <input type="range" id="svol-ig" min="0" max="100" value="80"
+        oninput="Snd.volume=this.value/100;document.getElementById('svol-ig-val').textContent=this.value+'%';localStorage.setItem('mj_svol_v1',this.value)">
+      <span class="aud-val" id="svol-ig-val">80%</span>
+    </div>
+    <div class="aud-row" style="justify-content:space-between">
+      <span>🎵 BGM</span>
+      <label class="bgm-toggle-sw">
+        <input type="checkbox" id="bgm-ig-toggle" onchange="Bgm.setEnabled(this.checked);Game._syncBgmVolRow()">
+        <span class="bgm-sl"></span>
+      </label>
+    </div>
+    <div class="aud-row" id="bgm-ig-vol-row" style="opacity:.4;pointer-events:none;transition:opacity .2s">
+      <span>音量</span>
+      <input type="range" id="bgm-ig-vol" min="0" max="100" value="30"
+        oninput="Bgm.setVolume(this.value/100);document.getElementById('bgm-ig-vol-val').textContent=this.value+'%'">
+      <span class="aud-val" id="bgm-ig-vol-val">30%</span>
+    </div>
+  </div>
 
   <div id="speed-panel" title="AI 出牌速度">
     <button class="spd-btn" id="spd-slow" onclick="Game.setSpeed('slow')">慢</button>
@@ -3428,7 +3404,7 @@ const Bgm={
     this.volume=v;
     localStorage.setItem('mj_bgm_vol_v1',String(v));
     if(this.gain) this.gain.gain.setTargetAtTime(v,this._getCtx().currentTime,.1);
-    const el=document.getElementById('bgm-vol-val');
+    const el=document.getElementById('bgm-ig-vol-val');
     if(el)el.textContent=Math.round(v*100)+'%';
   },
   start(){
@@ -3983,27 +3959,18 @@ const Game={
 
   start(mode){
     const name=document.getElementById('pname').value.trim()||'玩家';
-    const quickStart=document.getElementById('quick-start-toggle')?.checked||false;
     const maxRounds = mode==='south' ? 8 : 4;
     this.settings={
       base:+document.getElementById('sbase').value,
       tai:+document.getElementById('stai').value,
       money:+document.getElementById('smoney').value,
       time:+document.getElementById('stime').value,
-      voice:document.getElementById('svoice').value,
+      voice:'auto',
       rate:1.05,
-      quickStart,
+      quickStart:false,
       maxRounds,
-      aiStyle:[
-        null,
-        document.getElementById('ai1-style')?.value||'balanced',
-        document.getElementById('ai2-style')?.value||'balanced',
-        document.getElementById('ai3-style')?.value||'balanced',
-      ],
+      aiStyle:[null,'balanced','balanced','balanced'],
     };
-    if(quickStart) this.setSpeed('turbo');
-    const volEl=document.getElementById('svol');
-    if(volEl) Snd.volume=+volEl.value/100;
     Snd._bestVoice=null;
     this.winStats=[0,0,0,0];this.rounds=0;
     this.riichiMode=false;this.riichiTile=null;
@@ -4031,8 +3998,10 @@ const Game={
       setTimeout(updateTblVars, 50);
       document.getElementById('pause-btn').style.display='block';
       document.getElementById('autoplay-btn').style.display='block';
+      document.getElementById('audio-btn').style.display='block';
       document.getElementById('speed-panel').style.display='flex';
       this._initDustParticles();
+      this._syncAudioPanel();
       if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
       const winds=['東','南','西','北'];
       for(let i=0;i<4;i++){
@@ -4349,82 +4318,38 @@ const Game={
   // Flowers go to discard zone; replacement tile drawn from deck
   _doFlowerReplacement(done){
     const s=this.st;
-    const turnOrder=[0,1,2,3];
-
-    // Pre-collect which players have flowers (and how many pending draws)
-    const initPending=s.pending.map(n=>n); // copy
-    const totalInit=initPending.reduce((a,b)=>a+b,0);
-    if(totalInit===0){ done(); return; }
-
-    // Show "補花中" toast
-    this.toast('補花中...',9999);
-
-    const processPlayer=(idx)=>{
-      if(idx>=turnOrder.length){
-        this.toast('');
-        Snd.play(660,.15,'sine',.15);
-        setTimeout(done,300);
-        return;
-      }
-      const p=turnOrder[idx];
-      if(initPending[p]<=0){ processPlayer(idx+1); return; }
-
-      // Announce this player's flowers
-      this.log(`${s.names[p]} 補花中...`);this.toast(`${s.names[p]} 補花`,1200);
-      this.log(`${s.names[p]} 補花`);
-
-      // Put flowers into discard zone (visible on board) one at a time
-      const playerFlowers=[...s.flowers[p]]; // flowers already collected at deal
-      s.flowers[p]=[];  // clear, will re-add as we animate
-
-      const drawDelay=600; // delay between flower shown and replacement draw
-
-      const processFlower=(fi)=>{
-        if(fi>=playerFlowers.length){
-          // All flowers shown, now do replacement draws
-          setTimeout(()=>drawReplacement(), drawDelay);
-          return;
-        }
-        const fl=playerFlowers[fi];
-        s.flowers[p].push(fl);
-        Snd.play(500+fi*40,.1,'sine',.13);
-        Snd.say('補花');  // 語音統一說"補花"
-        this.render(); // show flower in meld area
-        setTimeout(()=>processFlower(fi+1), 450);
-      };
-
-      const drawReplacement=()=>{
-        if(s.pending[p]<=0){
-          // Done with this player
-          this.render();
-          setTimeout(()=>processPlayer(idx+1), 400);
-          return;
-        }
-        // Draw next tile from deck
+    const total=s.pending.reduce((a,b)=>a+b,0);
+    if(total===0){ done(); return; }
+    // Batch: all players draw replacements instantly
+    let hadFlowers=false;
+    for(let p=0;p<4;p++){
+      if(s.pending[p]<=0) continue;
+      hadFlowers=true;
+      // Draw replacement tiles until no more flowers pending
+      let safety=20; // prevent infinite loop
+      while(s.pending[p]>0&&safety-->0){
         let t=s.deck.shift();
-        // 連補：若補到的牌還是花牌，累加 pending 讓後續繼續補
+        // Chain flower: if drawn tile is also a flower, keep drawing
         while(t&&t.fl){
           s.flowers[p].push(t);
-          s.pending[p]++;   // 補到花需要再補一張
+          s.pending[p]++; // need another replacement
           this.log(`${s.names[p]} 連補花: ${t.n}`);
-          Snd.play(530,.1,'sine',.12);
-          Snd.say('補花');  // 語音統一說"補花"
-          this.render();
           t=s.deck.shift();
         }
-        if(t&&!t.fl){
-          s.hands[p]=sortH([...s.hands[p],t]);
-          Snd.draw();
-        }
+        if(t&&!t.fl) s.hands[p].push(t);
         s.pending[p]=Math.max(0,s.pending[p]-1);
-        this.render();
-        setTimeout(drawReplacement, 500);
-      };
-
-      processFlower(0);
-    };
-
-    processPlayer(0);
+      }
+      s.hands[p]=sortH(s.hands[p]);
+    }
+    if(hadFlowers){
+      Snd.play(660,.18,'sine',.18);
+      Snd.say('補花');
+      this.toast('補花完成',1000);
+      this.render();
+      setTimeout(done,500);
+    } else {
+      done();
+    }
   },
   closeDice(){
     document.getElementById('dov').style.display='none';
@@ -6084,6 +6009,29 @@ const Game={
     }
   },
 
+  toggleAudioPanel(){
+    const p=document.getElementById('audio-panel');
+    p.classList.toggle('open');
+  },
+  _syncBgmVolRow(){
+    const on=document.getElementById('bgm-ig-toggle')?.checked||false;
+    const row=document.getElementById('bgm-ig-vol-row');
+    if(row){row.style.opacity=on?'1':'.4';row.style.pointerEvents=on?'auto':'none';}
+  },
+  _syncAudioPanel(){
+    // Restore volume slider from localStorage
+    const sv=localStorage.getItem('mj_svol_v1');
+    const svEl=document.getElementById('svol-ig');
+    if(svEl&&sv){svEl.value=sv;document.getElementById('svol-ig-val').textContent=sv+'%';Snd.volume=+sv/100;}
+    // Restore BGM state
+    const bgmEnabled=localStorage.getItem('mj_bgm_v1')==='1';
+    const bgmTgl=document.getElementById('bgm-ig-toggle');
+    if(bgmTgl) bgmTgl.checked=bgmEnabled;
+    this._syncBgmVolRow();
+    const bv=localStorage.getItem('mj_bgm_vol_v1');
+    const bgmVolEl=document.getElementById('bgm-ig-vol');
+    if(bgmVolEl&&bv){bgmVolEl.value=Math.round(+bv*100);document.getElementById('bgm-ig-vol-val').textContent=Math.round(+bv*100)+'%';}
+  },
   toggleAutoPlay(){
     this.autoPlay=!this.autoPlay;
     const btn=document.getElementById('autoplay-btn');
@@ -6352,6 +6300,8 @@ const Game={
     document.getElementById('game').classList.remove('show');
     document.getElementById('speed-panel').style.display='none';
     document.getElementById('autoplay-btn').style.display='none';
+    document.getElementById('audio-btn').style.display='none';
+    document.getElementById('audio-panel').classList.remove('open');
     this.autoPlay=false;
     document.getElementById('autoplay-btn').classList.remove('on');
     document.getElementById('lobby').style.display='flex';
@@ -6653,35 +6603,17 @@ Stats.load(); Stats.render(); Stats.renderHistory();
 
 // ── v1.5: Restore settings from localStorage ──────────────
 (function(){
-  // Restore sound theme
-  const sndTheme=localStorage.getItem('mj_snd_theme_v1')||'modern';
-  Snd.setTheme(sndTheme);
-  const ssel=document.getElementById('snd-theme-sel');
-  if(ssel)ssel.value=sndTheme;
+  // Restore sound theme (always modern, no UI selector)
+  Snd.setTheme('modern');
+  // Restore volume from localStorage (applied when entering game via _syncAudioPanel)
   const svolSaved=localStorage.getItem('mj_svol_v1');
-  if(svolSaved){const svolEl=document.getElementById('svol');if(svolEl){svolEl.value=svolSaved;document.getElementById('svol-val').textContent=svolSaved+'%';Snd.volume=+svolSaved/100;}}
+  if(svolSaved) Snd.volume=+svolSaved/100;
 
-  // Restore BGM settings
+  // Restore BGM settings (state only; UI synced when entering game via _syncAudioPanel)
   const bgmEnabled=localStorage.getItem('mj_bgm_v1')==='1';
   const bgmVol=parseFloat(localStorage.getItem('mj_bgm_vol_v1')||'0.3');
   Bgm.volume=bgmVol;
   Bgm.enabled=bgmEnabled;
-  const bgmToggle=document.getElementById('bgm-toggle');
-  if(bgmToggle)bgmToggle.checked=bgmEnabled;
-  const bgmVolEl=document.getElementById('bgm-vol');
-  if(bgmVolEl){bgmVolEl.value=Math.round(bgmVol*100);}
-  const bgmVolVal=document.getElementById('bgm-vol-val');
-  if(bgmVolVal)bgmVolVal.textContent=Math.round(bgmVol*100)+'%';
-  // Sync bgm-vol-row opacity with toggle state
-  const bgmVolRow=document.getElementById('bgm-vol-row');
-  if(bgmVolRow){bgmVolRow.style.opacity=bgmEnabled?'1':'.38';bgmVolRow.style.pointerEvents=bgmEnabled?'':'none';}
-
-  // Restore quick start
-  const qs=localStorage.getItem('mj_quick_v1')==='1';
-  Game.settings=Game.settings||{};
-  Game.settings.quickStart=qs;
-  const qsEl=document.getElementById('quick-start-toggle');
-  if(qsEl)qsEl.checked=qs;
 
   // Restore assist settings
   Game.loadAssist();
@@ -6694,11 +6626,10 @@ Stats.load(); Stats.render(); Stats.renderHistory();
   });
 
   // C5: 確認打牌設定
-  const cdEl=document.getElementById('confirm-discard-toggle');
+  // Restore confirm-discard (saved value or default true)
   const cdSaved=localStorage.getItem('mj_confirm_v1');
-  const cdOn=cdSaved===null?true:cdSaved==='1';
-  if(cdEl)cdEl.checked=cdOn;
-  Game.settings.confirmDiscard=cdOn;
+  Game.settings=Game.settings||{};
+  Game.settings.confirmDiscard=cdSaved===null?true:cdSaved==='1';
 
   // C3: 檢查是否有中斷的存檔
   if(Game.loadSave()){
