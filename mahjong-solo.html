@@ -1591,7 +1591,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* ══ IN-GAME SPEED PANEL ════════════════════════════════════ */
 #speed-panel {
-  position:absolute; top:10px; left:10px;
+  position:absolute; top:10px; left:100px;
   z-index:310; display:none; align-items:center; gap:6px;
   background:linear-gradient(160deg,rgba(22,11,3,.88),rgba(38,20,6,.82));
   border:1.5px solid rgba(180,130,55,.3);
@@ -1600,10 +1600,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   opacity:.4; transition:opacity .25s;
 }
 #speed-panel:hover { opacity:1; }
-#speed-panel span {
-  font-family:'Noto Serif TC'; font-size:.72rem; color:rgba(212,168,67,.6);
-  white-space:nowrap; margin-right:2px;
-}
+/* #speed-panel span removed — label no longer needed after layout split */
 .spd-btn {
   border:1.5px solid rgba(180,130,55,.35); background:transparent;
   color:rgba(212,168,67,.5); border-radius:6px; padding:3px 11px;
@@ -2957,8 +2954,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <button id="pause-btn" onclick="Game.togglePause()">⏸ 暫停</button>
   <button id="autoplay-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
 
-  <div id="speed-panel">
-    <span>AI速度</span>
+  <div id="speed-panel" title="AI 出牌速度">
     <button class="spd-btn" id="spd-slow" onclick="Game.setSpeed('slow')">慢</button>
     <button class="spd-btn active" id="spd-normal" onclick="Game.setSpeed('normal')">正常</button>
     <button class="spd-btn" id="spd-fast" onclick="Game.setSpeed('fast')">快</button>
@@ -4471,8 +4467,12 @@ const Game={
 
     // Check tenpai
     this.checkTenpai(p);
-    // Auto-sort p0's hand (always, so drawn tile lands in right position)
-    if(p===0) s.hands[0]=sortH(s.hands[0]);
+    // Sort p0's hand but keep drawn tile pinned at the rightmost position
+    if(p===0){
+      const drawnTile=s.hands[0].find(h=>h.id===s.drawnId);
+      const rest=s.hands[0].filter(h=>h.id!==s.drawnId);
+      s.hands[0]=[...sortH(rest),...(drawnTile?[drawnTile]:[])];
+    }
     this.render();
     // Animate drawn tile for p0
     if(p===0){
@@ -4517,17 +4517,13 @@ const Game={
       if(s.tenpai[p]&&s.tenpaiT[p])this.showTenpai(s.tenpaiT[p]);
       else this.hideTenpai();
       this.startTimer(p);
-      document.getElementById('ht0').classList.add('my-turn');
-      // 提示按鈕：每回合出現
-      setTimeout(()=>{
-        const ap=document.getElementById('ap');
-        if(ap&&!ap.querySelector('.hint')){
-          const hb=document.createElement('button');hb.className='ab hint';hb.textContent='💡 提示';
-          hb.onclick=e=>{e.stopPropagation();this.showHint();};
-          ap.appendChild(hb);
-          document.getElementById('action-overlay')?.classList.add('active');
-        }
-      },0);
+      const ht0El=document.getElementById('ht0');
+      ht0El.classList.add('my-turn');
+      // Clear any leftover .sel (keyboard navigation) from previous turn
+      ht0El.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
+      // action-overlay only activates if there are real action buttons (自摸/暗槓/聽牌)
+      if(extraBtns.length) document.getElementById('action-overlay')?.classList.add('active');
+      // 提示：左側 #hint-btn 已足夠，不在 action-overlay 重複放置
     }
   },
   _flashFlower(fl){
@@ -5817,9 +5813,9 @@ const Game={
     // Remove candidate highlights from hand tiles
     this._candidateMap=null;this._candidateDisc=null;
     const ht0=document.getElementById('ht0');
-    Array.from(ht0.querySelectorAll('.t.meld-candidate')).forEach(el=>{
-      el.classList.remove('meld-candidate');
-    });
+    ht0.querySelectorAll('.t.meld-candidate').forEach(el=>el.classList.remove('meld-candidate'));
+    // Clear keyboard-nav selection highlight
+    ht0.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
     const ap=document.getElementById('ap');
     Array.from(ap.children).forEach(c=>{if(c.id!=='tbadge')c.remove();});
     document.getElementById('ht0').classList.remove('meld-alert');
