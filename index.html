@@ -3953,6 +3953,7 @@ const Game={
   riichiMode:false,riichiTile:null,riichiWaiting:null,_tenpaiWaiting:null,
   autoPlay:false,
   _online:false,_isHost:false,_myIndex:0,_peers:[],
+  _waitingMeldFrom:null,_nhMeldTimeout:null,
   aiSpeed:'normal',
 
   // AI speed config: {draw, discard, meld, reaction}
@@ -4412,6 +4413,12 @@ const Game={
       });
     }
 
+    // Online host: non-host real player's turn — broadcast state and wait for their action
+    if(this._online&&this._isHost&&p!==0&&!isAI){
+      Online.broadcastState();
+      return;
+    }
+
     // E1: 顯示提示按鈕（僅玩家回合）
     const hintBtn=document.getElementById('hint-btn');
     if(hintBtn)hintBtn.style.display=(p===0)?'flex':'none';
@@ -4677,14 +4684,21 @@ const Game={
       const win=r.opts.find(o=>o.type==='win');
       if(win){
         if(isDihu) win._dihu=true;  // 標記地胡
-        if(s.ai.includes(r.p))setTimeout(()=>this.doWin(r.p,false),this.spd('reaction'));
-        else this.offerMeld(r.p,r.opts,tile);
+        if(s.ai.includes(r.p)){
+          setTimeout(()=>this.doWin(r.p,false),this.spd('reaction'));
+        } else if(r.p===0){
+          this.offerMeld(r.p,r.opts,tile);
+        } else if(this._online&&this._isHost){
+          this._offerNonHostMeld(r.p,r.opts,tile,discP);
+        }
         return;
       }
     }
 
-    // Check if human (p=0) can react
+    // Check if host player (p=0) can react
     const hr=rr.find(r=>r.p===0&&!s.ai.includes(r.p));
+    // Check if a non-host real player can react (online host mode only)
+    const nhHuman=this._online&&this._isHost ? rr.find(r=>r.p!==0&&!s.ai.includes(r.p)) : null;
 
     // AI decisions (collect all, then decide)
     let aiActed=false;
@@ -4695,8 +4709,8 @@ const Game={
         const mTiles=r.opts.find(o=>o.type===dec.type)?.tiles||[];
         // AI pong/kong takes priority over human chi
         const aiIsPongKong=dec.type==='pong'||dec.type==='kong';
-        const humanOnlyChi=hr&&hr.opts.every(o=>o.type==='chi'||o.type==='skip');
-        if(aiIsPongKong||!hr){
+        const humanOnlyChi=(hr||nhHuman)&&(hr||nhHuman).opts.every(o=>o.type==='chi'||o.type==='skip');
+        if(aiIsPongKong||(!hr&&!nhHuman)){
           setTimeout(()=>{s.turn=r.p;this.doMeld(r.p,dec.type,mTiles);},this.spd('reaction'));
           aiActed=true;
           break;
@@ -4714,9 +4728,29 @@ const Game={
       } else {
         this.offerMeld(hr.p,hr.opts,tile);
       }
+    } else if(nhHuman){
+      this._offerNonHostMeld(nhHuman.p,nhHuman.opts,tile,discP);
     } else {
       s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);
     }
+  },
+
+  // Send meld offer to a non-host real player; timeout → skip
+  _offerNonHostMeld(p,opts,tile,discP){
+    const s=this.st;
+    const peer=this._peers[p];
+    if(!peer?.id){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
+    const serOpts=opts.map(o=>({...o,tiles:(o.tiles||[]).map(t=>({id:t.id,n:t.n,suit:t.suit,v:t.v}))}));
+    const serTile={id:tile.id,n:tile.n,suit:tile.suit,v:tile.v};
+    MahjongNetwork.sendTo(peer.id,{type:'meld_offer',opts:serOpts,tile:serTile});
+    this._waitingMeldFrom=p;
+    clearTimeout(this._nhMeldTimeout);
+    this._nhMeldTimeout=setTimeout(()=>{
+      if(this._waitingMeldFrom===p){
+        this._waitingMeldFrom=null;
+        s.turn=(discP+1)%4;this.doTurn();
+      }
+    },(this.settings?.time||15)*1000+3000);
   },
 
   offerMeld(p,opts,tile){
@@ -4845,7 +4879,9 @@ const Game={
     {
       const b=document.createElement('button');b.className='ab ask';b.textContent='跳過';
       b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        this.hideChiPicker();const rp=document.getElementById('riichi-select-panel');if(rp)rp.remove();this.nextTurn();};
+        this.hideChiPicker();const rp=document.getElementById('riichi-select-panel');if(rp)rp.remove();
+        if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip'});}
+        else{this.nextTurn();}};
       ap.appendChild(b);
     }
     ov.classList.add('active');
@@ -4871,7 +4907,9 @@ const Game={
     const skip=()=>{
       clearInterval(this._meldCountInterval);
       if(bar)bar.style.width='0%';
-      this.hideMeldPreview();this.clearBtns();this.nextTurn();
+      this.hideMeldPreview();this.clearBtns();
+      if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip'});}
+      else{this.nextTurn();}
     };
     this._meldCountInterval=setInterval(()=>{rem--;if(rem<=0){clearInterval(this._meldCountInterval);skip();}},1000);
     this._meldTimeout=setTimeout(skip,sec*1000);
@@ -5087,6 +5125,10 @@ const Game={
   },
 
   doSelfKong(p,tiles){
+    if(this._online&&!this._isHost&&p===0){
+      MahjongNetwork.broadcast({type:'action',action:'selfkong',tiles:tiles.map(t=>({id:t.id}))});
+      return;
+    }
     const s=this.st;
     this.stopTimer();this.clearBtns();
 
@@ -5413,6 +5455,37 @@ const Game={
       if(this.paused){this.pausedCb=()=>{if(this.st?.phase==='playing')this.doTurn();};}
       else if(this.st?.phase==='playing')this.doTurn();
     },ms);
+  },
+
+  // Non-host: set up interactive UI when it's our turn (tile already in hand from broadcast)
+  _setupNonHostTurn(){
+    const s=this.st;
+    const nonFl=s.hands[0].filter(x=>!x.fl);
+    if(nonFl.length>0) s.drawnId=nonFl[nonFl.length-1].id;
+    this.checkTenpai(0);
+    const drawnTile=s.hands[0].find(h=>h.id===s.drawnId);
+    const rest=s.hands[0].filter(h=>h.id!==s.drawnId);
+    s.hands[0]=[...sortH(rest),...(drawnTile?[drawnTile]:[])];
+    this.render();
+    requestAnimationFrame(()=>{
+      const ht=document.getElementById('ht0');
+      const el=ht&&s.drawnId&&ht.querySelector(`.t[data-id="${s.drawnId}"]`);
+      if(el){el.classList.add('drawn-in');setTimeout(()=>el.classList.remove('drawn-in'),350);}
+    });
+    Snd.draw();
+    const winNow=canWin(s.hands[0].filter(x=>!x.fl));
+    const extraBtns=[];
+    if(winNow) extraBtns.push({type:'win',label:'🀄 自摸！',cls:'aw'});
+    const sk=AI.selfKong(s.hands[0],s.melds[0]);
+    if(sk) extraBtns.push({type:'sk',label:'暗槓',cls:'ako',tiles:sk});
+    if(extraBtns.length) extraBtns.push({type:'skip',label:'略過',cls:'ask'});
+    this.showBtns(extraBtns);
+    if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
+    else this.hideTenpai();
+    this.startTimer(0);
+    document.getElementById('ht0')?.classList.add('my-turn');
+    if(extraBtns.length) document.getElementById('action-overlay')?.classList.add('active');
+    document.getElementById('hint-btn')?.style.setProperty('display','flex');
   },
 
   endDraw(){
@@ -6678,6 +6751,8 @@ const Online = {
   peers: [],      // [{id, name}] — host's peer list
   myIndex: 0,     // absolute seat index (0=host)
   _inviteUrl: '',
+  _aiCount: 0,    // AI slots to fill (host only)
+  _aiNames: ['小虎','小龍','小鶴'],
 
   _status(msg){ const el=document.getElementById('ol-status'); if(el) el.textContent=msg; },
 
@@ -6752,26 +6827,61 @@ const Online = {
     const list=document.getElementById('ol-player-list');
     if(!list) return;
     const seats=['東（房主）','南','西','北'];
+    const isHost=MahjongNetwork.isHost;
+    this._aiCount=Math.min(this._aiCount, 4-this.peers.length);
     list.innerHTML='';
     for(let i=0;i<4;i++){
       const p=this.peers[i];
+      const aiIdx=i-this.peers.length;
+      const isAi=!p&&aiIdx>=0&&aiIdx<this._aiCount;
       const div=document.createElement('div');
-      if(p){ div.className='ol-player-slot filled'; div.textContent=`👤 ${seats[i]}：${p.name}`; }
-      else { div.className='ol-player-slot empty'; div.textContent=`${seats[i]}：等待中…`; }
+      if(p){
+        div.className='ol-player-slot filled';
+        div.textContent=`👤 ${seats[i]}：${p.name}`;
+      } else if(isAi){
+        div.className='ol-player-slot filled';
+        div.style.background='rgba(52,73,94,.35)';
+        div.style.color='rgba(200,200,200,.7)';
+        div.innerHTML=`🤖 ${seats[i]}：${this._aiNames[aiIdx]||'AI'}`;
+        if(isHost){
+          const rm=document.createElement('button');
+          rm.textContent='✕';
+          rm.style.cssText='margin-left:auto;background:none;border:none;color:rgba(255,100,100,.6);cursor:pointer;font-size:.85rem;padding:0 4px';
+          rm.onclick=()=>{ this._aiCount=Math.max(0,this._aiCount-1); this._updatePlayerList(); };
+          div.appendChild(rm);
+        }
+      } else {
+        div.className='ol-player-slot empty';
+        div.style.display='flex'; div.style.alignItems='center'; div.style.gap='6px';
+        div.innerHTML=`<span style="flex:1">${seats[i]}：等待中…</span>`;
+        if(isHost){
+          const ab=document.createElement('button');
+          ab.textContent='＋AI';
+          ab.style.cssText='background:rgba(52,73,94,.5);border:1px solid rgba(125,168,212,.4);border-radius:5px;color:rgba(125,200,255,.8);cursor:pointer;font-size:.72rem;padding:2px 8px;white-space:nowrap';
+          ab.onclick=()=>{ this._aiCount=Math.min(this._aiCount+1,4-this.peers.length); this._updatePlayerList(); };
+          div.appendChild(ab);
+        }
+      }
       list.appendChild(div);
     }
+    const total=this.peers.length+this._aiCount;
     const btn=document.getElementById('ol-start-btn');
     if(btn){
-      const ready=this.peers.length>=4;
+      const ready=total>=4;
       btn.disabled=!ready;
       btn.style.opacity=ready?'1':'.45';
-      btn.textContent=ready?'▶ 開始遊戲':`▶ 開始遊戲 (${this.peers.length}/4)`;
+      btn.textContent=ready?'▶ 開始遊戲':`▶ 開始遊戲 (${total}/4)`;
     }
   },
 
   startGame(){
-    if(!MahjongNetwork.isHost||this.peers.length<4) return;
-    const names=this.peers.map(p=>p.name);
+    if(!MahjongNetwork.isHost) return;
+    const total=this.peers.length+this._aiCount;
+    if(total<4) return;
+    const names=Array.from({length:4},(_,i)=>{
+      if(this.peers[i]) return this.peers[i].name;
+      return this._aiNames[i-this.peers.length]||`AI${i}`;
+    });
     this.peers.forEach((p,i)=>{
       if(i===0||!p.id) return;
       MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names});
@@ -6780,13 +6890,14 @@ const Online = {
     Game._peers=this.peers;
     document.getElementById('pname').value=names[0]||'玩家';
     Game.start('east');
-    if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
-    if(Game.st){ Game.st.ai=[]; Game.st.names=names; }
+    const aiIndices=Array.from({length:4},(_,i)=>i).filter(i=>!this.peers[i]);
+    if(Game.settings) Game.settings.aiStyle=Array.from({length:4},(_,i)=>aiIndices.includes(i)?'balanced':null);
+    if(Game.st){ Game.st.ai=aiIndices; Game.st.names=names; }
   },
 
   leave(){
     MahjongNetwork.disconnect();
-    this.peers=[];
+    this.peers=[]; this._aiCount=0;
     document.getElementById('ol-create-view').style.display='none';
     document.getElementById('ol-join-view').style.display='none';
     this._status('');
@@ -6814,7 +6925,14 @@ const Online = {
         if(!Game._isHost && data.state){
           Game.st=data.state;
           Game.render();
+          // Set up interactive turn UI when it's our turn (tile already in hand)
+          if(data.state.phase==='playing'&&data.state.turn===0&&!data.state.ai?.includes(0)){
+            Game._setupNonHostTurn();
+          }
         }
+        break;
+      case 'meld_offer':
+        if(!Game._isHost) Game.offerMeld(0,data.opts,data.tile);
         break;
       case 'action':
         if(Game._isHost) this._processAction(peerId,data);
@@ -6828,9 +6946,22 @@ const Online = {
   _processAction(peerId,data){
     const peerIdx=Game._peers.findIndex(p=>p.id===peerId);
     if(peerIdx<0) return;
+    // Clear pending non-host meld wait when peer responds
+    if(Game._waitingMeldFrom===peerIdx){
+      Game._waitingMeldFrom=null;
+      clearTimeout(Game._nhMeldTimeout);
+    }
+    // Resolve {id}-only tile stubs to full tile objects from host's game state
+    const resolveTiles=(idArr)=>{
+      if(!idArr||!Game.st) return idArr;
+      const hand=Game.st.hands[peerIdx]||[];
+      const all=[...hand,...(Game.st.discards||[]).flat(),...(Game.st.melds||[]).flat().flatMap(m=>m.tiles||[])];
+      return idArr.map(t=>all.find(h=>h.id===t.id)||t);
+    };
     switch(data.action){
       case 'discard': Game.doDiscard(peerIdx,data.tileId); break;
-      case 'meld': Game.doMeld(peerIdx,data.meldType,data.tiles); break;
+      case 'meld': Game.doMeld(peerIdx,data.meldType,resolveTiles(data.tiles)); break;
+      case 'selfkong': Game.doSelfKong(peerIdx,resolveTiles(data.tiles)); break;
       case 'win': Game.doWin(peerIdx,data.selfDraw); break;
       case 'skip': Game.nextTurn(); break;
     }
@@ -6935,7 +7066,7 @@ const MahjongNetwork = {
   if(p.get('host')&&p.get('room')){
     window.addEventListener('DOMContentLoaded',()=>{
       const codeEl=document.getElementById('ol-join-code');
-      if(codeEl) codeEl.value=location.href;  // full URL → doJoin() can parse both room+host
+      if(codeEl) codeEl.value=location.href;
       Lobby.showOnline();
       Online.showJoin();
     });
