@@ -1,7 +1,7 @@
 # CLAUDE.md — 台灣麻將單機版 開發指引
 
 > 給 Claude（AI 助手）的專案說明，讓每次對話都能快速掌握架構、規則與注意事項。
-> 當前版本：**v1.5.4**
+> 當前版本：**v1.5.5**
 
 ---
 
@@ -213,7 +213,7 @@ Map<tileId, {
 4. **重複 id** → `#turn-light` 只能有一個
 5. **Sprite 全域套用** → 所有 `.t.man/.pin/.sou/.honor/.flower` 都走 sprite，tooltip 牌用 `mkTile+zoom:0.52` 而非純 SVG
 6. **Tooltip 牌面花牌問題** → 用 `mkTile(t,'')` + `zoom:0.52`，**不可**用舊版 `.chi-tile + tileSVG()`
-7. **多吃法不開 chi-picker** → 多種吃法一律透過 tooltip 列點選，`showChiPicker()` 僅保留備用，正常流程不呼叫
+7. **多吃法不開 chi-picker** → 多種吃法一律透過 tooltip 列點選，`showChiPicker()` 僅保留備用，正常流程不呼叫。`吃` 按鈕 onclick 對 `chiOpts.length > 1` 必須執行 `doMeld`（用 `calcBlockScore` 選最佳組合），**不可只停 timer 不做吃** — 否則按鈕殘留 → 相公
 8. **聽牌即時顯示** → `doDiscard` 與 `doMeld` 中打牌後立即 `checkTenpai` + `showTenpai`，不等下次摸牌
 9. **clearBtns 必須清 timer** → `clearTimeout(this._tipLeaveTimer)` 在 `clearBtns()` 最頂，避免 tooltip timer 殘留
 

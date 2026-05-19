@@ -4842,8 +4842,14 @@ const Game={
         chiTilesDone.add(t.id);
         addCand(t.id,'吃',allCombos,()=>{
           this.clearBtns();
-          if(chiOpts.length===1)this.doMeld(0,'chi',chiOpts[0].tiles);
-          // Multi-chi: selection handled entirely by tooltip rows — no chi-picker
+          if(chiOpts.length===1){
+            this.doMeld(0,'chi',chiOpts[0].tiles);
+          } else {
+            // Multi-chi fallback: pick the combo leaving the best hand score
+            const s=this.st;let bestOpt=chiOpts[0];let bestSc=-Infinity;
+            chiOpts.forEach(opt=>{const rem=s.hands[0].filter(h=>!opt.tiles.some(o=>o.id===h.id));const sc=calcBlockScore(rem);if(sc>bestSc){bestSc=sc;bestOpt=opt;}});
+            this.doMeld(0,'chi',bestOpt.tiles);
+          }
         });
         // Store chiOpts + disc tile on the info for clickable tooltip rows
         if(cmap.has(t.id)){
@@ -4877,9 +4883,14 @@ const Game={
       const b=document.createElement('button');b.className='ab ach';b.textContent='吃';
       b.onclick=()=>{
         clearTimeout(this._meldTimeout);this.stopTimer();
-        if(chiOpts.length===1){this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',chiOpts[0].tiles);}
-        // Multi-chi: tiles are highlighted; tooltip click handles selection — just stop the timer
-        else { clearInterval(this._meldCountInterval); }
+        if(chiOpts.length===1){
+          this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',chiOpts[0].tiles);
+        } else {
+          // Multi-chi: pick the combo leaving the best block score in remaining hand
+          const s=this.st;let bestOpt=chiOpts[0];let bestSc=-Infinity;
+          chiOpts.forEach(opt=>{const rem=s.hands[0].filter(h=>!opt.tiles.some(o=>o.id===h.id));const sc=calcBlockScore(rem);if(sc>bestSc){bestSc=sc;bestOpt=opt;}});
+          this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',bestOpt.tiles);
+        }
       };
       ap.appendChild(b);
     }
