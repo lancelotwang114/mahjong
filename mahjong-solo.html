@@ -2612,6 +2612,33 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   from{ transform:scale(.6); opacity:0; }
   to{ transform:scale(1); opacity:1; }
 }
+/* ── Lobby hero buttons ───────────────────────────── */
+.mode-hero-btn {
+  width:100%; padding:16px 12px; border-radius:14px;
+  font-family:'Noto Serif TC'; font-size:1.05rem; font-weight:700;
+  cursor:pointer; letter-spacing:.08em;
+  background:linear-gradient(160deg,rgba(32,20,5,.95),rgba(22,12,3,.92));
+  border:1.5px solid rgba(212,168,67,.45); color:var(--gold);
+  transition:all .2s; box-shadow:0 2px 12px rgba(0,0,0,.4);
+}
+.mode-hero-btn:hover {
+  background:linear-gradient(160deg,rgba(212,168,67,.18),rgba(212,168,67,.08));
+  border-color:var(--gold); box-shadow:0 4px 20px rgba(212,168,67,.25);
+  transform:translateY(-1px);
+}
+.mode-hero-btn.online {
+  border-color:rgba(125,212,168,.4); color:#7dd4a8;
+}
+.mode-hero-btn.online:hover {
+  background:linear-gradient(160deg,rgba(125,212,168,.18),rgba(125,212,168,.08));
+  border-color:#7dd4a8; box-shadow:0 4px 20px rgba(125,212,168,.2);
+}
+.lobby-back-btn {
+  background:none; border:none; color:rgba(212,168,67,.55);
+  font-family:'Noto Serif TC'; font-size:.82rem; cursor:pointer;
+  padding:2px 0 10px 0; text-align:left; letter-spacing:.05em; display:block;
+}
+.lobby-back-btn:hover { color:var(--gold); }
 
 </style>
 </head>
@@ -2622,8 +2649,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div class="lcard">
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
-    <div class="lsub">TAIWAN MAHJONG · 單機版</div>
-    <div class="lver">v1.5.4</div>
+    <div class="lsub">TAIWAN MAHJONG ONLINE</div>
+    <div class="lver">v1.6.0</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -2634,180 +2661,114 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     </div>
     <div class="stats-reset" onclick="Stats.reset()">重置記錄</div>
     <div id="stats-chart" style="min-height:20px"></div>
-    <!-- E2: 牌局歷史 -->
     <details style="margin-top:6px">
       <summary style="cursor:pointer;font-size:.72rem;color:rgba(212,168,67,.55);letter-spacing:.08em;padding:4px 0">📋 最近對局記錄</summary>
       <div id="hist-list" style="max-height:180px;overflow-y:auto;margin-top:4px;border-radius:8px;background:rgba(0,0,0,.25)"></div>
     </details>
 
-    <div class="fg">
-      <label class="fl">你的名字</label>
-      <input class="fi" id="pname" value="玩家" maxlength="8" placeholder="輸入暱稱">
-    </div>
-
-    <!-- E3: 計分模式 -->
-    <div class="sec-title">🎯 計分模式</div>
-    <div class="mode-cards" style="grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
-      <button class="mode-card score-mode-btn active" data-mode="simple" onclick="Game._setScoringMode('simple',this)">
-        <div class="mode-card-icon" style="font-size:1.2rem">🌱</div>
-        <div class="mode-card-title" style="font-size:.8rem">簡化</div>
-        <div class="mode-card-desc" style="font-size:.65rem">基本台型</div>
-      </button>
-      <button class="mode-card score-mode-btn" data-mode="standard" onclick="Game._setScoringMode('standard',this)">
-        <div class="mode-card-icon" style="font-size:1.2rem">🀄</div>
-        <div class="mode-card-title" style="font-size:.8rem">標準</div>
-        <div class="mode-card-desc" style="font-size:.65rem">台灣規則</div>
-      </button>
-      <button class="mode-card score-mode-btn" data-mode="expert" onclick="Game._setScoringMode('expert',this)">
-        <div class="mode-card-icon" style="font-size:1.2rem">🏆</div>
-        <div class="mode-card-title" style="font-size:.8rem">完整</div>
-        <div class="mode-card-desc" style="font-size:.65rem">含本場/清龍</div>
-      </button>
-    </div>
-
-    <div class="sec-title">💰 籌碼設定</div>
-    <div class="sgrid" style="grid-template-columns:1fr 1fr 1fr 1fr">
-      <div class="fg" style="margin:0">
-        <label class="fl">底</label>
-        <select class="fi" id="sbase">
-          <option value="1">1台底</option>
-          <option value="2">2台底</option>
-          <option value="3">3台底</option>
-        </select>
+    <!-- ── HOME PANEL ─────────────────────────────── -->
+    <div id="lobby-home">
+      <div class="fg">
+        <label class="fl">你的名字</label>
+        <input class="fi" id="pname" value="玩家" maxlength="8" placeholder="輸入暱稱">
       </div>
-      <div class="fg" style="margin:0">
-        <label class="fl">每台</label>
-        <select class="fi" id="stai">
-          <option value="50">$50/台</option>
-          <option value="100" selected>$100/台</option>
-          <option value="200">$200/台</option>
-          <option value="500">$500/台</option>
-        </select>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+        <button class="mode-hero-btn" onclick="Lobby.showSolo()">🎮 單機對戰（AI）</button>
+        <button class="mode-hero-btn online" onclick="Lobby.showOnline()">🌐 連線對戰（開房間）</button>
       </div>
-      <div class="fg" style="margin:0">
-        <label class="fl">起始籌碼</label>
-        <select class="fi" id="smoney">
-          <option value="5000">$5,000</option>
-          <option value="10000" selected>$10,000</option>
-          <option value="20000">$20,000</option>
-          <option value="50000">$50,000</option>
-        </select>
-      </div>
-      <div class="fg" style="margin:0">
-        <label class="fl">出牌限時</label>
-        <select class="fi" id="stime">
-          <option value="0">無限制</option>
-          <option value="8">8秒</option>
-          <option value="12">12秒</option>
-          <option value="15" selected>15秒</option>
-          <option value="20">20秒</option>
-        </select>
-      </div>
-    </div>
-
-    <!-- 音效/BGM 控制已移至牌桌內 🔊 按鈕 -->
-
-    <div class="sec-title">🎨 桌面主題</div>
-    <div style="display:flex;gap:14px;justify-content:center;margin-bottom:8px">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-        <button class="theme-btn active" data-theme="" onclick="Game.setTheme('')" title="深海藍" style="background:radial-gradient(#0e1e36,#06111e)"></button>
-        <span style="font-size:.6rem;color:rgba(212,168,67,.55);letter-spacing:.04em">深海藍</span>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-        <button class="theme-btn" data-theme="wood" onclick="Game.setTheme('wood')" title="木桌棕" style="background:radial-gradient(#2d1a0e,#160c06)"></button>
-        <span style="font-size:.6rem;color:rgba(212,168,67,.55);letter-spacing:.04em">木桌棕</span>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-        <button class="theme-btn" data-theme="jade" onclick="Game.setTheme('jade')" title="翠竹綠" style="background:radial-gradient(#0d2a18,#050e09)"></button>
-        <span style="font-size:.6rem;color:rgba(212,168,67,.55);letter-spacing:.04em">翠竹綠</span>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-        <button class="theme-btn" data-theme="noir" onclick="Game.setTheme('noir')" title="暗夜紫" style="background:radial-gradient(#18162a,#08060e)"></button>
-        <span style="font-size:.6rem;color:rgba(212,168,67,.55);letter-spacing:.04em">暗夜紫</span>
-      </div>
-    </div>
-
-    <!-- 連線匹配模式 -->
-    <div class="online-row">
-      <div class="online-dot"></div>
-      <label for="online-toggle">🌐 連線匹配模式</label>
-      <div class="ol-toggle">
-        <input type="checkbox" id="online-toggle" onchange="Matchmaking.onToggle(this.checked)">
-        <span class="ol-sl"></span>
-      </div>
-    </div>
-    <div class="online-cnt" id="online-cnt" style="display:none">目前線上 <span id="online-num">—</span> 人</div>
-
-    <div class="sec-title">🤖 AI 對手</div>
-    <div class="ai-setup-grid" id="ai-name-grid">
-      <!-- 南家 🐯 -->
-      <div class="ai-card">
-        <div class="ai-card-avatar">🐯</div>
-        <div class="ai-card-label">南家</div>
-        <input class="fi" id="ai1" value="小虎" maxlength="8">
-      </div>
-      <!-- 西家 🐉 -->
-      <div class="ai-card">
-        <div class="ai-card-avatar">🐉</div>
-        <div class="ai-card-label">西家</div>
-        <input class="fi" id="ai2" value="小龍" maxlength="8">
-      </div>
-      <!-- 北家 🦢 -->
-      <div class="ai-card">
-        <div class="ai-card-avatar">🦢</div>
-        <div class="ai-card-label">北家</div>
-        <input class="fi" id="ai3" value="小鶴" maxlength="8">
-      </div>
-    </div>
-
-    <!-- Online multiplayer section -->
-    <div class="sec-title">🌐 連線對戰</div>
-    <div class="online-lobby-section">
-      <div class="online-mode-btns">
-        <button class="online-mode-btn" onclick="Online.showCreate()">🏠 建立房間</button>
-        <button class="online-mode-btn" onclick="Online.showJoin()">🚪 加入房間</button>
-      </div>
-      <div id="ol-room-section">
-        <!-- Create: show room code -->
-        <div id="ol-create-view" style="display:none;text-align:center">
-          <div style="font-size:.68rem;color:rgba(255,255,255,.35);margin-bottom:4px">點擊複製代碼</div>
-          <div class="ol-room-code" id="ol-room-code" onclick="Online.copyCode()">------</div>
-          <div id="ol-player-list" style="margin-top:10px"></div>
-          <button class="lbtn" id="ol-start-btn" onclick="Online.startGame()" style="margin-top:8px;opacity:.45" disabled>▶ 開始遊戲 (1/4)</button>
-          <button class="lbtn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">離開</button>
+      <div id="resume-bar" style="display:none;margin-top:14px;padding:10px 16px;background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.4);border-radius:12px;text-align:center">
+        <span style="color:var(--gold);font-size:.85rem;font-weight:700">🔄 偵測到中斷的牌局</span>
+        <div style="margin-top:7px;display:flex;gap:8px;justify-content:center">
+          <button class="btn bp" style="width:auto;padding:6px 18px;font-size:.8rem" onclick="Game.resumeSavedGame()">繼續上局</button>
+          <button class="btn" style="width:auto;padding:6px 14px;font-size:.8rem;background:rgba(255,80,80,.1);border-color:rgba(255,80,80,.35);color:rgba(255,120,120,.8)" onclick="Game.clearSave();document.getElementById('resume-bar').style.display='none'">放棄</button>
         </div>
-        <!-- Join: enter room code -->
-        <div id="ol-join-view" style="display:none">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <input class="fi" id="ol-join-code" placeholder="房間代碼" maxlength="12" style="text-transform:uppercase;letter-spacing:.15em">
-            <button class="lbtn" style="width:auto;padding:8px 16px;white-space:nowrap" onclick="Online.doJoin()">加入</button>
+      </div>
+    </div>
+
+    <!-- ── SOLO PANEL ─────────────────────────────── -->
+    <div id="lobby-solo" style="display:none">
+      <button class="lobby-back-btn" onclick="Lobby.showHome()">← 返回</button>
+      <div class="sec-title">💰 籌碼設定</div>
+      <div class="sgrid" style="grid-template-columns:1fr 1fr 1fr 1fr">
+        <div class="fg" style="margin:0">
+          <label class="fl">底</label>
+          <select class="fi" id="sbase">
+            <option value="1">1台底</option>
+            <option value="2">2台底</option>
+            <option value="3">3台底</option>
+          </select>
+        </div>
+        <div class="fg" style="margin:0">
+          <label class="fl">每台</label>
+          <select class="fi" id="stai">
+            <option value="50">$50/台</option>
+            <option value="100" selected>$100/台</option>
+            <option value="200">$200/台</option>
+            <option value="500">$500/台</option>
+          </select>
+        </div>
+        <div class="fg" style="margin:0">
+          <label class="fl">起始籌碼</label>
+          <select class="fi" id="smoney">
+            <option value="5000">$5,000</option>
+            <option value="10000" selected>$10,000</option>
+            <option value="20000">$20,000</option>
+            <option value="50000">$50,000</option>
+          </select>
+        </div>
+        <div class="fg" style="margin:0">
+          <label class="fl">出牌限時</label>
+          <select class="fi" id="stime">
+            <option value="0">無限制</option>
+            <option value="8">8秒</option>
+            <option value="12">12秒</option>
+            <option value="15" selected>15秒</option>
+            <option value="20">20秒</option>
+          </select>
+        </div>
+      </div>
+      <div class="sec-title">🏁 選擇局數</div>
+      <div class="mode-cards">
+        <button class="mode-card" onclick="Game.start('east')">
+          <div class="mode-card-icon">🌅</div>
+          <div class="mode-card-title">東風局</div>
+          <div class="mode-card-desc">4 局 · 快打</div>
+          <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;letter-spacing:.06em">▶ 點擊開始</div>
+        </button>
+        <button class="mode-card" onclick="Game.start('south')">
+          <div class="mode-card-icon">🌄</div>
+          <div class="mode-card-title">南風局</div>
+          <div class="mode-card-desc">8 局 · 全場</div>
+          <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;letter-spacing:.06em">▶ 點擊開始</div>
+        </button>
+      </div>
+    </div>
+
+    <!-- ── ONLINE PANEL ────────────────────────────── -->
+    <div id="lobby-online" style="display:none">
+      <button class="lobby-back-btn" onclick="Lobby.showHome()">← 返回</button>
+      <div class="online-lobby-section">
+        <div class="online-mode-btns">
+          <button class="online-mode-btn" onclick="Online.showCreate()">🏠 建立房間</button>
+          <button class="online-mode-btn" onclick="Online.showJoin()">🚪 加入房間</button>
+        </div>
+        <div id="ol-room-section">
+          <div id="ol-create-view" style="display:none;text-align:center">
+            <div style="font-size:.68rem;color:rgba(255,255,255,.35);margin-bottom:4px">點擊複製代碼</div>
+            <div class="ol-room-code" id="ol-room-code" onclick="Online.copyCode()">------</div>
+            <div id="ol-player-list" style="margin-top:10px"></div>
+            <button class="lbtn" id="ol-start-btn" onclick="Online.startGame()" style="margin-top:8px;opacity:.45" disabled>▶ 開始遊戲 (1/4)</button>
+            <button class="lbtn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">離開</button>
           </div>
-          <button class="lbtn" onclick="Online.leave()" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">取消</button>
+          <div id="ol-join-view" style="display:none">
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+              <input class="fi" id="ol-join-code" placeholder="房間代碼" maxlength="12" style="text-transform:uppercase;letter-spacing:.15em">
+              <button class="lbtn" style="width:auto;padding:8px 16px;white-space:nowrap" onclick="Online.doJoin()">加入</button>
+            </div>
+            <button class="lbtn" onclick="Online.leave()" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">取消</button>
+          </div>
         </div>
-      </div>
-      <div id="ol-status"></div>
-    </div>
-    <div class="sec-title">🎯 單人模式</div>
-    <div class="sec-title">🏁 選擇局數</div>
-    <div class="mode-cards">
-      <button class="mode-card" onclick="Game.start('east')">
-        <div class="mode-card-icon">🌅</div>
-        <div class="mode-card-title">東風局</div>
-        <div class="mode-card-desc">4 局 · 快打</div>
-        <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;letter-spacing:.06em">▶ 點擊開始</div>
-      </button>
-      <button class="mode-card" onclick="Game.start('south')">
-        <div class="mode-card-icon">🌄</div>
-        <div class="mode-card-title">南風局</div>
-        <div class="mode-card-desc">8 局 · 全場</div>
-        <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;letter-spacing:.06em">▶ 點擊開始</div>
-      </button>
-    </div>
-    <div id="resume-bar" style="display:none;margin-top:14px;padding:10px 16px;background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.4);border-radius:12px;text-align:center">
-      <span style="color:var(--gold);font-size:.85rem;font-weight:700">🔄 偵測到中斷的牌局</span>
-      <div style="margin-top:7px;display:flex;gap:8px;justify-content:center">
-        <button class="btn bp" style="width:auto;padding:6px 18px;font-size:.8rem" onclick="Game.resumeSavedGame()">繼續上局</button>
-        <button class="btn" style="width:auto;padding:6px 14px;font-size:.8rem;background:rgba(255,80,80,.1);border-color:rgba(255,80,80,.35);color:rgba(255,120,120,.8)" onclick="Game.clearSave();document.getElementById('resume-bar').style.display='none'">放棄</button>
+        <div id="ol-status"></div>
       </div>
     </div>
   </div>
@@ -4019,10 +3980,10 @@ const Game={
     const name=document.getElementById('pname').value.trim()||'玩家';
     const maxRounds = mode==='south' ? 8 : 4;
     this.settings={
-      base:+document.getElementById('sbase').value,
-      tai:+document.getElementById('stai').value,
-      money:+document.getElementById('smoney').value,
-      time:+document.getElementById('stime').value,
+      base:+(document.getElementById('sbase')?.value||1),
+      tai:+(document.getElementById('stai')?.value||100),
+      money:+(document.getElementById('smoney')?.value||10000),
+      time:+(document.getElementById('stime')?.value||15),
       voice:'auto',
       rate:1.05,
       quickStart:false,
@@ -4033,49 +3994,30 @@ const Game={
     this.winStats=[0,0,0,0];this.rounds=0;
     this.riichiMode=false;this.riichiTile=null;
 
-    // Pick AI names (online mode = random pool, else use input fields)
-    let ai1,ai2,ai3;
-    if(Matchmaking.enabled){
-      [ai1,ai2,ai3]=Matchmaking._pick3();
-      // Fill lobby inputs for display consistency
-      document.getElementById('ai1').value=ai1;
-      document.getElementById('ai2').value=ai2;
-      document.getElementById('ai3').value=ai3;
-    } else {
-      ai1=document.getElementById('ai1').value.trim()||'小南AI';
-      ai2=document.getElementById('ai2').value.trim()||'小西AI';
-      ai3=document.getElementById('ai3').value.trim()||'小北AI';
-    }
+    // Default AI names (used for solo mode; online mode overrides via st.names)
+    const aiPool=[['小虎','小龍','小鶴'],['阿志','阿明','阿花'],['老王','老李','老陳']];
+    const pool=aiPool[~~(Math.random()*aiPool.length)];
+    const ai1=pool[0], ai2=pool[1], ai3=pool[2];
     const names=[name,ai1,ai2,ai3];
 
-    const _launchGame=()=>{
-      this.initRound(names,[1,2,3],this.settings.money,0,1,'東');
-      document.getElementById('lobby').style.display='none';
-      const gEl=document.getElementById('game');
-      gEl.classList.add('show');
-      setTimeout(updateTblVars, 50);
-      document.getElementById('pause-btn').style.display='block';
-      document.getElementById('autoplay-btn').style.display='block';
-      document.getElementById('audio-btn').style.display='block';
-      document.getElementById('speed-panel').style.display='flex';
-      this._initDustParticles();
-      this._syncAudioPanel();
-      if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
-      const winds=['東','南','西','北'];
-      for(let i=0;i<4;i++){
-        document.getElementById(`wb${i}`).textContent=winds[i];
-        document.getElementById(`pn${i}`).textContent=names[i];
-      }
-      this.showDice();
-    };
-
-    if(Matchmaking.enabled){
-      // Hide lobby immediately, show matchmaking screen
-      document.getElementById('lobby').style.display='none';
-      Matchmaking.show(name,[ai1,ai2,ai3],_launchGame);
-    } else {
-      _launchGame();
+    this.initRound(names,[1,2,3],this.settings.money,0,1,'東');
+    document.getElementById('lobby').style.display='none';
+    const gEl=document.getElementById('game');
+    gEl.classList.add('show');
+    setTimeout(updateTblVars, 50);
+    document.getElementById('pause-btn').style.display='block';
+    document.getElementById('autoplay-btn').style.display='block';
+    document.getElementById('audio-btn').style.display='block';
+    document.getElementById('speed-panel').style.display='flex';
+    this._initDustParticles();
+    this._syncAudioPanel();
+    if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
+    const winds=['東','南','西','北'];
+    for(let i=0;i<4;i++){
+      document.getElementById(`wb${i}`).textContent=winds[i];
+      document.getElementById(`pn${i}`).textContent=names[i];
     }
+    this.showDice();
   },
 
   // E4: AI 聊天泡泡
@@ -6380,6 +6322,7 @@ const Game={
     this.autoPlay=false;
     document.getElementById('autoplay-btn').classList.remove('on');
     document.getElementById('lobby').style.display='flex';
+    Lobby.showHome();
     speechSynthesis&&speechSynthesis.cancel();
     Bgm.stop();
     this.clearSave();
@@ -6693,12 +6636,8 @@ Stats.load(); Stats.render(); Stats.renderHistory();
   // Restore assist settings
   Game.loadAssist();
 
-  // E3: 計分模式還原
-  const smSaved=localStorage.getItem('mj_score_mode_v1')||'standard';
-  Game._scoringMode=smSaved;
-  document.querySelectorAll('.score-mode-btn').forEach(b=>{
-    b.classList.toggle('active',b.dataset.mode===smSaved);
-  });
+  // 計分模式固定為標準
+  Game._scoringMode='standard';
 
   // C5: 確認打牌設定
   // Restore confirm-discard (saved value or default true)
@@ -6711,6 +6650,22 @@ Stats.load(); Stats.render(); Stats.renderHistory();
     document.getElementById('resume-bar').style.display='block';
   }
 })();
+
+// ════════════════════════════════════════════════════════════
+// LOBBY PANEL CONTROLLER
+// ════════════════════════════════════════════════════════════
+const Lobby = {
+  _panels: ['lobby-home','lobby-solo','lobby-online'],
+  _show(id){
+    this._panels.forEach(p=>{
+      const el=document.getElementById(p);
+      if(el) el.style.display = p===id ? '' : 'none';
+    });
+  },
+  showHome(){ this._show('lobby-home'); },
+  showSolo(){ this._show('lobby-solo'); },
+  showOnline(){ this._show('lobby-online'); },
+};
 
 // ════════════════════════════════════════════════════════════
 // ONLINE COORDINATOR
@@ -6815,22 +6770,20 @@ const Online = {
     });
     Game._online=true; Game._isHost=true; Game._myIndex=0;
     Game._peers=this.peers;
-    const ai1El=document.getElementById('ai1'); if(ai1El) ai1El.value=names[1]||'P2';
-    const ai2El=document.getElementById('ai2'); if(ai2El) ai2El.value=names[2]||'P3';
-    const ai3El=document.getElementById('ai3'); if(ai3El) ai3El.value=names[3]||'P4';
+    document.getElementById('pname').value=names[0]||'玩家';
     Game.start('east');
     if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
-    if(Game.st) Game.st.ai=[];
+    if(Game.st){ Game.st.ai=[]; Game.st.names=names; }
   },
 
   leave(){
     MahjongNetwork.disconnect();
     this.peers=[];
-    document.getElementById('ol-room-section')?.classList.remove('show');
     document.getElementById('ol-create-view').style.display='none';
     document.getElementById('ol-join-view').style.display='none';
     this._status('');
     Game._online=false; Game._isHost=false; Game._myIndex=0;
+    Lobby.showHome();
   },
 
   _handleMsg(peerId,data){
@@ -6844,15 +6797,10 @@ const Online = {
       case 'game_start':
         this.myIndex=data.playerIndex;
         Game._online=true; Game._isHost=false; Game._myIndex=data.playerIndex;
-        {
-          const ai1El=document.getElementById('ai1'); if(ai1El) ai1El.value=data.names[1]||'P2';
-          const ai2El=document.getElementById('ai2'); if(ai2El) ai2El.value=data.names[2]||'P3';
-          const ai3El=document.getElementById('ai3'); if(ai3El) ai3El.value=data.names[3]||'P4';
-          document.getElementById('pname').value=data.names[0]||'P1';
-          Game.start('east');
-          if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
-          if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
-        }
+        document.getElementById('pname').value=data.names[data.playerIndex]||'玩家';
+        Game.start('east');
+        if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
+        if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
         break;
       case 'game_state':
         if(!Game._isHost && data.state){
@@ -6980,6 +6928,7 @@ const MahjongNetwork = {
     window.addEventListener('DOMContentLoaded',()=>{
       const codeEl=document.getElementById('ol-join-code');
       if(codeEl) codeEl.value=p.get('room');
+      Lobby.showOnline();
       Online.showJoin();
     });
   }
