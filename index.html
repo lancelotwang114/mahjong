@@ -4358,8 +4358,15 @@ const Game={
   },
   closeDice(){
     document.getElementById('dov').style.display='none';
+    // Online non-host: don't run local game logic — wait for authoritative game_state from host
+    if(this._online&&!this._isHost){
+      if(this.st){this.st.phase='playing';this.render();}
+      return;
+    }
     // Flower replacement plays out on the board like real tile actions
     this._doFlowerReplacement(()=>{
+      // Online host: broadcast initial state (all hands set, no drawn tile) so non-host can see their tiles
+      if(this._online&&this._isHost) Online.broadcastState();
       this.doTurn();
     });
   },
@@ -4368,6 +4375,8 @@ const Game={
   doTurn(){
     const s=this.st;
     if(s.phase!=='playing')return;
+    // Online non-host: game state is driven entirely by host broadcasts — never run local turns
+    if(this._online&&!this._isHost)return;
     const p=s.turn;
     const isAI=s.ai.includes(p);
     // Track 槓上開花 flag
@@ -4436,11 +4445,20 @@ const Game={
       if(winNow)extraBtns.push({type:'win',label:isTianhu?'🌟 天胡！':'🀄 自摸！',cls:'aw'});
       const sk=AI.selfKong(s.hands[p],s.melds[p]);
       if(sk)extraBtns.push({type:'sk',label:'暗槓',cls:'ako',tiles:sk});
-      // Riichi mode: auto-handle turn
+      // Riichi mode: auto-handle turn — smart discard: prefer drawn tile if it keeps tenpai
       if(this.riichiMode){
         if(winNow){this.doWin(0,true);return;}
         const drawn=s.drawnId?s.hands[0].find(t=>t.id===s.drawnId):null;
-        if(drawn)setTimeout(()=>this.doDiscard(0,drawn.id),300);
+        // Find all tiles whose discard maintains tenpai
+        const validDiscards=this.findRiichiDiscards(s.hands[0].filter(x=>!x.fl),s.melds[0]);
+        let smartDiscard=null;
+        if(validDiscards.length>0){
+          // Prefer drawn tile (discard it immediately if tenpai is maintained)
+          smartDiscard=validDiscards.find(t=>t.id===drawn?.id)||validDiscards[0];
+        } else if(drawn){
+          smartDiscard=drawn; // fallback: discard drawn tile
+        }
+        if(smartDiscard)setTimeout(()=>this.doDiscard(0,smartDiscard.id),300);
         else setTimeout(()=>this.doDiscard(0,AI.discard(s.hands[0],s.melds[0],s.discards,s.melds,s.tenpai).id),300);
         this.showBtns([{type:'stop-riichi',label:'停止聽牌',cls:'stop-riichi'}]);
         if(s.tenpai[p]&&s.tenpaiT[p])this.showTenpai(s.tenpaiT[p]);
@@ -5117,6 +5135,12 @@ const Game={
     if(s.ai.includes(p)){const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));setTimeout(()=>this.doDiscard(p,d.id),_dMs);}
     else{
       this.checkTenpai(p);
+      // Show riichi button if player can enter tenpai by discarding
+      const riichiCands=this.findRiichiDiscards(s.hands[0],s.melds[0]);
+      if(riichiCands.length>0){
+        this.showBtns([{type:'riichi',label:'聽牌',cls:'riichi'},{type:'skip',label:'略過',cls:'ask'}]);
+        document.getElementById('action-overlay')?.classList.add('active');
+      }
       if(s.tenpai[0]&&s.tenpaiT[0]) setTimeout(()=>this.showTenpai(s.tenpaiT[0]),250);
       else this.hideTenpai();
       this.toast('請選一張牌打出！');
@@ -5636,6 +5660,9 @@ const Game={
       // Dealer badge
       const db=document.getElementById(`db${i}`);
       if(db) db.style.display=(i===(s.dealer??0)?'inline':'none');
+      // Player name (keep DOM in sync with st.names, important for online mode)
+      const pnEl=document.getElementById(`pn${i}`);
+      if(pnEl&&s.names&&s.names[i])pnEl.textContent=s.names[i];
       // Money + wins
       const m=s.money[i]??0,w=this.winStats[i]||0;
       const mel=document.getElementById(`pm${i}`);
