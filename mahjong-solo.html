@@ -910,7 +910,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow:0 2px 7px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,200,100,.09);
   overflow:hidden;max-width:100%;
 }
-.pa.active-turn .pbar{border-color:var(--gold2);box-shadow:0 0 20px rgba(212,168,67,.8),0 0 40px rgba(212,168,67,.25);}
+@keyframes activeTurnPulse{
+  0%,100%{border-color:rgba(212,168,67,.75);box-shadow:0 0 14px rgba(212,168,67,.6),0 0 30px rgba(212,168,67,.18);}
+  50%{border-color:rgba(255,215,80,1);box-shadow:0 0 28px rgba(212,168,67,1),0 0 56px rgba(212,168,67,.45),inset 0 0 6px rgba(212,168,67,.14);}
+}
+.pa.active-turn .pbar{animation:activeTurnPulse 1.3s ease-in-out infinite;}
 
 /* ══ TILES ══════════════════════════════════════════════ */
 .ht{display:flex;flex-wrap:wrap;gap:2px;padding:2px;align-items:flex-end;justify-content:center;overflow:visible}
@@ -1105,6 +1109,12 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   border-radius: 6px;
   animation: handAlertBreath 1.6s ease-in-out infinite;
 }
+/* ── 輪到 p0 打牌時手牌區呼吸光暈 ── */
+@keyframes myTurnHandGlow{
+  0%,100%{box-shadow:0 0 0 2px rgba(212,168,67,.2);}
+  50%{box-shadow:0 0 0 3px rgba(212,168,67,.6),0 0 24px rgba(212,168,67,.22);}
+}
+#ht0.my-turn{border-radius:6px;animation:myTurnHandGlow 1.8s ease-in-out infinite;}
 
 .ab {
   padding: 7px 16px;
@@ -2188,22 +2198,22 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* Different light for each player position */
 #turn-light.pos-0 {
   width: 780px; height: 200px;
-  background: radial-gradient(ellipse at 50% 100%, rgba(212,168,67,.26) 0%, rgba(212,168,67,.09) 40%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 100%, rgba(212,168,67,.42) 0%, rgba(212,168,67,.15) 40%, transparent 70%);
   bottom: 165px; left: 50%; transform: translateX(-50%);
 }
 #turn-light.pos-1 {
   width: 240px; height: 460px;
-  background: radial-gradient(ellipse at 100% 50%, rgba(255,200,100,.2) 0%, rgba(255,200,100,.06) 40%, transparent 70%);
+  background: radial-gradient(ellipse at 100% 50%, rgba(255,200,100,.35) 0%, rgba(255,200,100,.12) 40%, transparent 70%);
   right: 155px; top: 115px;
 }
 #turn-light.pos-2 {
   width: 780px; height: 160px;
-  background: radial-gradient(ellipse at 50% 0%, rgba(200,180,100,.2) 0%, rgba(200,180,100,.06) 40%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(200,180,100,.35) 0%, rgba(200,180,100,.12) 40%, transparent 70%);
   top: 100px; left: 50%; transform: translateX(-50%);
 }
 #turn-light.pos-3 {
   width: 240px; height: 460px;
-  background: radial-gradient(ellipse at 0% 50%, rgba(255,200,100,.2) 0%, rgba(255,200,100,.06) 40%, transparent 70%);
+  background: radial-gradient(ellipse at 0% 50%, rgba(255,200,100,.35) 0%, rgba(255,200,100,.12) 40%, transparent 70%);
   left: 155px; top: 115px;
 }
 
@@ -2217,10 +2227,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* Player 1 pbar: at top of right area */
 #pa1-area .pbar { max-width: 188px; }
 
-/* Active-turn glow for new areas */
+/* Active-turn glow for new areas (re-use same pulse animation) */
 #pa2.active-turn .pbar, #pa3.active-turn .pbar, #pa1.active-turn .pbar {
-  border-color:var(--gold2);
-  box-shadow:0 0 20px rgba(212,168,67,.8),0 0 40px rgba(212,168,67,.25);
+  animation:activeTurnPulse 1.3s ease-in-out infinite;
 }
 
 /* #tpanel position */
@@ -4491,6 +4500,7 @@ const Game={
       ht0El.classList.add('my-turn');
       // Clear any leftover .sel (keyboard navigation) from previous turn
       ht0El.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
+      this.toast('✦ 輪到你！請打出一張牌',1600);
       // action-overlay only activates if there are real action buttons (自摸/暗槓/聽牌)
       if(extraBtns.length) document.getElementById('action-overlay')?.classList.add('active');
       // 提示：左側 #hint-btn 已足夠，不在 action-overlay 重複放置
@@ -5168,6 +5178,7 @@ const Game={
       else this.hideTenpai();
       this.toast('請選一張牌打出！');
       this.startTimer(p);
+      document.getElementById('ht0')?.classList.add('my-turn');
     }
   },
 
