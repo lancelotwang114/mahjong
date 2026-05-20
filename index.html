@@ -1512,7 +1512,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #autoplay-btn:hover { border-color:rgba(46,204,113,.6); color:rgba(46,204,113,.8); }
 /* Leave & save button */
 #leave-btn {
-  position:absolute; top:10px; left:80px; z-index:300;
+  position:absolute; top:10px; left:94px; z-index:300;
   background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
   border:1.5px solid rgba(180,80,55,.4);
   border-radius:8px; padding:6px 14px; color:rgba(212,130,100,.7);
@@ -1718,7 +1718,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* ══ IN-GAME SPEED PANEL ════════════════════════════════════ */
 #speed-panel {
-  position:absolute; top:10px; left:100px;
+  position:absolute; top:10px; left:182px;
   z-index:310; display:none; align-items:center; gap:6px;
   background:linear-gradient(160deg,rgba(22,11,3,.88),rgba(38,20,6,.82));
   border:1.5px solid rgba(180,130,55,.3);
@@ -2134,14 +2134,14 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    bottom:220px 使面板底緣懸浮於 #p0-zone 頂端上方 10px */
 #action-overlay {
   position: absolute;
-  right: 212px;
-  bottom: 220px;
+  right: 252px;   /* 距右側 252px，對準最右側 3-4 張手牌正上方 */
+  bottom: 202px;  /* 手牌上方約 15px 處懸浮 */
   display: none;
   flex-direction: row;
   align-items: center;
   gap: 10px;
   pointer-events: none;
-  z-index: 60;
+  z-index: 200;   /* 確保浮在所有手牌與棄牌區之上 */
 }
 #action-overlay.active {
   display: flex !important;
@@ -2868,6 +2868,43 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     0 0 0 2px rgba(255,210,80,.85),         /* 金色輪廓光 */
     0 0 20px rgba(212,168,67,.9),
     0 0 40px rgba(212,168,67,.32);
+}
+
+/* ── 手牌微調 A: 進牌（.drawn）加大左側間距 ────────────────────── */
+/* margin-left 撐開實體間距；::after 分隔線位置跟著居中調整 */
+.t.drawn {
+  margin-left: 24px;
+}
+.t.drawn::after {
+  left: -16px; /* 居中於 24px gap 中 */
+}
+
+/* ── 手牌微調 B: 加大 Hover 浮起距離 ───────────────────────────── */
+/* 非我的回合：一般 hover 浮 18px */
+#ht0 .t:hover {
+  transform: translateY(-18px) scale(1.07);
+}
+/* 我的回合 hover：更大浮起 24px + 保持金光框 */
+#ht0.my-turn .t:hover {
+  transform: translateY(-24px) scale(1.11) !important;
+}
+/* 候選鳴牌 hover：也拉大一點 */
+#ht0 .t.meld-candidate:hover {
+  transform: translateY(-24px) scale(1.06) !important;
+}
+
+/* ── 手牌微調 C: 手指 Emoji 游標 ───────────────────────────────── */
+/* 手牌 & 可點擊按鈕改為 👆 emoji，pointer 為 fallback */
+#ht0 .t {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><text y='26' font-size='24'>👆</text></svg>") 8 0, pointer;
+}
+/* 我的回合 hover 切回 crosshair（更精確的打牌游標） */
+#ht0.my-turn .t:hover {
+  cursor: crosshair;
+}
+/* 操作按鈕（吃/碰/胡/跳過）也用手指 */
+.ab {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='32'><text y='26' font-size='24'>👆</text></svg>") 8 0, pointer;
 }
 
 /* ── 4. 操作按鈕 — 微玻璃霧化質感 ─────────────────────────────── */
