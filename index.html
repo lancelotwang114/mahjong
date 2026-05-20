@@ -2784,6 +2784,177 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 .lobby-back-btn:hover { color:var(--gold); }
 
+/* ═══════════════════════════════════════════════════════════════════
+   VISUAL UPGRADE: 雀魂 × 高級賭場 質感
+   ★ 絕對不觸碰 sprite background-size / background-position 計算邏輯 ★
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. P0 手牌整體放大 10% ──────────────────────────────────────── */
+/* transform: scale 不影響 flex 排版，sprite 背景隨視覺一起縮放正確 */
+#ht0 {
+  transform: scale(1.1);
+  transform-origin: bottom center;
+}
+/* 為手牌 .t 加入 filter 過渡，使 hover 金光平滑 */
+#ht0 .t {
+  transition:
+    transform .15s cubic-bezier(.34,1.5,.64,1),
+    box-shadow .15s,
+    filter .18s ease-out;
+}
+/* 非操作回合：hover 有淡淡金色柔光 */
+#ht0 .t:hover:not(.meld-candidate):not(.sel) {
+  filter: drop-shadow(0 0 9px rgba(255,215,80,.38));
+}
+/* 我的回合 hover：強烈金色光暈 */
+#ht0.my-turn .t:hover {
+  filter: drop-shadow(0 0 14px rgba(255,215,80,.72));
+}
+
+/* ── 2. 非當前回合對手區域弱化 ──────────────────────────────────── */
+/* pa1/pa2/pa3 預設微暗，輪到誰時恢復全亮；p0 不受影響 */
+#pa1, #pa2, #pa3 {
+  transition: opacity .35s ease, filter .35s ease;
+  opacity: .82;
+  filter: saturate(76%) brightness(.93);
+}
+#pa1.active-turn,
+#pa2.active-turn,
+#pa3.active-turn {
+  opacity: 1;
+  filter: saturate(100%) brightness(1);
+}
+
+/* ── 3a. 所有牌面基礎立體感增強 ────────────────────────────────── */
+/* 只覆蓋 box-shadow，不動 background-size / background-position     */
+.t {
+  box-shadow:
+    0 2px 0 rgba(255,255,255,.52) inset,    /* 頂緣高光加亮 */
+    1px 0 0 #fff2d8 inset,
+    -1px 0 0 #d4aa60 inset,
+    0 -5px 0 #a87820 inset,                 /* 底部厚度邊 */
+    3px 8px 14px rgba(20,10,0,.55),         /* 主投影 */
+    0 2px 5px rgba(0,0,0,.32),              /* 近距離柔光 */
+    0 10px 22px rgba(0,0,0,.15);            /* 遠距離環境光 */
+}
+
+/* ── 3b. 可操作牌加金色 Rim Light ───────────────────────────────── */
+/* .sel（鍵盤選中） */
+.t.sel {
+  box-shadow:
+    0 2px 0 #fffef0 inset,
+    0 -5px 0 #c8980a inset,
+    5px 22px 28px rgba(0,0,0,.65),
+    0 0 0 2.5px rgba(255,210,80,.92),       /* 金色輪廓光 */
+    0 0 22px rgba(212,168,67,.95),
+    0 0 48px rgba(212,168,67,.42);
+}
+/* .meld-candidate（可鳴牌高亮） */
+.t.meld-candidate {
+  box-shadow:
+    0 2px 0 #fff9ee inset,
+    0 -4px 0 #b8860b inset,
+    0 6px 16px rgba(0,0,0,.6),
+    0 0 0 2px rgba(255,210,80,.82),         /* 金色輪廓光 */
+    0 0 14px rgba(212,168,67,.9),
+    0 0 30px rgba(212,168,67,.52);
+}
+/* 回合內 hover：也加金框 */
+#ht0.my-turn .t:hover {
+  box-shadow:
+    0 2px 0 #fffef0 inset,
+    0 -5px 0 #c8980a inset,
+    5px 22px 28px rgba(0,0,0,.65),
+    0 0 0 2px rgba(255,210,80,.85),         /* 金色輪廓光 */
+    0 0 20px rgba(212,168,67,.9),
+    0 0 40px rgba(212,168,67,.32);
+}
+
+/* ── 4. 操作按鈕 — 微玻璃霧化質感 ─────────────────────────────── */
+.ab {
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  background: linear-gradient(180deg,
+    rgba(255,255,255,.09) 0%,
+    rgba(255,255,255,.025) 100%);
+  border: 1.5px solid rgba(255,215,120,.38);
+  color: #ffd778;
+  text-shadow: 0 1px 3px rgba(0,0,0,.85);
+  box-shadow:
+    0 2px 10px rgba(0,0,0,.48),
+    inset 0 1px 0 rgba(255,220,100,.2),
+    inset 0 -1px 0 rgba(0,0,0,.2);
+  transition: all .18s ease;
+}
+.ab:hover {
+  background: linear-gradient(180deg,
+    rgba(255,255,255,.16) 0%,
+    rgba(255,255,255,.055) 100%);
+  border-color: rgba(255,215,120,.65);
+  color: #ffe99a;
+  text-shadow: 0 0 10px rgba(212,168,67,.55), 0 1px 2px rgba(0,0,0,.8);
+  box-shadow:
+    0 0 14px rgba(255,215,120,.32),
+    0 4px 18px rgba(0,0,0,.52),
+    inset 0 1px 0 rgba(255,220,100,.28);
+  transform: translateY(-1px) scale(1.04);
+}
+.ab:active {
+  transform: scale(.96) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.3) !important;
+  transition: transform .06s ease, box-shadow .06s ease;
+}
+/* 胡！按鈕 — 保留紅色特效，加玻璃層 */
+.ab.aw {
+  border-color: rgba(231,76,60,.7);
+  background: linear-gradient(180deg, rgba(231,76,60,.14), rgba(231,76,60,.06));
+}
+.ab.aw:hover { background: #e74c3c; color: #fff; box-shadow: 0 0 18px rgba(231,76,60,.55); }
+/* 碰 */
+.ab.apo {
+  border-color: rgba(230,126,34,.7);
+  background: linear-gradient(180deg, rgba(230,126,34,.14), rgba(230,126,34,.06));
+}
+.ab.apo:hover { background: #e67e22; color: #fff; }
+/* 吃 */
+.ab.ach {
+  border-color: rgba(52,152,219,.7);
+  background: linear-gradient(180deg, rgba(52,152,219,.14), rgba(52,152,219,.06));
+}
+.ab.ach:hover { background: #3498db; color: #fff; }
+/* 槓 */
+.ab.ako {
+  border-color: rgba(155,89,182,.7);
+  background: linear-gradient(180deg, rgba(155,89,182,.14), rgba(155,89,182,.06));
+}
+.ab.ako:hover { background: #9b59b6; color: #fff; }
+/* 跳過 — 極低調玻璃 */
+.ab.ask {
+  border-color: rgba(255,255,255,.2);
+  background: rgba(255,255,255,.04);
+  color: rgba(255,255,255,.45);
+}
+.ab.ask:hover {
+  background: rgba(255,255,255,.09);
+  border-color: rgba(255,255,255,.38);
+  color: rgba(255,255,255,.72);
+  box-shadow: 0 0 8px rgba(255,255,255,.12);
+}
+/* 聽牌 */
+.ab.riichi {
+  border-color: rgba(46,204,113,.7);
+  background: linear-gradient(180deg, rgba(46,204,113,.14), rgba(46,204,113,.06));
+  color: #2ecc71;
+}
+.ab.riichi:hover { background: #2ecc71; color: #1a0a00; }
+/* 停止聽牌 */
+.ab.stop-riichi {
+  border-color: rgba(231,76,60,.6);
+  background: linear-gradient(180deg, rgba(231,76,60,.12), rgba(231,76,60,.04));
+  color: #e74c3c;
+}
+.ab.stop-riichi:hover { background: #e74c3c; color: #fff; }
+
 </style>
 </head>
 <body>
