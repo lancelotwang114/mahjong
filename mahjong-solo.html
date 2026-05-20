@@ -4181,7 +4181,8 @@ const Game={
   showDice(){
     // Quick start: skip dice animation
     if(this.settings&&this.settings.quickStart){
-      const d1=1+~~(Math.random()*6),d2=1+~~(Math.random()*6);
+      const [d1,d2]=this._hostDice||[1+~~(Math.random()*6),1+~~(Math.random()*6)];
+      this._hostDice=null;
       if(this.st)this.st.dice=[d1,d2];
       const dov=document.getElementById('dov');if(dov)dov.style.display='none';
       if(this.st)this.st.phase='playing';
@@ -4193,7 +4194,8 @@ const Game={
     const dbig=document.getElementById('dbig');
     const dtxt=document.getElementById('dtxt');
     const dok=document.getElementById('dok');
-    const d1=1+~~(Math.random()*6),d2=1+~~(Math.random()*6);
+    const [d1,d2]=this._hostDice||[1+~~(Math.random()*6),1+~~(Math.random()*6)];
+    this._hostDice=null;
     this.st.dice=[d1,d2];
 
     const mkDiceEl=()=>{const d=document.createElement('div');d.className='dice-el';d.style.position='relative';return d;};
@@ -4760,7 +4762,7 @@ const Game={
     if(!peer?.id){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
     const serOpts=opts.map(o=>({...o,tiles:(o.tiles||[]).map(t=>({id:t.id,n:t.n,suit:t.suit,v:t.v}))}));
     const serTile={id:tile.id,n:tile.n,suit:tile.suit,v:tile.v};
-    MahjongNetwork.sendTo(peer.id,{type:'meld_offer',opts:serOpts,tile:serTile});
+    MahjongNetwork.sendTo(peer.id,{type:'meld_offer',opts:serOpts,tile:serTile,sentAt:Date.now()});
     this._waitingMeldFrom=p;
     clearTimeout(this._nhMeldTimeout);
     this._nhMeldTimeout=setTimeout(()=>{
@@ -4911,16 +4913,21 @@ const Game={
   // C4: 鳴牌倒數計時器（帶進度條）
   _startMeldCountdown(sec){
     clearInterval(this._meldCountInterval);clearTimeout(this._meldTimeout);
+    // Non-host: subtract network delay so countdown stays in sync with host
+    const elapsed=this._meldOfferElapsed||0;
+    this._meldOfferElapsed=0;
+    const adjSec=Math.max(1,sec-elapsed);
     let bar=document.getElementById('meld-timer-bar');
     if(!bar){
       bar=document.createElement('div');bar.id='meld-timer-bar';
       bar.style.cssText='position:absolute;bottom:0;left:0;height:3px;background:var(--gold);transition:width 1s linear;border-radius:0 0 3px 3px;';
       document.getElementById('action-overlay').appendChild(bar);
     }
-    bar.style.transition='none';bar.style.width='100%';
-    let rem=sec;
+    const startPct=(adjSec/sec)*100;
+    bar.style.transition='none';bar.style.width=startPct+'%';
+    let rem=adjSec;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      bar.style.transition=`width ${sec}s linear`;bar.style.width='0%';
+      bar.style.transition=`width ${adjSec}s linear`;bar.style.width='0%';
     }));
     const skip=()=>{
       clearInterval(this._meldCountInterval);
@@ -4930,7 +4937,7 @@ const Game={
       else{this.nextTurn();}
     };
     this._meldCountInterval=setInterval(()=>{rem--;if(rem<=0){clearInterval(this._meldCountInterval);skip();}},1000);
-    this._meldTimeout=setTimeout(skip,sec*1000);
+    this._meldTimeout=setTimeout(skip,adjSec*1000);
   },
 
   // Apply .meld-candidate class + hover/click handlers to hand tiles
@@ -5483,6 +5490,7 @@ const Game={
 
   // Non-host: set up interactive UI when it's our turn (tile already in hand from broadcast)
   _setupNonHostTurn(){
+    this.clearBtns(); // Clear any leftover meld buttons (e.g. from a just-executed chi/pong)
     const s=this.st;
     const nonFl=s.hands[0].filter(x=>!x.fl);
     if(nonFl.length>0) s.drawnId=nonFl[nonFl.length-1].id;
@@ -6913,9 +6921,12 @@ const Online = {
       if(this.peers[i]) return this.peers[i].name;
       return this._aiNames[i-this.peers.length]||`AI${i}`;
     });
+    // Generate dice once so all players see the same result
+    const diceVals=[1+~~(Math.random()*6),1+~~(Math.random()*6)];
+    Game._hostDice=diceVals;
     this.peers.forEach((p,i)=>{
       if(i===0||!p.id) return;
-      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names});
+      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals});
     });
     Game._online=true; Game._isHost=true; Game._myIndex=0;
     Game._peers=this.peers;
@@ -6948,12 +6959,14 @@ const Online = {
         this.myIndex=data.playerIndex;
         Game._online=true; Game._isHost=false; Game._myIndex=data.playerIndex;
         document.getElementById('pname').value=data.names[data.playerIndex]||'玩家';
+        if(data.dice) Game._hostDice=data.dice; // use host's dice so all players see same result
         Game.start('east');
         if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
         if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
         break;
       case 'game_state':
         if(!Game._isHost && data.state){
+          Game.clearBtns(); // Clear any leftover meld/discard UI before applying new state
           Game.st=data.state;
           Game.render();
           // Set up interactive turn UI when it's our turn (tile already in hand)
@@ -6963,7 +6976,12 @@ const Online = {
         }
         break;
       case 'meld_offer':
-        if(!Game._isHost) Game.offerMeld(0,data.opts,data.tile);
+        if(!Game._isHost){
+          // Calculate elapsed time to sync countdown with host's timer
+          const elapsed=data.sentAt?Math.round((Date.now()-data.sentAt)/1000):0;
+          Game._meldOfferElapsed=Math.max(0,Math.min(elapsed,9));
+          Game.offerMeld(0,data.opts,data.tile);
+        }
         break;
       case 'action':
         if(Game._isHost) this._processAction(peerId,data);
