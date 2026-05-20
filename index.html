@@ -657,10 +657,55 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   align-content: flex-start !important;
   justify-content: flex-end !important;
 }
-/* Side discard tile size override (larger than dc0/dc2 for readability) */
-#pool #dc1 .t, #pool #dc3 .t {
-  width: 34px !important; height: 46px !important;
-}
+/* Side discard tiles 34×46 — corrected sprite background-size for dc1/dc3 */
+#pool #dc1 .t, #pool #dc3 .t { width:34px !important; height:46px !important; }
+#pool #dc1 .t.man, #pool #dc3 .t.man { background-size:336px 71px !important; }
+#pool #dc1 .t.man.v1, #pool #dc3 .t.man.v1 { background-position:0px -12px !important; }
+#pool #dc1 .t.man.v2, #pool #dc3 .t.man.v2 { background-position:-37px -12px !important; }
+#pool #dc1 .t.man.v3, #pool #dc3 .t.man.v3 { background-position:-75px -12px !important; }
+#pool #dc1 .t.man.v4, #pool #dc3 .t.man.v4 { background-position:-112px -12px !important; }
+#pool #dc1 .t.man.v5, #pool #dc3 .t.man.v5 { background-position:-149px -12px !important; }
+#pool #dc1 .t.man.v6, #pool #dc3 .t.man.v6 { background-position:-187px -12px !important; }
+#pool #dc1 .t.man.v7, #pool #dc3 .t.man.v7 { background-position:-224px -12px !important; }
+#pool #dc1 .t.man.v8, #pool #dc3 .t.man.v8 { background-position:-261px -12px !important; }
+#pool #dc1 .t.man.v9, #pool #dc3 .t.man.v9 { background-position:-299px -12px !important; }
+#pool #dc1 .t.pin, #pool #dc3 .t.pin { background-size:336px 71px !important; }
+#pool #dc1 .t.pin.v1, #pool #dc3 .t.pin.v1 { background-position:0px -12px !important; }
+#pool #dc1 .t.pin.v2, #pool #dc3 .t.pin.v2 { background-position:-37px -12px !important; }
+#pool #dc1 .t.pin.v3, #pool #dc3 .t.pin.v3 { background-position:-75px -12px !important; }
+#pool #dc1 .t.pin.v4, #pool #dc3 .t.pin.v4 { background-position:-112px -12px !important; }
+#pool #dc1 .t.pin.v5, #pool #dc3 .t.pin.v5 { background-position:-149px -12px !important; }
+#pool #dc1 .t.pin.v6, #pool #dc3 .t.pin.v6 { background-position:-187px -12px !important; }
+#pool #dc1 .t.pin.v7, #pool #dc3 .t.pin.v7 { background-position:-224px -12px !important; }
+#pool #dc1 .t.pin.v8, #pool #dc3 .t.pin.v8 { background-position:-261px -12px !important; }
+#pool #dc1 .t.pin.v9, #pool #dc3 .t.pin.v9 { background-position:-299px -12px !important; }
+#pool #dc1 .t.sou, #pool #dc3 .t.sou { background-size:336px 88px !important; }
+#pool #dc1 .t.sou.v1, #pool #dc3 .t.sou.v1 { background-position:0px -21px !important; }
+#pool #dc1 .t.sou.v2, #pool #dc3 .t.sou.v2 { background-position:-37px -21px !important; }
+#pool #dc1 .t.sou.v3, #pool #dc3 .t.sou.v3 { background-position:-75px -21px !important; }
+#pool #dc1 .t.sou.v4, #pool #dc3 .t.sou.v4 { background-position:-112px -21px !important; }
+#pool #dc1 .t.sou.v5, #pool #dc3 .t.sou.v5 { background-position:-149px -21px !important; }
+#pool #dc1 .t.sou.v6, #pool #dc3 .t.sou.v6 { background-position:-187px -21px !important; }
+#pool #dc1 .t.sou.v7, #pool #dc3 .t.sou.v7 { background-position:-224px -21px !important; }
+#pool #dc1 .t.sou.v8, #pool #dc3 .t.sou.v8 { background-position:-261px -21px !important; }
+#pool #dc1 .t.sou.v9, #pool #dc3 .t.sou.v9 { background-position:-299px -21px !important; }
+#pool #dc1 .t.honor, #pool #dc3 .t.honor { background-size:261px 82px !important; }
+#pool #dc1 .t.honor.v0, #pool #dc3 .t.honor.v0 { background-position:0px -18px !important; }
+#pool #dc1 .t.honor.v1, #pool #dc3 .t.honor.v1 { background-position:-37px -18px !important; }
+#pool #dc1 .t.honor.v2, #pool #dc3 .t.honor.v2 { background-position:-75px -18px !important; }
+#pool #dc1 .t.honor.v3, #pool #dc3 .t.honor.v3 { background-position:-112px -18px !important; }
+#pool #dc1 .t.honor.v4, #pool #dc3 .t.honor.v4 { background-position:-149px -18px !important; }
+#pool #dc1 .t.honor.v5, #pool #dc3 .t.honor.v5 { background-position:-224px -18px !important; }
+#pool #dc1 .t.honor.v6, #pool #dc3 .t.honor.v6 { background-position:-186px -18px !important; }
+#pool #dc1 .t.flower, #pool #dc3 .t.flower { background-size:272px 50px !important; }
+#pool #dc1 .t.flower.v0, #pool #dc3 .t.flower.v0 { background-position:0px -2px !important; }
+#pool #dc1 .t.flower.v1, #pool #dc3 .t.flower.v1 { background-position:-34px -2px !important; }
+#pool #dc1 .t.flower.v2, #pool #dc3 .t.flower.v2 { background-position:-68px -2px !important; }
+#pool #dc1 .t.flower.v3, #pool #dc3 .t.flower.v3 { background-position:-102px -2px !important; }
+#pool #dc1 .t.flower.v4, #pool #dc3 .t.flower.v4 { background-position:-136px -2px !important; }
+#pool #dc1 .t.flower.v5, #pool #dc3 .t.flower.v5 { background-position:-170px -2px !important; }
+#pool #dc1 .t.flower.v6, #pool #dc3 .t.flower.v6 { background-position:-204px -2px !important; }
+#pool #dc1 .t.flower.v7, #pool #dc3 .t.flower.v7 { background-position:-238px -2px !important; }
 /* ── Compass score badges: 4 player scores at N/S/E/W of the pool ── */
 .pool-score {
   display: none !important; /* Player info shown in each corner area; pool badges removed */
@@ -1642,6 +1687,38 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   opacity:.4; transition:opacity .25s;
 }
 #speed-panel:hover { opacity:1; }
+/* ── 房主控制面板 ── */
+#host-ctrl-btn {
+  position:absolute; top:10px; left:100px; z-index:310;
+  display:none; align-items:center; gap:5px; padding:5px 12px;
+  background:linear-gradient(160deg,rgba(22,11,3,.88),rgba(38,20,6,.82));
+  border:1.5px solid rgba(212,168,67,.45); border-radius:9px;
+  color:rgba(212,168,67,.8); font-size:.78rem; cursor:pointer;
+  backdrop-filter:blur(6px); box-shadow:0 3px 12px rgba(0,0,0,.4);
+  opacity:.5; transition:opacity .25s; font-family:'Noto Serif TC';
+}
+#host-ctrl-btn:hover { opacity:1; color:var(--gold2); border-color:var(--gold2); }
+#host-ctrl-panel {
+  position:absolute; top:42px; left:100px; z-index:320;
+  display:none;
+  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
+  border:1.5px solid rgba(212,168,67,.4); border-radius:10px;
+  padding:10px 12px; backdrop-filter:blur(8px);
+  box-shadow:0 4px 18px rgba(0,0,0,.55); min-width:200px;
+}
+#host-ctrl-panel .hcp-title {
+  font-size:.65rem; color:rgba(212,168,67,.5); letter-spacing:.08em;
+  text-transform:uppercase; margin-bottom:8px;
+}
+#host-ctrl-panel .hcp-row { display:flex; align-items:center; gap:6px; margin-bottom:8px; }
+#host-ctrl-panel .hcp-label { font-size:.7rem; color:rgba(255,255,255,.45); white-space:nowrap; }
+#host-restart-btn {
+  width:100%; padding:5px; border-radius:7px; cursor:pointer;
+  background:rgba(180,60,30,.25); border:1.5px solid rgba(220,80,40,.4);
+  color:rgba(255,140,100,.85); font-size:.78rem; font-family:'Noto Serif TC';
+  transition:all .15s; margin-top:2px;
+}
+#host-restart-btn:hover { background:rgba(180,60,30,.5); border-color:rgba(255,100,60,.7); color:#ffa080; }
 /* #speed-panel span removed — label no longer needed after layout split */
 .spd-btn {
   border:1.5px solid rgba(180,130,55,.35); background:transparent;
@@ -2973,6 +3050,26 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <button class="spd-btn" id="spd-turbo" onclick="Game.setSpeed('turbo')">極快</button>
   </div>
 
+  <!-- 房主控制（連線模式房主專用） -->
+  <button id="host-ctrl-btn" onclick="Game.toggleHostPanel()">🎮 房主</button>
+  <div id="host-ctrl-panel">
+    <div class="hcp-title">🎮 房主控制</div>
+    <div class="hcp-row">
+      <button id="host-restart-btn" onclick="Game.hostRestart()">↺ 重啟牌局</button>
+    </div>
+    <div class="hcp-row">
+      <span class="hcp-label">暫停：</span>
+      <button class="spd-btn" id="host-pause-btn" onclick="Game.hostPause()">⏸ 暫停</button>
+    </div>
+    <div class="hcp-row" style="flex-wrap:wrap;gap:4px">
+      <span class="hcp-label">速度：</span>
+      <button class="spd-btn" id="hspd-slow" onclick="Game.hostSetSpeed('slow')">慢</button>
+      <button class="spd-btn active" id="hspd-normal" onclick="Game.hostSetSpeed('normal')">正常</button>
+      <button class="spd-btn" id="hspd-fast" onclick="Game.hostSetSpeed('fast')">快</button>
+      <button class="spd-btn" id="hspd-turbo" onclick="Game.hostSetSpeed('turbo')">極快</button>
+    </div>
+  </div>
+
   <div id="info-box">
     <div style="display:flex;align-items:center;gap:6px">
       <span class="ib-wind" id="ib-wind">東風</span>
@@ -3992,7 +4089,48 @@ const Game={
     ['slow','normal','fast','turbo'].forEach(id=>{
       const b=document.getElementById('spd-'+id);
       if(b)b.className='spd-btn'+(s===id?' active':'');
+      const hb=document.getElementById('hspd-'+id);
+      if(hb)hb.className='spd-btn'+(s===id?' active':'');
     });
+  },
+
+  // ── 房主控制 ────────────────────────────────────
+  _applyOnlineRole(){
+    // Call after initGame/initRound to show/hide controls based on role
+    const isHost=this._online&&this._isHost;
+    const isGuest=this._online&&!this._isHost;
+    // Speed panel: only solo or host
+    const sp=document.getElementById('speed-panel');
+    if(sp)sp.style.display=isGuest?'none':'';
+    // Pause button: only solo or host
+    const pb=document.getElementById('pause-btn');
+    if(pb)pb.style.display=isGuest?'none':'block';
+    // Host control button: only host
+    const hcb=document.getElementById('host-ctrl-btn');
+    if(hcb)hcb.style.display=isHost?'flex':'none';
+    const hcp=document.getElementById('host-ctrl-panel');
+    if(hcp)hcp.style.display='none';
+  },
+  toggleHostPanel(){
+    const p=document.getElementById('host-ctrl-panel');
+    if(!p)return;
+    p.style.display=p.style.display==='none'?'block':'none';
+  },
+  hostSetSpeed(s){
+    this.setSpeed(s);
+    if(typeof MahjongNetwork!=='undefined') MahjongNetwork.broadcast({type:'host_speed',speed:s});
+  },
+  hostPause(){
+    this.togglePause();
+    const btn=document.getElementById('host-pause-btn');
+    if(btn)btn.textContent=this.paused?'▶ 繼續':'⏸ 暫停';
+    if(typeof MahjongNetwork!=='undefined') MahjongNetwork.broadcast({type:'host_pause',paused:this.paused});
+  },
+  hostRestart(){
+    const p=document.getElementById('host-ctrl-panel');
+    if(p)p.style.display='none';
+    if(typeof MahjongNetwork!=='undefined') MahjongNetwork.broadcast({type:'host_restart'});
+    this.newRound();
   },
 
   setTheme(name){
@@ -4033,6 +4171,7 @@ const Game={
     gEl.classList.add('show');
     setTimeout(updateTblVars, 50);
     document.getElementById('pause-btn').style.display='block';
+    this._applyOnlineRole();
     document.getElementById('autoplay-btn').style.display='block';
     document.getElementById('audio-btn').style.display='block';
     document.getElementById('speed-panel').style.display='flex';
@@ -7010,6 +7149,16 @@ const Online = {
         Game.start('east');
         if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
         if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
+        Game._applyOnlineRole(); // hide speed/pause for guests
+        break;
+      case 'host_speed':
+        if(!Game._isHost) Game.setSpeed(data.speed);
+        break;
+      case 'host_pause':
+        if(!Game._isHost && Game.paused!==data.paused) Game.togglePause();
+        break;
+      case 'host_restart':
+        if(!Game._isHost) Game.toast('房主重啟牌局中…',2000);
         break;
       case 'game_state':
         if(!Game._isHost && data.state){
