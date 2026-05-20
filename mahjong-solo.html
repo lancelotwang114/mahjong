@@ -5781,10 +5781,12 @@ const Game={
   onTile(tile){
     const s=this.st;
     if(!s||s.phase!=='playing'||s.turn!==0)return;
-    // If action buttons showing (not just timer/hint), ignore tile click
+    // Block tile click only for "mandatory decision" buttons (win/pong/chi/kong/meld-candidate).
+    // Riichi/skip buttons are non-blocking — player can click a tile to discard directly.
     const ap=document.getElementById('ap');
-    const hasBtns=ap.querySelectorAll('.ab:not(.hint)').length>0;
-    if(hasBtns)return;
+    const hasBlockingBtns=ap.querySelectorAll('.ab.aw,.ab.apo,.ab.ach,.ab.ako').length>0||
+                          !!document.getElementById('ht0').querySelector('.meld-candidate');
+    if(hasBlockingBtns)return;
     // C5: 打牌確認（雙擊模式）— 首次點擊選中，再次點擊打出
     const ht0=document.getElementById('ht0');
     const already=ht0.querySelector('.t.sel');
@@ -5797,7 +5799,9 @@ const Game={
         this.doDiscard(0,tile.id);
         return;
       }
+      // First click: select tile and clear non-blocking buttons (signals intent to discard)
       ht0.querySelectorAll('.t').forEach(e=>e.classList.remove('sel'));
+      this.clearBtns();
       if(clickedEl)clickedEl.classList.add('sel');
       return;
     }
