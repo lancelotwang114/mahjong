@@ -48,9 +48,10 @@
 
 **mahjong-solo** 是一款純前端的台灣 16 張麻將單機遊戲，使用單一 HTML 檔案完成，無後端、無框架依賴。
 
-- 主檔案：`mahjong-solo.html`（HTML + CSS + JS 全合一）
+- **主工作檔（直接編輯）：`index.html`**（HTML + CSS + JS 全合一）
 - 牌圖：`tiles-sprite.css` + `images/` 資料夾（萬/筒/條/字/花 PNG sprite）
-- 多人版（另一套舊版）：`index.html` + `js/` + `css/`
+- `mahjong-solo.html` / `mahjong-solo.bak.html`：舊版備份，不再編輯
+- ~~多人版~~：已廢棄，`js/` + `css/` 目錄為舊多人版殘留
 
 ---
 
@@ -224,7 +225,7 @@ Map<tileId, {
 ```bash
 # 本地預覽（需在 mahjong/ 目錄）
 python3 -m http.server 8080
-# 然後開 http://localhost:8080/mahjong-solo.html
+# 然後開 http://localhost:8080/index.html
 ```
 
 ---
