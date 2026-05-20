@@ -3587,10 +3587,12 @@ function tenpaiTiles(hand,melds=[]){
   });
   return res;
 }
-function discRemaining(tile,discards,melds){
+function discRemaining(tile,discards,melds,ownHand){
   let used=0;
   discards.forEach(p=>p.forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++}));
   if(melds) melds.forEach(m=>m.forEach(meld=>(meld.tiles||[]).forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++})));
+  // 【Bug3修復】自己手牌中已有的同張牌也要扣除（那些牌已不可能再摸到）
+  if(ownHand) ownHand.forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++;});
   return Math.max(0,4-used);
 }
 function meldOpts(hand,disc,myIdx,discIdx,existingMelds=[]){
@@ -4623,6 +4625,7 @@ const Game={
       aiStyle:this.settings.aiStyle||[null,'balanced','balanced','balanced'],
       _afterKong:false,_kongWin:false,
       honba:honba,       // 本場點：連莊累積
+      turnSeq:0,         // 【防雙打】回合序號令牌，每次 doTurn 遞增
     };
   },
 
@@ -4867,10 +4870,15 @@ const Game={
       if(this.st){this.st.phase='playing';this.render();}
       return;
     }
+    // 【Item1修復】主機確認開局前，先向所有客戶端廣播「即將開局」通知及當前完整狀態
+    // 確保所有人收到一致的初始發牌狀態後再開始補花/第一回合
+    if(this._online&&this._isHost){
+      Online.broadcastState(); // 第一次：先同步補花前的初始手牌
+    }
     // Flower replacement plays out on the board like real tile actions
     this._doFlowerReplacement(()=>{
       // Online host: broadcast initial state (all hands set, no drawn tile) so non-host can see their tiles
-      if(this._online&&this._isHost) Online.broadcastState();
+      if(this._online&&this._isHost) Online.broadcastState(); // 第二次：補花完畢後廣播最終狀態
       this.doTurn();
     });
   },
@@ -4883,6 +4891,7 @@ const Game={
     if(this._online&&!this._isHost)return;
     // 在每次回合開始前存檔（牌尚未摸出，deck 完整，restore 後可重新 doTurn）
     this.saveGame();
+    s.turnSeq=(s.turnSeq||0)+1; // 【防雙打】遞增回合序號
     const p=s.turn;
     const isAI=s.ai.includes(p);
     // Track 槓上開花 flag
@@ -5162,7 +5171,7 @@ const Game={
     if(this._online&&!this._isHost&&p===0){
       if(this._isDiscarding)return; // 【Task1】雙重出牌防護鎖：等主機確認前鎖死
       this._isDiscarding=true;
-      const discMsg={type:'action',action:'discard',tileId};
+      const discMsg={type:'action',action:'discard',tileId,turnSeq:this._myTurnSeq||0};
       if(this._pendingDeclareRiichi){this._pendingDeclareRiichi=false;discMsg.declareRiichi=true;}
       MahjongNetwork.broadcast(discMsg);
       return;
@@ -5186,7 +5195,7 @@ const Game={
     // 玩家打牌後立即更新聽牌面板（不等下次摸牌）
     if(p===0){
       if(s.tenpai[0]&&s.tenpaiT[0]){
-        const totalRem=s.tenpaiT[0].reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards,s.melds),0);
+        const totalRem=s.tenpaiT[0].reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards,s.melds,s.hands[0].filter(x=>!x.fl)),0);
         setTimeout(()=>{this.showTenpai(s.tenpaiT[0]);this._showTenpaiBanner(totalRem,s.tenpaiT[0].length);},250);
       } else {
         this.hideTenpai();
@@ -5799,8 +5808,9 @@ const Game={
       setTimeout(()=>this.doDiscard(p,d.id),_dMs);
     } else if(p===0){
       // ── 主機人類玩家（p=0）：顯示出牌 UI ──────────────────────────
-      // Don't call checkTenpai here: hand is 14 tiles (not yet discarded), exp=13 → false positive.
+      // 【Bug5修復】吃碰後立即重新偵測聽牌（手牌此時 = waiting size = expBase，checkTenpai 可正確計算）
       s.tenpai[0]=false; s.tenpaiT[0]=null;
+      this.checkTenpai(0); // 重新計算聽牌狀態（手牌剛好 = expBase，符合 checkTenpai 條件）
       // autoPlay: let AI pick the discard immediately
       if(this.autoPlay){
         const d=AI.discard(s.hands[0],s.melds[0],s.discards,s.melds,s.tenpai,s.aiStyle?.[0]||'balanced');
@@ -6147,7 +6157,10 @@ const Game={
           p:(s.winData.p-idx+4)%4,
           payer:s.winData.payer>=0?(s.winData.payer-idx+4)%4:s.winData.payer
         }:null;
-        MahjongNetwork.sendTo(pConn.id,{type:'game_over',winner:rot.turn,selfDraw,winData:wd,money:rot.money});
+        // 【Bug6修復】帶上字串 winnerName/loserName，前端直接用字串渲染，不再用本地索引推算
+        const winnerName=s.names[s.winData.p]||'';
+        const loserName=s.winData.payer>=0?(s.names[s.winData.payer]||''):'';
+        MahjongNetwork.sendTo(pConn.id,{type:'game_over',winner:rot.turn,selfDraw,winData:wd,money:rot.money,winnerName,loserName});
       });
       setTimeout(()=>Online.broadcastState(),100); // 額外同步一次完整 state
     }
@@ -6283,6 +6296,7 @@ const Game={
     const ht0El=document.getElementById('ht0');
     ht0El?.classList.add('my-turn');
     ht0El?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
+    this._myTurnSeq=s.turnSeq||0; // 記下出牌時的序號，出牌封包帶上
     if(extraBtns.length) document.getElementById('action-overlay')?.classList.add('active');
     document.getElementById('hint-btn')?.style.setProperty('display','flex');
     if(isAfterMeld) this.toast('請選一張牌打出！');
@@ -6295,7 +6309,7 @@ const Game={
     this.render();
     // 廣播流局事件，讓所有連線客戶端同步中斷
     if(this._online&&this._isHost){
-      MahjongNetwork.broadcast({type:'game_over',winner:null,selfDraw:false,winData:null});
+      MahjongNetwork.broadcast({type:'game_over',winner:null,selfDraw:false,winData:null,winnerName:'',loserName:''});
       setTimeout(()=>Online.broadcastState(),100);
     }
     this.showWin(true);
@@ -6429,6 +6443,7 @@ const Game={
     this._meldLockData=null;this._meldResponseMap=null;
     this._isDiscarding=false; // 【Task1】強制解除出牌鎖
     this._pendingDeclareRiichi=false; // 清除聽牌宣告暫存旗標
+    this._myTurnSeq=0;
     clearTimeout(this._readyCheckTimeout);this._readyCheckTimeout=null;this._readyPlayers=null; // 【Task3】
   },
 
@@ -6881,7 +6896,7 @@ const Game={
             waitLbl.style.cssText='font-size:.68rem;color:rgba(46,204,113,.7);flex-shrink:0';
             waitLbl.textContent='等：';waitRow.appendChild(waitLbl);
             wt.forEach((wt2,wi)=>{
-              const rem=discRemaining(wt2,s.discards,s.melds);
+              const rem=discRemaining(wt2,s.discards,s.melds,s.hands[pi].filter(x=>!x.fl));
               const te=mkTile({...wt2,id:77700+pi*100+wi},'ti');te.style.cursor='default';
               if(rem===0)te.style.opacity='0.35';
               const cnt=document.createElement('div');
@@ -6921,11 +6936,13 @@ const Game={
       return;
     }
     const wd=s.winData;if(!wd)return;
-    // 【Bug1 Debug】確認結算封包正確（winnerIdx=wd.p 應對應本客戶端視角的 0=自己）
-    console.log('結算封包:',{winnerIdx:wd.p,winnerName:s.names[wd.p],payerIdx:wd.payer,tai:wd.tai,bon:wd.bon,selfDraw:wd.selfDraw});
-    const pn=s.names[wd.p];const isMe=wd.p===0;
+    // 【Bug6修復】優先使用封包帶來的字串欄位，避免本地索引錯亂
+    const pn=wd.winnerName||s.names[wd.p]||'?';
+    const payerName=wd.loserName||(wd.payer>=0?s.names[wd.payer]||'?':'');
+    const isMe=wd.p===0;
+    console.log('結算封包:',{winnerIdx:wd.p,pn,payerName,tai:wd.tai,bon:wd.bon,selfDraw:wd.selfDraw});
     document.getElementById('wtit').textContent=isMe?'🎉 你胡了！':`${pn} 胡牌！`;
-    const payTxt=wd.selfDraw?'自摸（各家付）':`${s.names[wd.payer]||'?'} 放槍`;
+    const payTxt=wd.selfDraw?'自摸（各家付）':`${payerName} 放槍`;
     const mainBon=wd.bon.filter(b=>!b.startsWith('底'));
     const handDesc=mainBon.length?` ✦ ${mainBon.join(' · ')}`:'';
     document.getElementById('wtai').textContent=`${wd.tai}台 × $${wd.perTai} = $${wd.total}（${payTxt}）${handDesc}`;
@@ -6936,7 +6953,9 @@ const Game={
     [wd.p,...[0,1,2,3].filter(i=>i!==wd.p)].forEach(pi=>{
       const sec=document.createElement('div');sec.className='whs';
       const lbl=document.createElement('div');lbl.className='whl';
-      lbl.textContent=(pi===wd.p?'🀇 ':'')+s.names[pi]+(pi===wd.p?' — 胡牌者':'');
+      // 【Bug6】勝者名稱優先用封包帶來的 winnerName 字串
+      const displayName=pi===wd.p?(wd.winnerName||s.names[pi]):s.names[pi];
+      lbl.textContent=(pi===wd.p?'🀇 ':'')+displayName+(pi===wd.p?' — 胡牌者':'');
       if(pi===wd.p)lbl.style.color='var(--gold)';
       sec.appendChild(lbl);
       const row=document.createElement('div');row.className='whr';
@@ -7180,7 +7199,7 @@ const Game={
 
       let totalRemaining=0;
       waiting.forEach(wt=>{
-        const rem=discRemaining(wt,s.discards,s.melds);
+        const rem=discRemaining(wt,s.discards,s.melds,s&&s.hands[0]?s.hands[0].filter(x=>!x.fl):null);
         totalRemaining+=rem;
         const entry=document.createElement('div');
         entry.style.cssText='display:flex;flex-direction:column;align-items:center;gap:1px';
@@ -7261,7 +7280,7 @@ const Game={
       bar.classList.add('show');
       lbl.textContent='聽：';
       wt.forEach(wt2=>{
-        const rem=discRemaining(wt2,s.discards,s.melds);
+        const rem=discRemaining(wt2,s.discards,s.melds,s.hands[0].filter(x=>!x.fl));
         const entry=document.createElement('div');entry.className='hb-tile-entry';
         const te=mkTile({...wt2,id:88800+wt2.v},'ti');te.style.cursor='default';
         const cnt=document.createElement('span');
@@ -7461,11 +7480,11 @@ const Game={
     const s=this.st;const wt=this._tenpaiWaiting;if(!wt)return;
     const c=document.getElementById('tptiles');c.innerHTML='';
     // Title shows total remaining
-    const totalRem=wt.reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards,s.melds),0);
+    const totalRem=wt.reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards,s.melds,s.hands[0].filter(x=>!x.fl)),0);
     const title=document.getElementById('tpanel').querySelector('.tpt');
     if(title)title.textContent=`聽牌！共${totalRem}張`;
     wt.forEach(wt2=>{
-      const rem=discRemaining(wt2,s.discards,s.melds);
+      const rem=discRemaining(wt2,s.discards,s.melds,s.hands[0].filter(x=>!x.fl));
       const ent=document.createElement('div');ent.className='tpe';
       const te=mkTile({...wt2,id:88888+wt2.v},'ti');te.style.cursor='default';
       const cnt=document.createElement('div');
@@ -7992,7 +8011,8 @@ const Online = {
           Game.render();
           // 若 winData 已在封包中，立即顯示結算（含已更新金錢）
           if(data.winData&&Game.st){
-            Game.st.winData=data.winData;
+            // 【Bug6】保留封包帶來的字串欄位，合併進 winData 供 showWin 使用
+            Game.st.winData={...data.winData,winnerName:data.winnerName||'',loserName:data.loserName||''};
             if(data.winner!=null) Game.st.turn=data.winner;
             setTimeout(()=>Game.showWin(data.winner==null),800);
           } else {
@@ -8062,7 +8082,12 @@ const Online = {
     }
     switch(data.action){
       case 'discard':
-        // 【主機防相公】discard 前確認手牌應有14張（已摸牌待出）
+        // 【防雙打序號驗證】序號不符代表重複或過期點擊，直接丟棄
+        if(Game.st&&data.turnSeq!=null&&data.turnSeq!==Game.st.turnSeq){
+          console.warn(`[turnSeq] discard rejected: got ${data.turnSeq}, current ${Game.st.turnSeq}`);
+          break;
+        }
+        // 【主機防相公】discard 前確認手牌應有17張（已摸牌待出）
         if(Game.st&&!Game.validateHandSize(peerIdx,'drawn')){
           // 張數異常：拒絕執行，強制同步正確狀態回客戶端
           setTimeout(()=>Online.broadcastState(),50);
