@@ -3146,6 +3146,7 @@ function is7p(tiles){
 // valid tile counts after flowers removed: 2, 5, 8, 11, 14 (= n*3+2)
 function canWin(hand,drawn){
   const p=[...(drawn?[...hand,drawn]:hand)].filter(x=>!x.fl);
+  if(p.length===16&&is7p(p))return true;  // 八對子自摸
   if(p.length<2||(p.length-2)%3!==0)return false;
   if(p.length===14&&is7p(p))return true;
   const t=sortH(p);
@@ -3162,17 +3163,20 @@ function tenpaiTiles(hand){
   const p=hand.filter(x=>!x.fl);
   if(!p.length||(p.length-1)%3!==0)return [];
   const res=[];
-  [['man',9],['pin',9],['sou',9],['honor',7]].forEach(([s,max])=>{
-    for(let v=1;v<=max;v++){
+  // man/pin/sou: v=1..9; honor: v=0..6 (東=0,南=1,西=2,北=3,中=4,白=5,發=6)
+  [['man',1,9],['pin',1,9],['sou',1,9],['honor',0,6]].forEach(([s,vMin,vMax])=>{
+    for(let v=vMin;v<=vMax;v++){
       if(canWin(hand,{s,v,id:99999,n:'?'}))
-        res.push({s,v,n:(s==='honor'?TN.honor[v-1]:(TN[s]||[])[v-1]||'')});
+        res.push({s,v,n:(s==='honor'?TN.honor[v]:(TN[s]||[])[v-1]||'')});
     }
   });
   return res;
 }
-function discRemaining(tile,discards){
-  let used=0;discards.forEach(p=>p.forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++}));
-  return 4-used;
+function discRemaining(tile,discards,melds){
+  let used=0;
+  discards.forEach(p=>p.forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++}));
+  if(melds) melds.forEach(m=>m.forEach(meld=>(meld.tiles||[]).forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++})));
+  return Math.max(0,4-used);
 }
 function meldOpts(hand,disc,myIdx,discIdx){
   const opts=[];
@@ -4460,8 +4464,9 @@ const Game={
         } else if(drawn){
           smartDiscard=drawn; // fallback: discard drawn tile
         }
-        if(smartDiscard)setTimeout(()=>this.doDiscard(0,smartDiscard.id),300);
-        else setTimeout(()=>this.doDiscard(0,AI.discard(s.hands[0],s.melds[0],s.discards,s.melds,s.tenpai).id),300);
+        clearTimeout(this._riichiDiscardTimer);
+        if(smartDiscard)this._riichiDiscardTimer=setTimeout(()=>this.doDiscard(0,smartDiscard.id),300);
+        else this._riichiDiscardTimer=setTimeout(()=>this.doDiscard(0,AI.discard(s.hands[0],s.melds[0],s.discards,s.melds,s.tenpai).id),300);
         this.showBtns([{type:'stop-riichi',label:'停止聽牌',cls:'stop-riichi'}]);
         if(s.tenpai[p]&&s.tenpaiT[p])this.showTenpai(s.tenpaiT[p]);
         return;
@@ -4644,7 +4649,7 @@ const Game={
     // 玩家打牌後立即更新聽牌面板（不等下次摸牌）
     if(p===0){
       if(s.tenpai[0]&&s.tenpaiT[0]){
-        const totalRem=s.tenpaiT[0].reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards),0);
+        const totalRem=s.tenpaiT[0].reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards,s.melds),0);
         setTimeout(()=>{this.showTenpai(s.tenpaiT[0]);this._showTenpaiBanner(totalRem,s.tenpaiT[0].length);},250);
       } else {
         this.hideTenpai();
@@ -5141,7 +5146,9 @@ const Game={
     if(type==='kong'){setTimeout(()=>this.doTurn(),this.spd('meld'));return;}
     if(s.ai.includes(p)){const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));setTimeout(()=>this.doDiscard(p,d.id),_dMs);}
     else{
-      this.checkTenpai(p);
+      // Don't call checkTenpai here: hand is 14 tiles (not yet discarded), exp=13 → false positive.
+      // checkTenpai will run in doDiscard. Just clear stale tenpai state.
+      s.tenpai[p]=false; s.tenpaiT[p]=null;
       // Show riichi button if player can enter tenpai by discarding
       const riichiCands=this.findRiichiDiscards(s.hands[0],s.melds[0]);
       if(riichiCands.length>0){
@@ -5665,9 +5672,11 @@ const Game={
       const area=document.getElementById(`pa${i}`);
       if(s.phase==='playing'&&s.turn===i)area.classList.add('active-turn');
       else area.classList.remove('active-turn');
-      // Dealer badge
+      // Dealer badge + wind badge (update each render so they rotate with dealer)
       const db=document.getElementById(`db${i}`);
       if(db) db.style.display=(i===(s.dealer??0)?'inline':'none');
+      const wb=document.getElementById(`wb${i}`);
+      if(wb) wb.textContent=['東','南','西','北'][(i-(s.dealer??0)+4)%4];
       // Player name (keep DOM in sync with st.names, important for online mode)
       const pnEl=document.getElementById(`pn${i}`);
       if(pnEl&&s.names&&s.names[i])pnEl.textContent=s.names[i];
@@ -5977,7 +5986,7 @@ const Game={
             waitLbl.style.cssText='font-size:.68rem;color:rgba(46,204,113,.7);flex-shrink:0';
             waitLbl.textContent='等：';waitRow.appendChild(waitLbl);
             wt.forEach((wt2,wi)=>{
-              const rem=discRemaining(wt2,s.discards);
+              const rem=discRemaining(wt2,s.discards,s.melds);
               const te=mkTile({...wt2,id:77700+pi*100+wi},'ti');te.style.cursor='default';
               if(rem===0)te.style.opacity='0.35';
               const cnt=document.createElement('div');
@@ -6130,7 +6139,10 @@ const Game={
             const s=this.st;
             if(s&&s.turn===0){
               const hand=s.hands[0]||[];
-              if(hand.length){const t2=s.drawnId?hand.find(t=>t.id===s.drawnId)||hand[0]:hand[0];this.doDiscard(0,t2.id);}
+              if(hand.length){
+                if(canWin(hand.filter(x=>!x.fl))){this.doWin(0,true);return;}
+                const t2=s.drawnId?hand.find(t=>t.id===s.drawnId)||hand[0]:hand[0];this.doDiscard(0,t2.id);
+              }
             }
           }
         },1000);
@@ -6271,7 +6283,7 @@ const Game={
 
       let totalRemaining=0;
       waiting.forEach(wt=>{
-        const rem=discRemaining(wt,s.discards);
+        const rem=discRemaining(wt,s.discards,s.melds);
         totalRemaining+=rem;
         const entry=document.createElement('div');
         entry.style.cssText='display:flex;flex-direction:column;align-items:center;gap:1px';
@@ -6316,11 +6328,16 @@ const Game={
   },
 
   stopRiichi(){
+    clearTimeout(this._riichiDiscardTimer);this._riichiDiscardTimer=null;
     this.riichiMode=false;this.riichiTile=null;this.riichiWaiting=null;
     document.getElementById('ht0').classList.remove('riichi-mode');
     const p=document.getElementById('riichi-select-panel');if(p)p.remove();
     this.hideTenpai();this.clearBtns();
     this.toast('已停止聽牌');
+    // Restart normal turn UI so player can select a tile to discard
+    const ht0=document.getElementById('ht0');
+    ht0.classList.add('my-turn');
+    this.startTimer(0);
   },
 
   // Update hand bar: show timer + tenpai tiles above my hand
@@ -6335,7 +6352,7 @@ const Game={
       bar.classList.add('show');
       lbl.textContent='聽：';
       wt.forEach(wt2=>{
-        const rem=discRemaining(wt2,s.discards);
+        const rem=discRemaining(wt2,s.discards,s.melds);
         const entry=document.createElement('div');entry.className='hb-tile-entry';
         const te=mkTile({...wt2,id:88800+wt2.v},'ti');te.style.cursor='default';
         const cnt=document.createElement('span');
@@ -6495,11 +6512,11 @@ const Game={
     const s=this.st;const wt=this._tenpaiWaiting;if(!wt)return;
     const c=document.getElementById('tptiles');c.innerHTML='';
     // Title shows total remaining
-    const totalRem=wt.reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards),0);
+    const totalRem=wt.reduce((sum,wt2)=>sum+discRemaining(wt2,s.discards,s.melds),0);
     const title=document.getElementById('tpanel').querySelector('.tpt');
     if(title)title.textContent=`聽牌！共${totalRem}張`;
     wt.forEach(wt2=>{
-      const rem=discRemaining(wt2,s.discards);
+      const rem=discRemaining(wt2,s.discards,s.melds);
       const ent=document.createElement('div');ent.className='tpe';
       const te=mkTile({...wt2,id:88888+wt2.v},'ti');te.style.cursor='default';
       const cnt=document.createElement('div');
@@ -6612,7 +6629,7 @@ const Game={
       {s:'man',label:'萬',vals:[1,2,3,4,5,6,7,8,9]},
       {s:'pin',label:'筒',vals:[1,2,3,4,5,6,7,8,9]},
       {s:'sou',label:'索',vals:[1,2,3,4,5,6,7,8,9]},
-      {s:'honor',label:'字',vals:[1,2,3,4,5,6,7]},
+      {s:'honor',label:'字',vals:[0,1,2,3,4,5,6]},
     ];
     const names={man:['一萬','二萬','三萬','四萬','五萬','六萬','七萬','八萬','九萬'],
       pin:['一筒','二筒','三筒','四筒','五筒','六筒','七筒','八筒','九筒'],
@@ -6628,7 +6645,7 @@ const Game={
         const cell=document.createElement('div');
         cell.className='tt-cell'+(rem===0?' tt-empty':'');
         const nm=document.createElement('div');nm.className='tt-name';
-        nm.textContent=(names[suit]?.[v-1]||'');
+        nm.textContent=(suit==='honor'?names[suit]?.[v]:names[suit]?.[v-1])||'';
         const cnt=document.createElement('div');cnt.className='tt-count';
         cnt.textContent=rem;
         cell.appendChild(nm);cell.appendChild(cnt);
@@ -7043,6 +7060,8 @@ const Online = {
       tenpaiT:reorder(state.tenpaiT||[[],[],[],[]]),
       scores:state.scores?reorder(state.scores):state.scores,
       pending:reorder(state.pending||[0,0,0,0]),
+      money:reorder(state.money||[0,0,0,0]),
+      aiStyle:state.aiStyle?reorder(state.aiStyle):state.aiStyle,
       ai:(state.ai||[]).map(rot),
       turn:rot(state.turn),
       dealer:rot(state.dealer),
@@ -7172,7 +7191,8 @@ document.addEventListener('keydown',e=>{
   // ←/→/Enter: only when it's player's turn, no meld buttons active
   if(s.turn!==0)return;
   const ap=document.getElementById('ap');
-  if(ap&&ap.querySelectorAll('.ab:not(.hint)').length>0)return;
+  // stop-riichi and riichi buttons are non-blocking for keyboard navigation
+  if(ap&&ap.querySelectorAll('.ab:not(.hint):not(.stop-riichi):not(.riichi):not(.ask)').length>0)return;
   const ht=document.getElementById('ht0');
   if(!ht||!ht.classList.contains('my-turn'))return;
   const tEls=Array.from(ht.querySelectorAll('.t[data-id]'));
