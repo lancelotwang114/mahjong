@@ -2207,6 +2207,44 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   transform: translateX(-50%) translateY(0);
 }
 
+/* ══ TENPAI PLAYER GLOW EFFECTS ════════════════════════════ */
+@keyframes tenpaiBreath {
+  0%,100% { box-shadow: 0 0 12px rgba(255,215,0,.5), 0 0 24px rgba(255,215,0,.25), inset 0 0 8px rgba(255,215,0,.08); }
+  50%     { box-shadow: 0 0 22px rgba(255,215,0,.85), 0 0 44px rgba(255,215,0,.45), inset 0 0 14px rgba(255,215,0,.16); }
+}
+@keyframes tenpaiFloat {
+  0%,100% { transform: translateY(0px); }
+  50%     { transform: translateY(-3px); }
+}
+/* Glow applied to player area containers */
+.tenpai-glow {
+  animation: tenpaiBreath 2s ease-in-out infinite;
+  border-radius: 8px;
+  transition: box-shadow .3s;
+}
+/* Float tiles inside the tenpai player's hand */
+.tenpai-float-tiles .t {
+  animation: tenpaiFloat 2.2s ease-in-out infinite;
+}
+/* Enhanced tpbadge when tenpai is active */
+.tpbadge {
+  display: none;
+  font-size: .58rem;
+  font-weight: 900;
+  font-family: 'Noto Serif TC', serif;
+  color: #ffd700;
+  background: rgba(20,10,0,.82);
+  border: 1px solid rgba(255,215,0,.75);
+  border-radius: 4px;
+  padding: 1px 4px;
+  letter-spacing: .04em;
+  text-shadow: 0 0 8px rgba(255,215,0,.8);
+  box-shadow: 0 0 6px rgba(255,215,0,.45);
+  vertical-align: middle;
+  margin-left: 4px;
+  animation: tenpaiBreath 2s ease-in-out infinite;
+}
+
 #hand-bar {
   display: none;
   align-items: center;
@@ -5139,6 +5177,7 @@ const Game={
     s.hands[p]=sortH(s.hands[p]);
     s.discards[p].push(tile);s.last=tile;s.lastP=p;s.drawnId=null;
     if(s.firstRound) s.firstRound=false;  // 第一張牌打出後天胡條件失效
+    this.validateHandSize(p,'waiting'); // 【防相公】出牌後應剩13張
     this.checkTenpai(p);
     // 玩家打牌後立即更新聽牌面板（不等下次摸牌）
     if(p===0){
@@ -5742,6 +5781,7 @@ const Game={
     const pile=s.discards[s.lastP];const di=pile.findIndex(t=>t.id===disc.id);if(di>=0)pile.splice(di,1);
     s.melds[p].push({type,tiles:sortH([...tiles,disc])});
     s.hands[p]=sortH(s.hands[p]);s.turn=p;s.drawnId=null;
+    this.validateHandSize(p,'drawn'); // 【防相公】副露後應有14張待出牌
     const lbl={pong:'碰',chi:'吃',kong:'槓'}[type]||type;
     this.log(`${s.names[p]} ${lbl} ${disc.n}`);
     this.ann(type);
@@ -6270,6 +6310,43 @@ const Game={
     if(wt.length&&p===0)Snd.tenpai();
   },
 
+  // ── 防禦性手牌張數校驗 ─────────────────────────────────
+  // 合法張數規則（台灣16張麻將）：
+  //   等待出牌（waiting）：非花牌手牌 + 副露*3 === 13（出牌前）
+  //   剛摸牌/副露後（drawn）：非花牌手牌 + 副露*3 === 14（出牌時）
+  // phase: 'waiting'(expect 13) | 'drawn'(expect 14)
+  validateHandSize(p, phase){
+    if(!this.st) return true;
+    const s=this.st;
+    const handCount=s.hands[p].filter(x=>!x.fl).length;
+    const meldCount=s.melds[p].length;
+    const effective=handCount+meldCount*3;
+    const expected=phase==='drawn'?14:13;
+    if(effective===expected) return true;
+    // 張數異常：記錄警告但不中斷遊戲（容錯）
+    console.warn(`[validateHandSize] p${p} phase=${phase}: effective=${effective} expected=${expected} hand=${handCount} melds=${meldCount}`);
+    this.log(`⚠ p${p} 手牌異常: ${effective}張 (應為${expected}張)`);
+    // 若是自己（p===0）且為非主機，請求主機同步
+    if(p===0&&this._online&&!this._isHost){
+      MahjongNetwork.broadcast({type:'action',action:'request_sync'});
+    }
+    return false;
+  },
+
+  // ── 聽牌全域語音廣播 ────────────────────────────────────
+  speakTing(playerName){
+    if(!window.speechSynthesis) return;
+    const msg=`叮咚！${playerName} 玩家聽牌！`;
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(msg);
+    u.lang='zh-TW';u.rate=0.9;u.pitch=1.1;u.volume=1.0;
+    // Prefer a zh-TW voice if available
+    const voices=speechSynthesis.getVoices();
+    const twVoice=voices.find(v=>v.lang==='zh-TW')||voices.find(v=>v.lang.startsWith('zh'))||null;
+    if(twVoice) u.voice=twVoice;
+    speechSynthesis.speak(u);
+  },
+
   // ── TIMER ─────────────────────────────────────────────
   startTimer(p){
     const s=this.st;
@@ -6478,9 +6555,16 @@ const Game={
       const mel=document.getElementById(`pm${i}`);
       mel.textContent=`${m>=0?'$':'-$'}${Math.abs(m).toLocaleString()}${w?` 🏆${w}`:''}`;
       mel.className='pmoney'+(m<0?' neg':'');
-      // Tenpai badge
+      // Tenpai badge + visual glow on player area
       const tb=document.getElementById(`tp${i}`);
       if(tb)tb.style.display=s.tenpai[i]?'inline-block':'none';
+      // Apply tenpai glow to the player's area container + float to their hand tiles
+      const areaIds=['p0-zone','pa1-area','pa2-area','pa3-area'];
+      const htIds=['ht0','ht1','ht2','ht3'];
+      const areaEl=document.getElementById(areaIds[i]);
+      const htEl=document.getElementById(htIds[i]);
+      if(areaEl){areaEl.classList.toggle('tenpai-glow',!!s.tenpai[i]);}
+      if(htEl){htEl.classList.toggle('tenpai-float-tiles',!!s.tenpai[i]);}
       // Melds + flowers (flowers shown like melds above hand)
       const ma=document.getElementById(`ma${i}`);ma.innerHTML='';
       // pa2 uses ti-size tiles to fit in the 115px top zone
@@ -7133,6 +7217,14 @@ const Game={
     this.ann('tenpai');
     // 【非主機】宣告聽牌時，在出牌封包中附帶 declareRiichi 旗標，讓主機同步記錄
     this._pendingDeclareRiichi=true;
+    // 【BROADCAST_TING】主機路徑（isHost 或單機）：廣播語音封包並自己播放
+    if(!this._online||this._isHost){
+      const tingName=s.names[0]||'玩家0';
+      this.speakTing(tingName);
+      if(this._online&&this._isHost){
+        MahjongNetwork.broadcast({type:'broadcast_ting',playerName:tingName,playerIdx:0});
+      }
+    }
     this.doDiscard(0,tile.id);
     // Show tenpai panel with waiting tiles immediately after discard
     setTimeout(()=>this.showTenpai(waiting),200);
@@ -7921,6 +8013,12 @@ const Online = {
           }
         }
         break;
+      case 'broadcast_ting':
+        // 【BROADCAST_TING】所有客戶端收到聽牌廣播後播語音
+        if(!Game._isHost){
+          Game.speakTing(data.playerName||`玩家${data.playerIdx}`);
+        }
+        break;
     }
   },
 
@@ -7955,10 +8053,20 @@ const Online = {
     }
     switch(data.action){
       case 'discard':
+        // 【主機防相公】discard 前確認手牌應有14張（已摸牌待出）
+        if(Game.st&&!Game.validateHandSize(peerIdx,'drawn')){
+          // 張數異常：拒絕執行，強制同步正確狀態回客戶端
+          setTimeout(()=>Online.broadcastState(),50);
+          return;
+        }
         // 【宣告聽牌】非主機宣告 riichi，主機同步記錄並廣播給其他客戶端
         if(data.declareRiichi&&Game.st){
           if(!Game.st.riichiPlayers) Game.st.riichiPlayers=[false,false,false,false];
           Game.st.riichiPlayers[peerIdx]=true;
+          // 【BROADCAST_TING】主機廣播聽牌語音封包給所有人
+          const tingName=Game.st.names[peerIdx]||`玩家${peerIdx}`;
+          MahjongNetwork.broadcast({type:'broadcast_ting',playerName:tingName,playerIdx:peerIdx});
+          Game.speakTing(tingName); // 主機自己也播
         }
         Game.doDiscard(peerIdx,data.tileId);
         break;
@@ -7966,6 +8074,10 @@ const Online = {
       case 'selfkong': Game.doSelfKong(peerIdx,resolveTiles(data.tiles)); break;
       case 'win': Game.doWin(peerIdx,data.selfDraw); break;
       case 'skip': Game.nextTurn(); break;
+      case 'request_sync':
+        // 非主機請求重新同步（手牌張數異常時發送）
+        setTimeout(()=>Online.broadcastState(),50);
+        break;
     }
   },
 
