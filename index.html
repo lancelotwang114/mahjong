@@ -4886,6 +4886,7 @@ const Game={
       return;
     }
     const s=this.st;
+    if(!s||s.phase!=='playing')return; // Guard: ignore stale AI discard callbacks after game ends
     this.stopTimer();this.clearBtns();
     document.getElementById('ht0').classList.remove('my-turn');
     const hand=s.hands[p],idx=hand.findIndex(t=>t.id===tileId);
@@ -4959,7 +4960,7 @@ const Game={
       if(win){
         if(isDihu) win._dihu=true;  // 標記地胡
         if(s.ai.includes(r.p)){
-          setTimeout(()=>this.doWin(r.p,false),this.spd('reaction'));
+          setTimeout(()=>{if(!this.st||this.st.phase!=='playing')return;this.doWin(r.p,false);},this.spd('reaction'));
         } else if(r.p===0){
           this.offerMeld(r.p,r.opts,tile);
         } else if(this._online&&this._isHost){
@@ -4985,7 +4986,7 @@ const Game={
         const aiIsPongKong=dec.type==='pong'||dec.type==='kong';
         const humanOnlyChi=(hr||nhHuman)&&(hr||nhHuman).opts.every(o=>o.type==='chi'||o.type==='skip');
         if(aiIsPongKong||(!hr&&!nhHuman)){
-          setTimeout(()=>{s.turn=r.p;this.doMeld(r.p,dec.type,mTiles);},this.spd('reaction'));
+          setTimeout(()=>{if(!this.st||this.st.phase!=='playing')return;s.turn=r.p;this.doMeld(r.p,dec.type,mTiles);},this.spd('reaction'));
           aiActed=true;
           break;
         }
@@ -5187,6 +5188,7 @@ const Game={
       clearInterval(this._meldCountInterval);
       if(bar)bar.style.width='0%';
       this.hideMeldPreview();this.clearBtns();
+      if(!this.st||this.st.phase!=='playing')return; // Guard: don't advance turn if game already ended
       if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip'});}
       else{this.nextTurn();}
     };
@@ -5482,8 +5484,10 @@ const Game={
       return;
     }
     const s=this.st;
+    // Guard: ignore if game already ended (prevents double-win from stale setTimeout callbacks)
+    if(!s||s.phase!=='playing')return;
     clearTimeout(this._meldTimeout);clearTimeout(this._riichiDiscardTimer);clearTimeout(this._nhMeldTimeout);
-    this.stopTimer();this.clearBtns();
+    this.stopTimer();this.clearBtns();this.hideTenpai();
     s.phase='ended';s.turn=p;
 
     // ── Taiwan complete scoring ──────────────────────────────
@@ -5797,7 +5801,9 @@ const Game={
     const hand=s.hands[p].filter(x=>!x.fl);
     // 16-tile Taiwan: tenpai when hand has (16 - melds*3) tiles, waiting for 1
     const exp=16-s.melds[p].length*3;
-    if(hand.length!==exp){s.tenpai[p]=false;s.tenpaiT[p]=null;return;}
+    // If hand is in drawn state (exp+1) or other size, do NOT clear tenpai — just skip recalc.
+    // Tenpai status set after a discard remains valid until the next discard clears it.
+    if(hand.length!==exp)return;
     const wt=tenpaiTiles(hand,s.melds[p]);
     s.tenpai[p]=wt.length>0;s.tenpaiT[p]=wt.length?wt:null;
     if(wt.length&&p===0)Snd.tenpai();
@@ -5805,6 +5811,9 @@ const Game={
 
   // ── TIMER ─────────────────────────────────────────────
   startTimer(p){
+    const s=this.st;
+    // Guard: only start timer when game is live and it's actually this player's turn
+    if(!s||s.phase!=='playing'||s.turn!==p)return;
     const tt=this.settings.time||0;if(!tt)return;
     this.stopTimer();this.timerSec=tt;
     const badge=document.getElementById('tbadge');
