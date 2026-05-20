@@ -4428,6 +4428,8 @@ const Game={
   },
 
   start(mode){
+    // 清除上局遺留的 my-turn / 操作按鈕狀態，防止開局 hover 誤顯「懸浮進牌」效果
+    this.clearBtns();
     const name=document.getElementById('pname').value.trim()||'玩家';
     const maxRounds = mode==='south' ? 8 : 4;
     this.settings={
@@ -5621,6 +5623,11 @@ const Game={
       if(riichiCands.length>0){
         this.showBtns([{type:'riichi',label:'聽牌',cls:'riichi'},{type:'skip-riichi',label:'略過',cls:'ask'}]);
         document.getElementById('action-overlay')?.classList.add('active');
+        // 同步更新聽牌狀態，讓面板也能顯示等待牌（s.tenpai[0] 剛被清為 false，需要重新填入）
+        const bc=riichiCands[0];
+        const ah=s.hands[0].filter(x=>!x.fl&&x.id!==bc.id);
+        const wt=tenpaiTiles(ah,s.melds[0]);
+        if(wt.length){s.tenpai[0]=true;s.tenpaiT[0]=wt;}
       }
       if(s.tenpai[0]&&s.tenpaiT[0]) setTimeout(()=>this.showTenpai(s.tenpaiT[0]),250);
       else this.hideTenpai();
@@ -6372,6 +6379,7 @@ const Game={
     const ap=document.getElementById('ap');
     Array.from(ap.children).forEach(c=>{if(c.id!=='tbadge')c.remove();});
     document.getElementById('ht0').classList.remove('meld-alert');
+    document.getElementById('ht0')?.classList.remove('my-turn'); // 清除上局或上次出牌殘留的 my-turn
     this._clearMeldHighlight();
     // Restore hand-bar visibility based on state
     const hbar=document.getElementById('hand-bar');
