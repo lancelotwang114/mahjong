@@ -1510,6 +1510,17 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   letter-spacing:.04em;
 }
 #autoplay-btn:hover { border-color:rgba(46,204,113,.6); color:rgba(46,204,113,.8); }
+/* Leave & save button */
+#leave-btn {
+  position:absolute; top:10px; left:80px; z-index:300;
+  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
+  border:1.5px solid rgba(180,80,55,.4);
+  border-radius:8px; padding:6px 14px; color:rgba(212,130,100,.7);
+  font-family:'Noto Serif TC'; font-size:.82rem; font-weight:700;
+  cursor:pointer; backdrop-filter:blur(6px); display:none;
+  transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+#leave-btn:hover { border-color:rgba(255,100,60,.6); color:rgba(255,140,100,.9); }
 #autoplay-btn.on {
   background:linear-gradient(160deg,rgba(4,30,12,.95),rgba(8,40,16,.92));
   border-color:rgba(46,204,113,.8); color:#2ecc71;
@@ -3060,6 +3071,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 <!-- UI overlays inside tbl (scale with board) -->
   <button id="pause-btn" onclick="Game.togglePause()">⏸ 暫停</button>
+  <button id="leave-btn" onclick="Game.leaveAndSave()" title="儲存牌局並返回大廳（AI 代打）">🚪 離開</button>
   <button id="autoplay-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
   <!-- In-game audio control -->
   <button id="audio-btn" onclick="Game.toggleAudioPanel()" title="音效 &amp; 音樂">🔊</button>
@@ -3836,46 +3848,68 @@ const AI={
     return sc[0].t;
   },
   val(tile,hand,melds,allDiscards,allMelds,tenpaiFlags,style='balanced'){
-    // 基礎手牌價值
-    let base;
+    // ── 保留分：正數=傾向保留，負數=傾向打出；sort 取最低分打出 ──
+    const others=hand.filter(t=>t!==tile);
+    let keep=0;
+
     if(tile.s==='honor'){
-      base=hand.filter(t=>t.s===tile.s&&t.v===tile.v).length>=2?5:1;
+      // 字牌：無法組順子，孤張是最無用的牌
+      const dup=others.filter(t=>t.s===tile.s&&t.v===tile.v).length;
+      keep=dup>=2?12:dup===1?6:-4; // 刻子12 / 對子6 / 孤張-4（最優先打）
     } else {
-      const nb=hand.filter(t=>t.s===tile.s&&t!==tile&&Math.abs(t.v-tile.v)<=2).length;
-      const pr=hand.filter(t=>t.s===tile.s&&t.v===tile.v&&t!==tile).length;
-      base=nb*3+pr*4;
+      const v=tile.v;
+      const dup=others.filter(t=>t.s===tile.s&&t.v===v).length;
+      // 中張(3-7)最靈活，么九(1/9)最差
+      const pos=(v>=3&&v<=7)?3:(v===2||v===8)?1:0;
+
+      if(dup>=2) keep+=12+pos;          // 刻子
+      else if(dup===1) keep+=6+pos;     // 對子
+
+      // 搭子判斷
+      const has=dv=>dv>=1&&dv<=9&&others.some(t=>t.s===tile.s&&t.v===dv);
+      if((has(v-2)&&has(v-1))||(has(v-1)&&has(v+1))||(has(v+1)&&has(v+2))){
+        keep+=10+pos;                   // 完整順子成員
+      } else if(has(v-1)||has(v+1)){
+        const twoSided=has(v-1)&&has(v+1);
+        keep+=(twoSided?8:4)+pos;       // 兩面搭 / 邊張搭
+      } else if(has(v-2)||has(v+2)){
+        keep+=3+pos;                    // 嵌張搭
+      } else {
+        keep+=pos-2;                    // 完全孤立：中張1/偏張-1/么九-2
+      }
     }
-    // 安全牌：此牌已在棄牌堆出現越多次越安全
+
+    // ── 安全牌：已出現在棄牌堆越多次 → 越安全打出 ──
     if(allDiscards){
       let dc=0;
       allDiscards.forEach(pile=>pile.forEach(t=>{if(t.s===tile.s&&t.v===tile.v)dc++;}));
-      base-=dc*2;
+      keep-=dc*0.5; // 已出現多次 → 略降保留分
     }
-    // 防守：有人聽牌時，避免打出危險牌
+
+    // ── 危險牌：有人聽牌時避免打出（提高保留分） ──
     if(allMelds&&tenpaiFlags){
       let danger=0;
       for(let i=0;i<4;i++){
         if(!tenpaiFlags[i])continue;
-        // 對手的副露暗示聽牌方向：相同花色附近的牌較危險
         (allMelds[i]||[]).forEach(m=>{
           if((m.type==='pong'||m.type==='kong')&&m.tiles[0].s===tile.s){
             const dist=Math.abs(m.tiles[0].v-tile.v);
-            if(dist===0)danger+=5;       // 同點：幾乎不可能，但加分避免雙碰
-            else if(dist===1)danger+=4;  // 緊鄰：很可能是等待牌
-            else if(dist===2)danger+=2;  // 近鄰：有風險
+            if(dist===0)danger+=5;
+            else if(dist===1)danger+=4;
+            else if(dist===2)danger+=2;
           }
         });
-        // 字牌：若對手未打出過且在聽牌，視為中等危險
         if(tile.s==='honor'&&allDiscards){
-          let honorDisc=0;
-          allDiscards[i].forEach(t=>{if(t.s===tile.s&&t.v===tile.v)honorDisc++;});
-          if(honorDisc===0)danger+=2;
+          let hd=0;
+          allDiscards[i].forEach(t=>{if(t.s===tile.s&&t.v===tile.v)hd++;});
+          if(hd===0)danger+=2;
         }
       }
-      if(style==='defense')danger*=2; // defense AI strongly avoids dangerous tiles
-      base+=danger; // 危險牌分數提高 → 排後面，優先打出安全牌
+      if(style==='defense')danger*=2;
+      keep+=danger; // 危險牌提高保留分 → 不打
     }
-    return base;
+
+    return keep;
   },
   meld(opts,hand,melds,style='balanced'){
     const win=opts.find(o=>o.type==='win');if(win)return win;
@@ -4213,6 +4247,7 @@ const Game={
     gEl.classList.add('show');
     setTimeout(updateTblVars, 50);
     document.getElementById('pause-btn').style.display='block';
+    document.getElementById('leave-btn').style.display='block';
     this._applyOnlineRole();
     document.getElementById('autoplay-btn').style.display='block';
     document.getElementById('audio-btn').style.display='block';
@@ -4276,7 +4311,16 @@ const Game={
     const gEl=document.getElementById('game');gEl.classList.add('show');
     setTimeout(updateTblVars,50);
     document.getElementById('pause-btn').style.display='block';
+    document.getElementById('leave-btn').style.display='block';
     document.getElementById('speed-panel').style.display='flex';
+    document.getElementById('autoplay-btn').style.display='flex';
+    document.getElementById('audio-btn').style.display='flex';
+    // 同步 autoPlay 按鈕狀態
+    const apBtn=document.getElementById('autoplay-btn');
+    if(apBtn){
+      apBtn.classList.toggle('on',this.autoPlay);
+      apBtn.textContent=this.autoPlay?'🤖 自動 ON':'🤖 自動';
+    }
     this._initDustParticles();
     if(Bgm.enabled){Bgm.stop();Bgm.start();}
     const winds=['東','南','西','北'];
@@ -4286,10 +4330,10 @@ const Game={
       const pn=document.getElementById(`pn${i}`);if(pn)pn.textContent=names[i];
     }
     this.render();
-    this.toast('已恢復上局牌局',2000);
-    // Re-enter playing state: it's whoever's turn it was
+    this.toast('已恢復上局牌局，'+(this.autoPlay?'AI 代打模式':'輪到你！'),2500);
+    // 無論哪個玩家的回合，一律由 doTurn() 恢復（正確處理 AI 或玩家出牌）
     const s=this.st;
-    if(s.phase==='playing'&&s.turn!==0){
+    if(s.phase==='playing'){
       setTimeout(()=>this.doTurn(),800);
     }
   },
@@ -4582,6 +4626,8 @@ const Game={
     if(s.phase!=='playing')return;
     // Online non-host: game state is driven entirely by host broadcasts — never run local turns
     if(this._online&&!this._isHost)return;
+    // 在每次回合開始前存檔（牌尚未摸出，deck 完整，restore 後可重新 doTurn）
+    this.saveGame();
     const p=s.turn;
     const isAI=s.ai.includes(p);
     // Track 槓上開花 flag
@@ -6658,12 +6704,13 @@ const Game={
     this.render();updateTblVars();
     setTimeout(()=>this.showDice(),200);
   },
-  returnLobby(){
+  returnLobby(keepSave=false){
     document.getElementById('wov').style.display='none';
     document.getElementById('match-ov').style.display='none';
     document.getElementById('game').classList.remove('show');
     document.getElementById('speed-panel').style.display='none';
     document.getElementById('autoplay-btn').style.display='none';
+    document.getElementById('leave-btn').style.display='none';
     document.getElementById('audio-btn').style.display='none';
     document.getElementById('audio-panel').classList.remove('open');
     this.autoPlay=false;
@@ -6672,7 +6719,21 @@ const Game={
     Lobby.showHome();
     speechSynthesis&&speechSynthesis.cancel();
     Bgm.stop();
-    this.clearSave();
+    if(!keepSave)this.clearSave();
+  },
+
+  // 儲存牌局並離開（AI 代打模式）→ 下次可「繼續上局」
+  leaveAndSave(){
+    if(!this.st||this.st.phase!=='playing'){this.returnLobby();return;}
+    // 以 autoPlay=true 存檔，回復後 AI 會接手直到玩家手動關閉
+    const prev=this.autoPlay;
+    this.autoPlay=true;
+    this.saveGame();
+    this.autoPlay=prev;
+    this.returnLobby(true/*keepSave*/);
+    // 在大廳顯示繼續按鈕
+    const rb=document.getElementById('resume-bar');
+    if(rb)rb.style.display='block';
   },
 
   // ── C3: 局中存檔 ─────────────────────────────────────────
@@ -6687,6 +6748,7 @@ const Game={
         riichiWaiting:this.riichiWaiting,
         winStats:this.winStats,
         rounds:this.rounds,
+        autoPlay:this.autoPlay,
         ts:Date.now(),
       };
       localStorage.setItem(this._saveKey,JSON.stringify(snap));
@@ -6712,6 +6774,7 @@ const Game={
     this.riichiWaiting=snap.riichiWaiting||null;
     this.winStats=snap.winStats||[0,0,0,0];
     this.rounds=snap.rounds||0;
+    this.autoPlay=snap.autoPlay||false;
   },
 
   // ── TENPAI PANEL ─────────────────────────────────────
