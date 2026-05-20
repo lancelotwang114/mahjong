@@ -874,7 +874,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   display: flex; flex-direction: column;
   align-items: center; width: 100%; height: 100%; overflow: visible;
 }
-#pa3 .pbar { flex-shrink: 0; font-size: .82rem; padding: 5px 9px; gap: 5px; }
+#pa3 .pbar { flex-shrink: 0; font-size: .68rem; padding: 3px 6px; gap: 3px; }
 #pa3 .ma {
   flex-shrink: 0; display: flex !important;
   flex-direction: column !important; flex-wrap: nowrap !important;
@@ -903,7 +903,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   display: flex; flex-direction: column;
   align-items: center; width: 100%; height: 100%; overflow: visible;
 }
-#pa1 .pbar { flex-shrink: 0; font-size: .82rem; padding: 5px 9px; gap: 5px; }
+#pa1 .pbar { flex-shrink: 0; font-size: .68rem; padding: 3px 6px; gap: 3px; }
 #pa1 .ma {
   flex-shrink: 0; display: flex !important;
   flex-direction: column !important; flex-wrap: nowrap !important;
@@ -947,10 +947,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .pa.lft{align-items:flex-start}
 .pa.rgt{align-items:flex-end}
 .pbar{
-  display:flex;align-items:center;gap:6px;padding:6px 12px;
+  display:flex;align-items:center;gap:5px;padding:4px 9px;
   background:linear-gradient(135deg,rgba(18,9,2,.88),rgba(32,16,5,.85));
   border:1.5px solid rgba(170,120,50,.45);border-radius:8px;
-  font-size:.88rem;white-space:nowrap;backdrop-filter:blur(5px);
+  font-size:.75rem;white-space:nowrap;backdrop-filter:blur(5px);
   transition:border-color .25s,box-shadow .25s;
   box-shadow:0 2px 7px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,200,100,.09);
   overflow:hidden;max-width:100%;
@@ -1862,22 +1862,22 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* Side bars: constrain width so they don't crowd the tiles */
 .pa.lft .pbar, .pa.rgt .pbar {
-  font-size:.82rem; padding:5px 9px; gap:5px; max-width:100%; flex-wrap:wrap;
+  font-size:.68rem; padding:3px 6px; gap:3px; max-width:100%; flex-wrap:wrap;
 }
 .pa.top .pbar {
-  font-size:.85rem; padding:5px 11px;
+  font-size:.72rem; padding:3px 8px;
 }
 /* Wind badge */
 .wbadge {
-  font-family:'Noto Serif TC'; font-size:.9rem; font-weight:900;
+  font-family:'Noto Serif TC'; font-size:.78rem; font-weight:900;
   color:var(--gold); background:rgba(0,0,0,.3); border-radius:3px;
-  padding:1px 4px; line-height:1.4; flex-shrink:0;
+  padding:0 3px; line-height:1.4; flex-shrink:0;
 }
-.pnm { color:var(--txt); font-weight:700; font-size:1em; }
+.pnm { color:var(--txt); font-weight:700; font-size:.85em; }
 .pmoney {
-  color:#7dd4a8; font-size:.9em; font-weight:700;
+  color:#7dd4a8; font-size:.75em; font-weight:700;
   background:rgba(0,0,0,.25); border-radius:3px;
-  padding:1px 5px; letter-spacing:.02em;
+  padding:0 4px; letter-spacing:.02em;
 }
 .pmoney.neg { color:#f08080; }
 /* Remove overflow hidden from pbar so money chip is never clipped */
