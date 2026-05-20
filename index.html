@@ -5730,11 +5730,14 @@ const Game={
     if(s.ai.includes(p))this._aiQuip(p,type==='pong'?'pong':type==='chi'?'chi':'kong');
     this.render();
     if(type==='kong'){setTimeout(()=>this.doTurn(),this.spd('meld'));return;}
-    if(s.ai.includes(p)){const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));setTimeout(()=>this.doDiscard(p,d.id),_dMs);}
-    else{
+    if(s.ai.includes(p)){
+      const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');
+      const _dMs=this.spd('meld')+~~(Math.random()*(this.spd('meld')*.3));
+      setTimeout(()=>this.doDiscard(p,d.id),_dMs);
+    } else if(p===0){
+      // ── 主機人類玩家（p=0）：顯示出牌 UI ──────────────────────────
       // Don't call checkTenpai here: hand is 14 tiles (not yet discarded), exp=13 → false positive.
-      // checkTenpai will run in doDiscard. Just clear stale tenpai state.
-      s.tenpai[p]=false; s.tenpaiT[p]=null;
+      s.tenpai[0]=false; s.tenpaiT[0]=null;
       // autoPlay: let AI pick the discard immediately
       if(this.autoPlay){
         const d=AI.discard(s.hands[0],s.melds[0],s.discards,s.melds,s.tenpai,s.aiStyle?.[0]||'balanced');
@@ -5742,12 +5745,10 @@ const Game={
         return;
       }
       // Show riichi button if player can enter tenpai by discarding
-      // Use 'skip-riichi' (not 'skip') so dismissing just hides the prompt without calling nextTurn
       const riichiCands=this.findRiichiDiscards(s.hands[0],s.melds[0]);
       if(riichiCands.length>0){
         this.showBtns([{type:'riichi',label:'聽牌',cls:'riichi'},{type:'skip-riichi',label:'略過',cls:'ask'}]);
         document.getElementById('action-overlay')?.classList.add('active');
-        // 同步更新聽牌狀態，讓面板也能顯示等待牌（s.tenpai[0] 剛被清為 false，需要重新填入）
         const bc=riichiCands[0];
         const ah=s.hands[0].filter(x=>!x.fl&&x.id!==bc.id);
         const wt=tenpaiTiles(ah,s.melds[0]);
@@ -5756,8 +5757,33 @@ const Game={
       if(s.tenpai[0]&&s.tenpaiT[0]) setTimeout(()=>this.showTenpai(s.tenpaiT[0]),250);
       else this.hideTenpai();
       this.toast('請選一張牌打出！');
-      this.startTimer(p);
-      document.getElementById('ht0')?.classList.add('my-turn');
+      this.startTimer(0);
+      const ht0El=document.getElementById('ht0');
+      ht0El?.classList.add('my-turn');
+      ht0El?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
+      // 【防禦性 200ms 確認】：確保出牌狀態與 UI 解鎖正確（容錯修復）
+      setTimeout(()=>{
+        if(!this.st||this.st.phase!=='playing'||this.st.turn!==0)return;
+        document.getElementById('ht0')?.classList.add('my-turn');
+        document.getElementById('ap')?.querySelectorAll('.ab.ask').forEach(b=>b.style.display='none');
+      },200);
+    } else {
+      // ── 非主機人類玩家（p≠0）：廣播最新狀態讓他出牌 ──────────────
+      // 不可在主機端設 my-turn 或 startTimer，應由非主機客戶端的 _setupNonHostTurn 處理
+      s.tenpai[p]=false; s.tenpaiT[p]=null;
+      if(this._online&&this._isHost){
+        setTimeout(()=>Online.broadcastState(),80); // 告知非主機「你已成功鳴牌，現在輪你出牌」
+        // 中央計時器：若非主機玩家未在期限內出牌，主機強制代打
+        const _ctt=(this.settings?.time||15)+3;
+        clearTimeout(this._centralTurnTimer);
+        this._centralTurnTimer=setTimeout(()=>{
+          if(!this.st||this.st.phase!=='playing'||this.st.turn!==p)return;
+          const hd=this.st.hands[p].filter(x=>!x.fl);if(!hd.length)return;
+          const auto=AI.discard(hd,this.st.melds[p],this.st.discards,this.st.melds,this.st.tenpai);
+          if(auto){this.clearBtns();this.doDiscard(p,auto.id);}
+        },_ctt*1000);
+        this._startStaleWatchdog(p,(_ctt+5)*1000);
+      }
     }
   },
 
@@ -6124,18 +6150,33 @@ const Game={
     this.clearBtns(); // Clear any leftover meld buttons (e.g. from a just-executed chi/pong)
     const s=this.st;
     const nonFl=s.hands[0].filter(x=>!x.fl);
-    if(nonFl.length>0) s.drawnId=nonFl[nonFl.length-1].id;
+    // 判斷目前是「摸牌後出牌」還是「鳴牌後出牌」
+    // 摸牌後：手牌張數 = (16 - melds*3) + 1（多出一張摸牌）
+    // 鳴牌後：手牌張數 = (16 - melds*3)（不多不少，直接出牌）
+    const expBase=16-s.melds[0].length*3;
+    const isAfterDraw=nonFl.length===expBase+1;
+    const isAfterMeld=nonFl.length===expBase;
+    if(isAfterDraw){
+      // 摸牌情境：最後一張視為進牌
+      s.drawnId=nonFl[nonFl.length-1].id;
+    } else {
+      // 鳴牌後出牌情境：無進牌，drawnId 應為 null
+      s.drawnId=null;
+    }
     this.checkTenpai(0);
-    const drawnTile=s.hands[0].find(h=>h.id===s.drawnId);
-    const rest=s.hands[0].filter(h=>h.id!==s.drawnId);
+    const drawnTile=s.drawnId?s.hands[0].find(h=>h.id===s.drawnId):null;
+    const rest=drawnTile?s.hands[0].filter(h=>h.id!==s.drawnId):s.hands[0];
     s.hands[0]=[...sortH(rest),...(drawnTile?[drawnTile]:[])];
     this.render();
-    requestAnimationFrame(()=>{
-      const ht=document.getElementById('ht0');
-      const el=ht&&s.drawnId&&ht.querySelector(`.t[data-id="${s.drawnId}"]`);
-      if(el){el.classList.add('drawn-in');setTimeout(()=>el.classList.remove('drawn-in'),350);}
-    });
-    Snd.draw();
+    if(isAfterDraw){
+      // 進牌動畫（只在摸牌情境播放）
+      requestAnimationFrame(()=>{
+        const ht=document.getElementById('ht0');
+        const el=ht&&s.drawnId&&ht.querySelector(`.t[data-id="${s.drawnId}"]`);
+        if(el){el.classList.add('drawn-in');setTimeout(()=>el.classList.remove('drawn-in'),350);}
+      });
+      Snd.draw();
+    }
     const winNow=canWin(s.hands[0].filter(x=>!x.fl));
     const extraBtns=[];
     if(winNow) extraBtns.push({type:'win',label:'🀄 自摸！',cls:'aw'});
@@ -6143,13 +6184,25 @@ const Game={
     if(sk) extraBtns.push({type:'sk',label:'暗槓',cls:'ako',tiles:sk});
     // skip-riichi: don't call nextTurn, just dismiss overlay and let player discard
     if(extraBtns.length) extraBtns.push({type:'skip-riichi',label:'略過',cls:'ask'});
+    // 鳴牌後也檢查是否可聽牌
+    if(isAfterMeld){
+      const riichiCands=this.findRiichiDiscards(s.hands[0],s.melds[0]);
+      if(riichiCands.length>0&&!extraBtns.find(b=>b.type==='riichi')){
+        extraBtns.push({type:'riichi',label:'聽牌',cls:'riichi'});
+        if(!extraBtns.find(b=>b.type==='skip-riichi'))
+          extraBtns.push({type:'skip-riichi',label:'略過',cls:'ask'});
+      }
+    }
     this.showBtns(extraBtns);
     if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
     else this.hideTenpai();
     this.startTimer(0);
-    document.getElementById('ht0')?.classList.add('my-turn');
+    const ht0El=document.getElementById('ht0');
+    ht0El?.classList.add('my-turn');
+    ht0El?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
     if(extraBtns.length) document.getElementById('action-overlay')?.classList.add('active');
     document.getElementById('hint-btn')?.style.setProperty('display','flex');
+    if(isAfterMeld) this.toast('請選一張牌打出！');
   },
 
   endDraw(){
