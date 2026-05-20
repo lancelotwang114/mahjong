@@ -4888,6 +4888,18 @@ const Game={
     // Online host: non-host real player's turn — broadcast state and wait for their action
     if(this._online&&this._isHost&&p!==0&&!isAI){
       Online.broadcastState();
+      // 中央超時計時器：若非主機玩家超時未出牌，強制代打（防連線卡死）
+      const _ctt=(this.settings?.time||15)+3; // 比 UI 計時器多 3s 作緩衝
+      clearTimeout(this._centralTurnTimer);
+      this._centralTurnTimer=setTimeout(()=>{
+        if(!this.st||this.st.phase!=='playing'||this.st.turn!==p)return;
+        const hd=this.st.hands[p].filter(x=>!x.fl);if(!hd.length)return;
+        const drawn=this.st.drawnId?hd.find(t=>t.id===this.st.drawnId):null;
+        const auto=drawn||AI.discard(hd,this.st.melds[p],this.st.discards,this.st.melds,this.st.tenpai);
+        if(auto){this.clearBtns();this.doDiscard(p,auto.id);}
+      },_ctt*1000);
+      // 卡死看門狗：比中央計時器再多 5s 的最後防線
+      this._startStaleWatchdog(p,(_ctt+5)*1000);
       return;
     }
 
@@ -4944,6 +4956,8 @@ const Game={
       // action-overlay only activates if there are real action buttons (自摸/暗槓/聽牌)
       if(extraBtns.length) document.getElementById('action-overlay')?.classList.add('active');
       // 提示：左側 #hint-btn 已足夠，不在 action-overlay 重複放置
+      // 卡死看門狗：settings.time+5s 後若仍未出牌，強制代打（最後防線）
+      this._startStaleWatchdog(0,((this.settings?.time||15)+5)*1000);
     }
   },
   _flashFlower(fl){
@@ -5097,6 +5111,8 @@ const Game={
     }
     const s=this.st;
     if(!s||s.phase!=='playing')return; // Guard: ignore stale AI discard callbacks after game ends
+    // 清除中央計時器與看門狗（玩家已成功出牌，不再需要強制代打）
+    clearTimeout(this._centralTurnTimer);clearTimeout(this._staleWatchdog);
     this.stopTimer();this.clearBtns();
     document.getElementById('ht0').classList.remove('my-turn');
     const hand=s.hands[p],idx=hand.findIndex(t=>t.id===tileId);
@@ -5205,18 +5221,26 @@ const Game={
     if(aiActed) return;
 
     // Human reaction (if available and AI didn't act)
-    if(hr){
-      if(this.riichiMode){
-        const winOpt=hr.opts.find(o=>o.type==='win');
-        if(winOpt) this.offerMeld(hr.p,[winOpt],tile);
-        else{s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);}
-      } else {
-        this.offerMeld(hr.p,hr.opts,tile);
-      }
-    } else if(nhHuman){
-      this._offerNonHostMeld(nhHuman.p,nhHuman.opts,tile,discP);
+    // 收集所有人類玩家（含 p=0 主機與各非主機玩家）
+    const humanReactors=rr.filter(r=>!s.ai.includes(r.p));
+    if(!humanReactors.length){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
+
+    if(this._online&&this._isHost&&humanReactors.length>0){
+      // 【連線模式】啟動併發鎖：同時向所有人類反應者發出 offer，收齊後統一裁定
+      this._startMeldLock(humanReactors,tile,discP);
     } else {
-      s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);
+      // 【單機模式】原有邏輯：直接 offer 給 p=0，非主機路徑不走此分支
+      if(hr){
+        if(this.riichiMode){
+          const winOpt=hr.opts.find(o=>o.type==='win');
+          if(winOpt) this.offerMeld(hr.p,[winOpt],tile);
+          else{s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);}
+        } else {
+          this.offerMeld(hr.p,hr.opts,tile);
+        }
+      } else {
+        s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);
+      }
     }
   },
 
@@ -5233,9 +5257,97 @@ const Game={
     this._nhMeldTimeout=setTimeout(()=>{
       if(this._waitingMeldFrom===p){
         this._waitingMeldFrom=null;
-        s.turn=(discP+1)%4;this.doTurn();
+        s.turn=(discP+1)%4;
+        setTimeout(()=>this.doTurn(),80); // 加 setTimeout 防止同步呼叫堆疊問題
       }
     },(this.settings?.time||15)*1000+3000);
+  },
+
+  // ── 鳴牌併發鎖（Meld Concurrency Lock）────────────────────────────────
+  // 同時向所有有鳴牌權的人類玩家發出 offer，收齊回應後統一判定最高優先級
+  // reactors: [{p, opts}]  僅含人類玩家（非 AI）
+  _startMeldLock(reactors,tile,discP){
+    const s=this.st;
+    const TIMEOUT=(this.settings?.time||10)*1000+3000; // 與 offerMeld 同步
+    // 初始化鎖狀態
+    this._meldPendingSet=new Set(reactors.map(r=>r.p));
+    this._meldResponseMap=new Map();
+    this._meldLockData={tile,discP,reactors};
+    // 啟動超時：時間到後把所有未回應的玩家視為 skip
+    clearTimeout(this._meldResponseTimer);
+    this._meldResponseTimer=setTimeout(()=>{
+      if(!this._meldPendingSet)return;
+      for(const p of this._meldPendingSet){
+        if(!this._meldResponseMap.has(p)) this._meldResponseMap.set(p,{type:'skip'});
+      }
+      this._meldPendingSet=null;
+      this._resolveMeldLock();
+    },TIMEOUT);
+    // 向各玩家發出 offer
+    for(const r of reactors){
+      if(r.p===0){
+        // 主機玩家：顯示鳴牌 UI；clearBtns/doMeld/nextTurn 皆通過 _submitMeldResponse 路由
+        this._meldLockWaitingHostResponse=true;
+        this.offerMeld(0,r.opts,tile);
+      } else {
+        const peer=this._peers[r.p];
+        if(!peer?.id){
+          // 玩家不在線，直接算 skip
+          this._submitMeldResponse(r.p,{type:'skip'});
+          continue;
+        }
+        const serOpts=r.opts.map(o=>({...o,tiles:(o.tiles||[]).map(t=>({id:t.id,n:t.n,suit:t.suit,v:t.v}))}));
+        const serTile={id:tile.id,n:tile.n,suit:tile.suit,v:tile.v};
+        MahjongNetwork.sendTo(peer.id,{type:'meld_offer',opts:serOpts,tile:serTile,sentAt:Date.now()});
+      }
+    }
+  },
+
+  // 提交玩家的鳴牌回應；當所有待回應玩家都已回應時自動解鎖
+  _submitMeldResponse(p,action){
+    if(!this._meldPendingSet||!this._meldPendingSet.has(p))return;
+    this._meldResponseMap.set(p,action);
+    this._meldPendingSet.delete(p);
+    if(this._meldPendingSet.size===0){
+      clearTimeout(this._meldResponseTimer);
+      this._meldPendingSet=null;
+      this._resolveMeldLock();
+    }
+  },
+
+  // 解鎖：按優先級（胡>碰/槓>吃>skip）選出勝者，執行並廣播 ACTION_RESOLVED
+  _resolveMeldLock(){
+    const resp=this._meldResponseMap;
+    const ld=this._meldLockData;
+    // 清理鎖狀態
+    this._meldResponseMap=null;
+    this._meldLockData=null;
+    this._meldLockWaitingHostResponse=false;
+    clearTimeout(this._meldResponseTimer);this._meldResponseTimer=null;
+    if(!resp||!ld||!this.st||this.st.phase!=='playing')return;
+    const {tile,discP}=ld;
+    // 依優先級找勝者
+    let winner=null,winAction=null;
+    const priority=['win','pong','kong','chi'];
+    for(const typ of priority){
+      for(const [p,a] of resp){
+        if(a.type===typ){winner=p;winAction=a;break;}
+      }
+      if(winner!==null)break;
+    }
+    // 廣播解鎖事件讓所有客戶端同步
+    if(this._online&&this._isHost){
+      MahjongNetwork.broadcast({type:'action_resolved',winner,action:winAction?{type:winAction.type}:null,discP});
+    }
+    if(winner!==null){
+      this.st.turn=winner;
+      if(winAction.type==='win'){setTimeout(()=>this.doWin(winner,false),80);return;}
+      setTimeout(()=>this.doMeld(winner,winAction.type,winAction.tiles||[]),80);
+    } else {
+      // 全員 skip → 輪到下一家
+      this.st.turn=(discP+1)%4;
+      setTimeout(()=>this.doTurn(),220);
+    }
   },
 
   offerMeld(p,opts,tile){
@@ -5592,6 +5704,14 @@ const Game={
       MahjongNetwork.broadcast({type:'action',action:'meld',meldType:type,tiles:tiles.map(t=>({id:t.id}))});
       return;
     }
+    // 若鳴牌併發鎖正在收集 p=0 的回應，本次 doMeld 視為 p=0 已決定動作，路由至 lock
+    if(p===0&&this._meldLockWaitingHostResponse){
+      this._meldLockWaitingHostResponse=false;
+      clearTimeout(this._meldTimeout);clearInterval(this._meldCountInterval);
+      this.clearBtns();this.stopTimer(); // 立即清除鳴牌 UI，不再等鎖解開
+      this._submitMeldResponse(0,{type,tiles});
+      return;
+    }
     const s=this.st;
     clearTimeout(this._meldTimeout);this.clearBtns();this.stopTimer();
     const disc=s.last;
@@ -5696,6 +5816,14 @@ const Game={
   doWin(p,selfDraw){
     if(this._online&&!this._isHost&&p===0){
       MahjongNetwork.broadcast({type:'action',action:'win',selfDraw});
+      return;
+    }
+    // 若鳴牌併發鎖正在收集 p=0 的回應，本次 doWin 視為 p=0 宣胡，路由至 lock
+    if(p===0&&!selfDraw&&this._meldLockWaitingHostResponse){
+      this._meldLockWaitingHostResponse=false;
+      clearTimeout(this._meldTimeout);clearInterval(this._meldCountInterval);
+      this.clearBtns();this.stopTimer();
+      this._submitMeldResponse(0,{type:'win',selfDraw:false});
       return;
     }
     const s=this.st;
@@ -5957,6 +6085,15 @@ const Game={
   },
 
   nextTurn(){
+    // 若鳴牌併發鎖正在收集 p=0 的回應，本次 nextTurn 視為 p=0 選擇「跳過」
+    if(this._meldLockWaitingHostResponse){
+      this._meldLockWaitingHostResponse=false;
+      clearTimeout(this._meldTimeout);clearInterval(this._meldCountInterval);
+      this.clearBtns();this.stopTimer();
+      this._submitMeldResponse(0,{type:'skip'});
+      return;
+    }
+    this.resetTurnState(); // 每次回合切換前強制清除所有殘留計時器與等待狀態
     if(this._online&&this._isHost) Online.broadcastState();
     const s=this.st;s.turn=(s.lastP+1)%4;
     this._schedTurn(80);
@@ -6076,6 +6213,41 @@ const Game={
       const ap=document.getElementById('ap');
       if(!ap||ap.children.length===0) document.getElementById('action-overlay')?.classList.remove('active');
     }
+  },
+
+  // ── 防禦性狀態重置（每次回合切換時呼叫）──────────────────
+  // 強制清除所有計時器 + 重設等待狀態，防止上一回合殘留 timer 干擾
+  resetTurnState(){
+    clearTimeout(this._meldTimeout);
+    clearInterval(this._meldCountInterval);
+    clearTimeout(this._nhMeldTimeout);
+    clearTimeout(this._centralTurnTimer);
+    clearTimeout(this._riichiDiscardTimer);
+    clearTimeout(this._staleWatchdog);
+    clearTimeout(this._meldResponseTimer);
+    this.stopTimer();
+    // 重設所有鳴牌等待旗標
+    this._waitingMeldFrom=null;
+    this._meldResponseTimer=null;
+    if(this._meldPendingSet){this._meldPendingSet.clear();this._meldPendingSet=null;}
+    this._meldLockData=null;
+  },
+
+  // 卡死看門狗：turnTimeoutMs 後若回合仍未切換（drawnId 未清除），強制代打自我修復
+  _startStaleWatchdog(p,turnTimeoutMs){
+    clearTimeout(this._staleWatchdog);
+    if(!this.st||this.st.phase!=='playing')return;
+    const capTurn=this.st.turn;
+    const capDrawnId=this.st.drawnId;
+    this._staleWatchdog=setTimeout(()=>{
+      if(!this.st||this.st.phase!=='playing')return;
+      if(this.st.turn!==capTurn||this.st.drawnId!==capDrawnId)return; // 已正常進行
+      console.warn(`[Watchdog] p${p} 回合卡死 ${turnTimeoutMs}ms，強制代打`);
+      const hand=(this.st.hands[p]||[]).filter(x=>!x.fl);
+      if(!hand.length)return;
+      const auto=capDrawnId?hand.find(t=>t.id===capDrawnId)||hand[hand.length-1]:hand[hand.length-1];
+      if(auto){this.clearBtns();this.doDiscard(p,auto.id);}
+    },turnTimeoutMs);
   },
 
   // ── RENDER ────────────────────────────────────────────
@@ -7523,6 +7695,10 @@ const Online = {
       case 'action':
         if(Game._isHost) this._processAction(peerId,data);
         break;
+      case 'action_resolved':
+        // 非主機客戶端收到裁定結果：清除自己的 meld UI，等待下一次 game_state 廣播
+        if(!Game._isHost){ Game.clearBtns(); Game.hideTenpai(); }
+        break;
       case 'next_round':
         if(!Game._isHost && data.state){ Game.st=data.state; Game.render(); }
         break;
@@ -7532,7 +7708,7 @@ const Online = {
   _processAction(peerId,data){
     const peerIdx=Game._peers.findIndex(p=>p.id===peerId);
     if(peerIdx<0) return;
-    // Clear pending non-host meld wait when peer responds
+    // Clear pending non-host meld wait when peer responds (legacy single-wait path)
     if(Game._waitingMeldFrom===peerIdx){
       Game._waitingMeldFrom=null;
       clearTimeout(Game._nhMeldTimeout);
@@ -7544,6 +7720,16 @@ const Online = {
       const all=[...hand,...(Game.st.discards||[]).flat(),...(Game.st.melds||[]).flat().flatMap(m=>m.tiles||[])];
       return idArr.map(t=>all.find(h=>h.id===t.id)||t);
     };
+    // 若鳴牌併發鎖正在等待此玩家（peerIdx）的回應，路由至 lock 而非直接執行
+    if(Game._meldPendingSet&&Game._meldPendingSet.has(peerIdx)){
+      switch(data.action){
+        case 'meld': Game._submitMeldResponse(peerIdx,{type:data.meldType,tiles:resolveTiles(data.tiles)}); break;
+        case 'win':  Game._submitMeldResponse(peerIdx,{type:'win',selfDraw:data.selfDraw}); break;
+        case 'skip': Game._submitMeldResponse(peerIdx,{type:'skip'}); break;
+        default:     Game._submitMeldResponse(peerIdx,{type:'skip'}); break;
+      }
+      return;
+    }
     switch(data.action){
       case 'discard': Game.doDiscard(peerIdx,data.tileId); break;
       case 'meld': Game.doMeld(peerIdx,data.meldType,resolveTiles(data.tiles)); break;
