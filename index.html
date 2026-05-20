@@ -4592,15 +4592,19 @@ const Game={
     const deck=shuffle(mkDeck());
     const hands=[[],[],[],[]],flowers=[[],[],[],[]];
     let pos=0;
-    // Taiwan rules: deal 16 NON-flower tiles per player
+    // 【Bug2修復】台灣規則：每人發「恰好16張」（含花牌計入16張名額）
+    // 花牌計入名額後 hands[p].length + flowers[p].length === 16
+    // _doFlowerReplacement 再補足缺少的手牌，確保最終手牌 = 16 張非花牌
     for(let p=0;p<4;p++){
-      while(hands[p].length<16&&pos<deck.length){
+      let count=0; // 計入花牌的總發牌數
+      while(count<16&&pos<deck.length){
         const t=deck[pos++];
-        if(t.fl)flowers[p].push(t);  // flowers go aside, don't count toward 16
-        else hands[p].push(t);        // only non-flower counts
+        count++;
+        if(t.fl)flowers[p].push(t);  // 花牌歸花牌區
+        else hands[p].push(t);        // 非花牌進手牌
       }
     }
-    const pending=flowers.map(f=>f.length);
+    const pending=flowers.map(f=>f.length); // 需要補摸的替換張數 = 花牌數
     const initMoney=this.st?[...this.st.money]:[money,money,money,money];
     this.st={
       phase:'replace',turn:dealer,dealer:dealer,deck:deck.slice(pos),
@@ -5177,7 +5181,7 @@ const Game={
     s.hands[p]=sortH(s.hands[p]);
     s.discards[p].push(tile);s.last=tile;s.lastP=p;s.drawnId=null;
     if(s.firstRound) s.firstRound=false;  // 第一張牌打出後天胡條件失效
-    this.validateHandSize(p,'waiting'); // 【防相公】出牌後應剩13張
+    this.validateHandSize(p,'waiting'); // 【防相公】出牌後應剩16張
     this.checkTenpai(p);
     // 玩家打牌後立即更新聽牌面板（不等下次摸牌）
     if(p===0){
@@ -5781,7 +5785,7 @@ const Game={
     const pile=s.discards[s.lastP];const di=pile.findIndex(t=>t.id===disc.id);if(di>=0)pile.splice(di,1);
     s.melds[p].push({type,tiles:sortH([...tiles,disc])});
     s.hands[p]=sortH(s.hands[p]);s.turn=p;s.drawnId=null;
-    this.validateHandSize(p,'drawn'); // 【防相公】副露後應有14張待出牌
+    this.validateHandSize(p,'drawn'); // 【防相公】副露後應有17張待出牌
     const lbl={pong:'碰',chi:'吃',kong:'槓'}[type]||type;
     this.log(`${s.names[p]} ${lbl} ${disc.n}`);
     this.ann(type);
@@ -6312,16 +6316,16 @@ const Game={
 
   // ── 防禦性手牌張數校驗 ─────────────────────────────────
   // 合法張數規則（台灣16張麻將）：
-  //   等待出牌（waiting）：非花牌手牌 + 副露*3 === 13（出牌前）
-  //   剛摸牌/副露後（drawn）：非花牌手牌 + 副露*3 === 14（出牌時）
-  // phase: 'waiting'(expect 13) | 'drawn'(expect 14)
+  //   等待出牌（waiting）：非花牌手牌 + 副露*3 === 16（出牌前）
+  //   剛摸牌/副露後（drawn）：非花牌手牌 + 副露*3 === 17（出牌時）
+  // phase: 'waiting'(expect 16) | 'drawn'(expect 17)
   validateHandSize(p, phase){
     if(!this.st) return true;
     const s=this.st;
     const handCount=s.hands[p].filter(x=>!x.fl).length;
     const meldCount=s.melds[p].length;
     const effective=handCount+meldCount*3;
-    const expected=phase==='drawn'?14:13;
+    const expected=phase==='drawn'?17:16;
     if(effective===expected) return true;
     // 張數異常：記錄警告但不中斷遊戲（容錯）
     console.warn(`[validateHandSize] p${p} phase=${phase}: effective=${effective} expected=${expected} hand=${handCount} melds=${meldCount}`);
@@ -6917,6 +6921,8 @@ const Game={
       return;
     }
     const wd=s.winData;if(!wd)return;
+    // 【Bug1 Debug】確認結算封包正確（winnerIdx=wd.p 應對應本客戶端視角的 0=自己）
+    console.log('結算封包:',{winnerIdx:wd.p,winnerName:s.names[wd.p],payerIdx:wd.payer,tai:wd.tai,bon:wd.bon,selfDraw:wd.selfDraw});
     const pn=s.names[wd.p];const isMe=wd.p===0;
     document.getElementById('wtit').textContent=isMe?'🎉 你胡了！':`${pn} 胡牌！`;
     const payTxt=wd.selfDraw?'自摸（各家付）':`${s.names[wd.payer]||'?'} 放槍`;
@@ -7946,6 +7952,9 @@ const Online = {
         break;
       case 'game_state':
         if(!Game._isHost && data.state){
+          // 【Bug1修復】局已結算（phase=ended）時，game_state 廣播可能帶著 winData，
+          // 但不可覆蓋已由 game_over 封包正確設定好的本地狀態，否則會抹去正確的贏家資訊
+          if(Game.st&&Game.st.phase==='ended') break;
           Game._isDiscarding=false; // 【Task1】主機已處理出牌，解除客戶端鎖
           Game.clearBtns(); // Clear any leftover meld/discard UI before applying new state
           Game.st=data.state;
@@ -8097,8 +8106,18 @@ const Online = {
     const unrot=i=>(i+absIdx)%n;
     const rot=i=>(i-absIdx+n)%n;
     const reorder=arr=>Array.from({length:n},(_,i)=>arr[unrot(i)]);
+    // 【Bug1修復】winData 內的 p/payer 也必須跟著旋轉，否則 game_state 廣播後客戶端看到錯誤贏家
+    let rotatedWinData=state.winData||null;
+    if(state.winData){
+      rotatedWinData={
+        ...state.winData,
+        p:rot(state.winData.p),
+        payer:state.winData.payer>=0?rot(state.winData.payer):state.winData.payer,
+      };
+    }
     return {
       ...state,
+      winData:rotatedWinData,
       hands:reorder(state.hands),
       melds:reorder(state.melds),
       discards:reorder(state.discards),
