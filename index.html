@@ -607,105 +607,63 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   z-index: 2;
   overflow: hidden;
 }
-/* Pool discard zones — 雀魂式 6×N 河池網格 */
+/* ═══ POOL DISCARD ZONES — unified 30×42px grid ═══════════════
+   All 4 zones identical tile size; old per-zone overrides removed.
+   dc0/dc2: 6 cols (top/bottom); dc1/dc3: 4 cols (right/left)
+   Container box-sizing:border-box so padding + border are included.
+════════════════════════════════════════════════════════════════ */
 #pool #dc0, #pool #dc1, #pool #dc2, #pool #dc3 {
   position: absolute !important;
   display: grid !important;
-  gap: 2px !important;
-  overflow: hidden !important;
-  padding: 6px !important;
-  background: rgba(0,0,0,.18);
+  gap: 3px !important;
+  padding: 5px !important;
+  box-sizing: border-box !important;
+  background: rgba(0,0,0,.15);
   border-radius: 4px;
-  border: 1px solid rgba(212,168,67,.06);
+  border: 1px solid rgba(212,168,67,.07);
+  overflow: hidden !important;
 }
-#pool #dc2 { /* top discards (p2) — fill UP toward opponent (closest row to compass first) */
+/* top (p2) — 6 cols, tiles stack toward compass */
+#pool #dc2 {
   top: 5px; left: 50%; transform: translateX(-50%);
-  height: 128px;
+  width: 205px; height: 142px;
   grid-template-columns: repeat(6, 30px) !important;
-  grid-auto-rows: 41px !important;
+  grid-auto-rows: 42px !important;
   grid-auto-flow: row !important;
   align-content: flex-end !important;
   justify-content: center !important;
-  opacity: 0.78; /* 遠端略淡，強化深度感 */
+  opacity: 0.80;
 }
-#pool #dc0 { /* bottom discards (p0) — 6 cols */
+/* bottom (p0) — 6 cols */
+#pool #dc0 {
   bottom: 5px; left: 50%; transform: translateX(-50%);
-  height: 128px;
+  width: 205px; height: 142px;
   grid-template-columns: repeat(6, 30px) !important;
-  grid-auto-rows: 41px !important;
+  grid-auto-rows: 42px !important;
   grid-auto-flow: row !important;
   align-content: flex-start !important;
   justify-content: center !important;
 }
-#pool #dc3 { /* left discards (p3) — 4 columns, rows of 48px, top→down */
+/* left (p3) — 4 cols */
+#pool #dc3 {
   top: 50%; left: 5px; transform: translateY(-50%);
-  width: 150px; height: 210px;
-  padding: 4px !important;
-  grid-template-columns: repeat(4, 34px) !important;
-  grid-auto-rows: 48px !important;
+  width: 139px; height: 220px;
+  grid-template-columns: repeat(4, 30px) !important;
+  grid-auto-rows: 42px !important;
   grid-auto-flow: row !important;
   align-content: flex-start !important;
   justify-content: flex-start !important;
 }
-#pool #dc1 { /* right discards (p1) — 4 columns, rows of 48px, top→down */
+/* right (p1) — 4 cols */
+#pool #dc1 {
   top: 50%; right: 5px; transform: translateY(-50%);
-  width: 150px; height: 210px;
-  padding: 4px !important;
-  grid-template-columns: repeat(4, 34px) !important;
-  grid-auto-rows: 48px !important;
+  width: 139px; height: 220px;
+  grid-template-columns: repeat(4, 30px) !important;
+  grid-auto-rows: 42px !important;
   grid-auto-flow: row !important;
   align-content: flex-start !important;
   justify-content: flex-end !important;
 }
-/* Side discard tiles 34×46 — corrected sprite background-size for dc1/dc3 */
-#pool #dc1 .t, #pool #dc3 .t { width:34px !important; height:46px !important; }
-#pool #dc1 .t.man, #pool #dc3 .t.man { background-size:336px 71px !important; }
-#pool #dc1 .t.man.v1, #pool #dc3 .t.man.v1 { background-position:0px -12px !important; }
-#pool #dc1 .t.man.v2, #pool #dc3 .t.man.v2 { background-position:-37px -12px !important; }
-#pool #dc1 .t.man.v3, #pool #dc3 .t.man.v3 { background-position:-75px -12px !important; }
-#pool #dc1 .t.man.v4, #pool #dc3 .t.man.v4 { background-position:-112px -12px !important; }
-#pool #dc1 .t.man.v5, #pool #dc3 .t.man.v5 { background-position:-149px -12px !important; }
-#pool #dc1 .t.man.v6, #pool #dc3 .t.man.v6 { background-position:-187px -12px !important; }
-#pool #dc1 .t.man.v7, #pool #dc3 .t.man.v7 { background-position:-224px -12px !important; }
-#pool #dc1 .t.man.v8, #pool #dc3 .t.man.v8 { background-position:-261px -12px !important; }
-#pool #dc1 .t.man.v9, #pool #dc3 .t.man.v9 { background-position:-299px -12px !important; }
-#pool #dc1 .t.pin, #pool #dc3 .t.pin { background-size:336px 71px !important; }
-#pool #dc1 .t.pin.v1, #pool #dc3 .t.pin.v1 { background-position:0px -12px !important; }
-#pool #dc1 .t.pin.v2, #pool #dc3 .t.pin.v2 { background-position:-37px -12px !important; }
-#pool #dc1 .t.pin.v3, #pool #dc3 .t.pin.v3 { background-position:-75px -12px !important; }
-#pool #dc1 .t.pin.v4, #pool #dc3 .t.pin.v4 { background-position:-112px -12px !important; }
-#pool #dc1 .t.pin.v5, #pool #dc3 .t.pin.v5 { background-position:-149px -12px !important; }
-#pool #dc1 .t.pin.v6, #pool #dc3 .t.pin.v6 { background-position:-187px -12px !important; }
-#pool #dc1 .t.pin.v7, #pool #dc3 .t.pin.v7 { background-position:-224px -12px !important; }
-#pool #dc1 .t.pin.v8, #pool #dc3 .t.pin.v8 { background-position:-261px -12px !important; }
-#pool #dc1 .t.pin.v9, #pool #dc3 .t.pin.v9 { background-position:-299px -12px !important; }
-#pool #dc1 .t.sou, #pool #dc3 .t.sou { background-size:336px 88px !important; }
-#pool #dc1 .t.sou.v1, #pool #dc3 .t.sou.v1 { background-position:0px -21px !important; }
-#pool #dc1 .t.sou.v2, #pool #dc3 .t.sou.v2 { background-position:-37px -21px !important; }
-#pool #dc1 .t.sou.v3, #pool #dc3 .t.sou.v3 { background-position:-75px -21px !important; }
-#pool #dc1 .t.sou.v4, #pool #dc3 .t.sou.v4 { background-position:-112px -21px !important; }
-#pool #dc1 .t.sou.v5, #pool #dc3 .t.sou.v5 { background-position:-149px -21px !important; }
-#pool #dc1 .t.sou.v6, #pool #dc3 .t.sou.v6 { background-position:-187px -21px !important; }
-#pool #dc1 .t.sou.v7, #pool #dc3 .t.sou.v7 { background-position:-224px -21px !important; }
-#pool #dc1 .t.sou.v8, #pool #dc3 .t.sou.v8 { background-position:-261px -21px !important; }
-#pool #dc1 .t.sou.v9, #pool #dc3 .t.sou.v9 { background-position:-299px -21px !important; }
-#pool #dc1 .t.honor, #pool #dc3 .t.honor { background-size:261px 82px !important; }
-#pool #dc1 .t.honor.v0, #pool #dc3 .t.honor.v0 { background-position:0px -18px !important; }
-#pool #dc1 .t.honor.v1, #pool #dc3 .t.honor.v1 { background-position:-37px -18px !important; }
-#pool #dc1 .t.honor.v2, #pool #dc3 .t.honor.v2 { background-position:-75px -18px !important; }
-#pool #dc1 .t.honor.v3, #pool #dc3 .t.honor.v3 { background-position:-112px -18px !important; }
-#pool #dc1 .t.honor.v4, #pool #dc3 .t.honor.v4 { background-position:-149px -18px !important; }
-#pool #dc1 .t.honor.v5, #pool #dc3 .t.honor.v5 { background-position:-224px -18px !important; }
-#pool #dc1 .t.honor.v6, #pool #dc3 .t.honor.v6 { background-position:-186px -18px !important; }
-#pool #dc1 .t.flower, #pool #dc3 .t.flower { background-size:272px 50px !important; }
-#pool #dc1 .t.flower.v0, #pool #dc3 .t.flower.v0 { background-position:0px -2px !important; }
-#pool #dc1 .t.flower.v1, #pool #dc3 .t.flower.v1 { background-position:-34px -2px !important; }
-#pool #dc1 .t.flower.v2, #pool #dc3 .t.flower.v2 { background-position:-68px -2px !important; }
-#pool #dc1 .t.flower.v3, #pool #dc3 .t.flower.v3 { background-position:-102px -2px !important; }
-#pool #dc1 .t.flower.v4, #pool #dc3 .t.flower.v4 { background-position:-136px -2px !important; }
-#pool #dc1 .t.flower.v5, #pool #dc3 .t.flower.v5 { background-position:-170px -2px !important; }
-#pool #dc1 .t.flower.v6, #pool #dc3 .t.flower.v6 { background-position:-204px -2px !important; }
-#pool #dc1 .t.flower.v7, #pool #dc3 .t.flower.v7 { background-position:-238px -2px !important; }
 /* ── Compass score badges: 4 player scores at N/S/E/W of the pool ── */
 .pool-score {
   display: none !important; /* Player info shown in each corner area; pool badges removed */
@@ -758,9 +716,16 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow: 0 0 10px rgba(212,168,67,.5);
 }
 .pool-score.me-badge { border-color: rgba(212,168,67,.45); }
-/* Pool tiles: same 28×39 size as old discard zones, sprites work via z-*d classes */
+/* ── Pool discard tiles: unified 30×42px ──────────────────────
+   box-sizing:border-box + overflow:hidden ensure the sprite never
+   bleeds outside the tile border.  No hover transform.
+   Sprite overrides below (#pool .t.man etc.) beat the old .z-*d rules
+   (higher specificity: 1 ID + 2 classes vs 3 classes).
+*/
 #pool .t {
-  width: 28px !important; height: 39px !important;
+  width: 30px !important; height: 42px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
   font-size: .52rem !important;
   border-radius: 3px !important;
   box-shadow: 0 -2px 0 #a87820 inset, 1px 2px 3px rgba(0,0,0,.5) !important;
@@ -769,6 +734,70 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 #pool .t:hover { transform: none !important; }
 #pool .t::before { display: none !important; }
+
+/* ── Unified 30×42 sprite — all 4 discard zones (overrides .z-*d rules) ──
+   Formulae  (face_w=72 for man/pin/sou/honor; face_w=160 for flower):
+     scale   = 30 / face_w
+     bg_w    = sprite_natural_w  × scale   (rounded)
+     bg_h    = sprite_natural_h  × scale   (rounded)
+     x_step  = 80 × scale                  (rounded)
+     y_off   = −( sprite_natural_h/2 × scale  −  21 )   (half tile display = 21px)
+   man/pin: 712×150 → bg 297×63   step=33  y=−10
+   sou:     712×185 → bg 297×77   step=33  y=−18
+   honor:   553×172 → bg 230×72   step=33  y=−15  (col mapping: v5=col6 v6=col5)
+   flower: 1280×234 → bg 240×44   step=30  y=−1
+*/
+#pool .t.man  { background-size:297px 63px !important; }
+#pool .t.man.v1 { background-position:0     -10px !important; }
+#pool .t.man.v2 { background-position:-33px -10px !important; }
+#pool .t.man.v3 { background-position:-67px -10px !important; }
+#pool .t.man.v4 { background-position:-100px -10px !important; }
+#pool .t.man.v5 { background-position:-133px -10px !important; }
+#pool .t.man.v6 { background-position:-167px -10px !important; }
+#pool .t.man.v7 { background-position:-200px -10px !important; }
+#pool .t.man.v8 { background-position:-233px -10px !important; }
+#pool .t.man.v9 { background-position:-267px -10px !important; }
+
+#pool .t.pin  { background-size:297px 63px !important; }
+#pool .t.pin.v1 { background-position:0     -10px !important; }
+#pool .t.pin.v2 { background-position:-33px -10px !important; }
+#pool .t.pin.v3 { background-position:-67px -10px !important; }
+#pool .t.pin.v4 { background-position:-100px -10px !important; }
+#pool .t.pin.v5 { background-position:-133px -10px !important; }
+#pool .t.pin.v6 { background-position:-167px -10px !important; }
+#pool .t.pin.v7 { background-position:-200px -10px !important; }
+#pool .t.pin.v8 { background-position:-233px -10px !important; }
+#pool .t.pin.v9 { background-position:-267px -10px !important; }
+
+#pool .t.sou  { background-size:297px 77px !important; }
+#pool .t.sou.v1 { background-position:0     -18px !important; }
+#pool .t.sou.v2 { background-position:-33px -18px !important; }
+#pool .t.sou.v3 { background-position:-67px -18px !important; }
+#pool .t.sou.v4 { background-position:-100px -18px !important; }
+#pool .t.sou.v5 { background-position:-133px -18px !important; }
+#pool .t.sou.v6 { background-position:-167px -18px !important; }
+#pool .t.sou.v7 { background-position:-200px -18px !important; }
+#pool .t.sou.v8 { background-position:-233px -18px !important; }
+#pool .t.sou.v9 { background-position:-267px -18px !important; }
+
+#pool .t.honor { background-size:230px 72px !important; }
+#pool .t.honor.v0 { background-position:0     -15px !important; }
+#pool .t.honor.v1 { background-position:-33px -15px !important; }
+#pool .t.honor.v2 { background-position:-67px -15px !important; }
+#pool .t.honor.v3 { background-position:-100px -15px !important; }
+#pool .t.honor.v4 { background-position:-133px -15px !important; }
+#pool .t.honor.v5 { background-position:-199px -15px !important; }  /* 白 col6 */
+#pool .t.honor.v6 { background-position:-166px -15px !important; }  /* 発 col5 */
+
+#pool .t.flower { background-size:240px 44px !important; }
+#pool .t.flower.v0 { background-position:0     -1px !important; }
+#pool .t.flower.v1 { background-position:-30px -1px !important; }
+#pool .t.flower.v2 { background-position:-60px -1px !important; }
+#pool .t.flower.v3 { background-position:-90px -1px !important; }
+#pool .t.flower.v4 { background-position:-120px -1px !important; }
+#pool .t.flower.v5 { background-position:-150px -1px !important; }
+#pool .t.flower.v6 { background-position:-180px -1px !important; }
+#pool .t.flower.v7 { background-position:-210px -1px !important; }
 #pool .t.back {
   background: linear-gradient(160deg,#1a4060 0%,#0e2540 100%) !important;
   border-color: #0a1e35 !important;
