@@ -3148,12 +3148,13 @@ function is7p(tiles){
   return false;
 }
 // canWin: Taiwan 16-tile — must have exactly 1 pair (眼) + melds
-// valid tile counts after flowers removed: 2, 5, 8, 11, 14 (= n*3+2)
-function canWin(hand,drawn){
+// valid tile counts after flowers removed: 2, 5, 8, 11, 14, 17 (= n*3+2)
+// meldCount: number of existing melds (used to enforce 門清 for 八對子)
+function canWin(hand,drawn,meldCount=0){
   const p=[...(drawn?[...hand,drawn]:hand)].filter(x=>!x.fl);
-  if(p.length===16&&is7p(p))return true;  // 八對子自摸
+  if(p.length===16&&meldCount===0&&is7p(p))return true;  // 八對半放炮胡（門清）
   if(p.length<2||(p.length-2)%3!==0)return false;
-  if(p.length===14&&is7p(p))return true;
+  if(p.length===14&&meldCount===0&&is7p(p))return true;  // 七對放炮（門清）
   const t=sortH(p);
   for(let i=0;i<t.length-1;i++){
     if(t[i].s===t[i+1].s&&t[i].v===t[i+1].v){
@@ -3163,15 +3164,16 @@ function canWin(hand,drawn){
   }
   return false;
 }
-function tenpaiTiles(hand){
+function tenpaiTiles(hand,melds=[]){
   // hand size for tenpai (16-tile): 1,4,7,10,13 non-flower tiles
   const p=hand.filter(x=>!x.fl);
   if(!p.length||(p.length-1)%3!==0)return [];
+  const mc=melds.length;
   const res=[];
   // man/pin/sou: v=1..9; honor: v=0..6 (東=0,南=1,西=2,北=3,中=4,白=5,發=6)
   [['man',1,9],['pin',1,9],['sou',1,9],['honor',0,6]].forEach(([s,vMin,vMax])=>{
     for(let v=vMin;v<=vMax;v++){
-      if(canWin(hand,{s,v,id:99999,n:'?'}))
+      if(canWin(hand,{s,v,id:99999,n:'?'},mc))
         res.push({s,v,n:(s==='honor'?TN.honor[v]:(TN[s]||[])[v-1]||'')});
     }
   });
@@ -3183,7 +3185,7 @@ function discRemaining(tile,discards,melds){
   if(melds) melds.forEach(m=>m.forEach(meld=>(meld.tiles||[]).forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++})));
   return Math.max(0,4-used);
 }
-function meldOpts(hand,disc,myIdx,discIdx){
+function meldOpts(hand,disc,myIdx,discIdx,existingMelds=[]){
   const opts=[];
   const m=hand.filter(t=>t.s===disc.s&&t.v===disc.v);
   if(m.length>=2)opts.push({type:'pong',tiles:[m[0],m[1]]});
@@ -3196,7 +3198,7 @@ function meldOpts(hand,disc,myIdx,discIdx){
       if(ta&&tb)opts.push({type:'chi',tiles:[ta,tb]});
     });
   }
-  if(canWin(hand.filter(x=>!x.fl),disc))opts.push({type:'win'});
+  if(canWin(hand.filter(x=>!x.fl),disc,existingMelds.length))opts.push({type:'win'});
   return opts;
 }
 
@@ -3554,11 +3556,12 @@ function calcShantenStd(tiles, meldCount) {
     const idx = t.s==='man'?t.v-1 : t.s==='pin'?9+t.v-1 : t.s==='sou'?18+t.v-1 : 27+(t.v||0);
     if(idx>=0&&idx<42) cnt[idx]++;
   });
-  let best = 8 - meldCount*2;
+  // Taiwan 16-tile: need 5 melds + 1 pair → base shanten = 10 (not 8 like Japanese 4-meld game)
+  let best = 10 - meldCount*2;
   function search(idx, melds, pairs, partial) {
     while(idx<42 && cnt[idx]===0) idx++;
     if(idx===42){
-      const s = 8-meldCount*2 - melds*2 - Math.min(partial+pairs, 8-meldCount*2-melds*2+1);
+      const s = 10-meldCount*2 - melds*2 - Math.min(partial+pairs, 10-meldCount*2-melds*2+1);
       if(s<best) best=s;
       return;
     }
@@ -3584,12 +3587,13 @@ function calcShantenStd(tiles, meldCount) {
 }
 function calcShanten(hand, melds=[]) {
   const tiles = hand.filter(t=>!t.fl);
-  // 七對向聽數
-  const pairs = {};
-  tiles.forEach(t=>{ const k=t.s+'_'+t.v; pairs[k]=(pairs[k]||0)+1; });
-  const pairCount = Object.values(pairs).filter(c=>c>=2).length;
-  const chiitoi = 6 - pairCount;
-  // 標準型向聽數
+  // 八對半向聽數：門清限定，7對+1刻，從 7 開始（不是 6）
+  const chiitoi = melds.length===0 ? (()=>{
+    const pairs = {};
+    tiles.forEach(t=>{ const k=t.s+'_'+t.v; pairs[k]=(pairs[k]||0)+1; });
+    return 7 - Object.values(pairs).filter(c=>c>=2).length;
+  })() : Infinity;
+  // 標準型向聽數（台灣 16 張：起始 10）
   const std = calcShantenStd(tiles, melds.length);
   return Math.min(std, chiitoi);
 }
@@ -4702,7 +4706,7 @@ const Game={
     const rr=[];
     for(let p=0;p<4;p++){
       if(p===discP)continue;
-      const opts=meldOpts(s.hands[p].filter(x=>!x.fl),tile,p,discP);
+      const opts=meldOpts(s.hands[p].filter(x=>!x.fl),tile,p,discP,s.melds[p]);
       if(opts.length)rr.push({p,opts});
     }
     if(!rr.length){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
@@ -5543,7 +5547,7 @@ const Game={
     // 16-tile Taiwan: tenpai when hand has (16 - melds*3) tiles, waiting for 1
     const exp=16-s.melds[p].length*3;
     if(hand.length!==exp){s.tenpai[p]=false;s.tenpaiT[p]=null;return;}
-    const wt=tenpaiTiles(hand);
+    const wt=tenpaiTiles(hand,s.melds[p]);
     s.tenpai[p]=wt.length>0;s.tenpaiT[p]=wt.length?wt:null;
     if(wt.length&&p===0)Snd.tenpai();
   },
@@ -6212,7 +6216,7 @@ const Game={
     const playable=hand.filter(x=>!x.fl);
     playable.forEach(tile=>{
       const after=playable.filter(t=>t.id!==tile.id);
-      if(tenpaiTiles(after).length>0) candidates.push(tile);
+      if(tenpaiTiles(after,melds).length>0) candidates.push(tile);
     });
     return candidates;
   },
@@ -6267,7 +6271,7 @@ const Game={
     candidates.forEach(discTile=>{
       // Calculate what tiles we'd be waiting for after discarding this tile
       const afterHand=s.hands[0].filter(x=>!x.fl&&x.id!==discTile.id);
-      const waiting=tenpaiTiles(afterHand);
+      const waiting=tenpaiTiles(afterHand,s.melds[0]);
       if(!waiting.length)return;
 
       const row=document.createElement('div');
@@ -6320,7 +6324,7 @@ const Game={
     const s=this.st;
     // Calculate waiting tiles BEFORE discarding
     const afterHand=s.hands[0].filter(x=>!x.fl&&x.id!==tile.id);
-    const waiting=tenpaiTiles(afterHand);
+    const waiting=tenpaiTiles(afterHand,s.melds[0]);
     this.riichiMode=true;
     this.riichiTile=tile;
     this.riichiWaiting=waiting;  // save for display
