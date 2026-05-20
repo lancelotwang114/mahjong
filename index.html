@@ -1510,9 +1510,19 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   letter-spacing:.04em;
 }
 #autoplay-btn:hover { border-color:rgba(46,204,113,.6); color:rgba(46,204,113,.8); }
+#host-round-start-btn {
+  position:absolute; top:10px; right:120px; z-index:300;
+  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
+  border:1.5px solid rgba(180,130,55,.6);
+  border-radius:8px; padding:6px 14px; color:var(--gold);
+  font-family:'Noto Serif TC'; font-size:.82rem; font-weight:700;
+  cursor:pointer; backdrop-filter:blur(6px); display:none;
+  transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.45);
+}
+#host-round-start-btn:hover { background:rgba(212,168,67,.22); border-color:var(--gold); }
 /* Leave & save button */
 #leave-btn {
-  position:absolute; top:10px; left:94px; z-index:300;
+  position:absolute; top:10px; left:106px; z-index:300;
   background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
   border:1.5px solid rgba(180,80,55,.4);
   border-radius:8px; padding:6px 14px; color:rgba(212,130,100,.7);
@@ -2459,6 +2469,48 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 .dice-el.landing { animation: diceLand 0.38s cubic-bezier(.36,.07,.19,.97) forwards; }
 
+@keyframes goldDiceRollLeft {
+  0%   { transform: translateX(-180px) rotate(0deg) scale(0.7); opacity:.5; }
+  20%  { transform: translateX(-40px) rotate(220deg) scale(1); opacity:1; }
+  40%  { transform: translateX(10px) rotate(480deg) scale(1.05); }
+  60%  { transform: translateX(-8px) rotate(700deg) scale(1); }
+  80%  { transform: translateX(0px) rotate(860deg) scale(1.02); }
+  100% { transform: translateX(0px) rotate(900deg) scale(1); }
+}
+@keyframes goldDiceRollRight {
+  0%   { transform: translateX(180px) rotate(0deg) scale(0.7); opacity:.5; }
+  20%  { transform: translateX(40px) rotate(-240deg) scale(1); opacity:1; }
+  40%  { transform: translateX(-12px) rotate(-500deg) scale(1.05); }
+  60%  { transform: translateX(8px) rotate(-720deg) scale(1); }
+  80%  { transform: translateX(0px) rotate(-850deg) scale(1.02); }
+  100% { transform: translateX(0px) rotate(-900deg) scale(1); }
+}
+@keyframes goldDiceShake {
+  0%   { transform: translate(0,0) rotate(0deg); }
+  15%  { transform: translate(-6px,-4px) rotate(-8deg); }
+  30%  { transform: translate(8px,5px) rotate(7deg); }
+  45%  { transform: translate(-9px,3px) rotate(-9deg); }
+  60%  { transform: translate(8px,-4px) rotate(7deg); }
+  75%  { transform: translate(-5px,5px) rotate(-5deg); }
+  90%  { transform: translate(3px,-2px) rotate(3deg); }
+  100% { transform: translate(0,0) rotate(0deg); }
+}
+@keyframes goldDiceBounce {
+  0%,100% { transform: translateY(0px); }
+  50%      { transform: translateY(-16px); }
+}
+.dice-el.gold-roll-left {
+  animation: goldDiceRollLeft 1.4s cubic-bezier(.2,.8,.2,1) forwards,
+             goldDiceShake .55s linear infinite;
+}
+.dice-el.gold-roll-right {
+  animation: goldDiceRollRight 1.4s cubic-bezier(.2,.8,.2,1) forwards,
+             goldDiceShake .6s linear infinite reverse;
+}
+.dice-el.gold-idle {
+  animation: goldDiceBounce 1.8s ease-in-out infinite;
+}
+
 @keyframes diceRing {
   0%   { transform: scale(0.5); opacity: 0.9; }
   100% { transform: scale(2.5); opacity: 0; }
@@ -3320,6 +3372,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 <!-- UI overlays inside tbl (scale with board) -->
   <button id="pause-btn" onclick="Game.togglePause()">⏸ 暫停</button>
   <button id="leave-btn" onclick="Game.leaveAndSave()" title="儲存牌局並返回大廳（AI 代打）">🚪 離開</button>
+  <button id="host-round-start-btn" onclick="Game.hostStartRound()" title="房主：開始下一局">▶ 開始</button>
   <button id="autoplay-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
   <!-- In-game audio control -->
   <button id="audio-btn" onclick="Game.toggleAudioPanel()" title="音效 &amp; 音樂">🔊</button>
@@ -3592,7 +3645,7 @@ function discRemaining(tile,discards,melds,ownHand){
   discards.forEach(p=>p.forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++}));
   if(melds) melds.forEach(m=>m.forEach(meld=>(meld.tiles||[]).forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++})));
   // 【Bug3修復】自己手牌中已有的同張牌也要扣除（那些牌已不可能再摸到）
-  if(ownHand) ownHand.forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++;});
+  if(ownHand) ownHand.filter(x=>!x.fl).forEach(t=>{if(t.s===tile.s&&t.v===tile.v)used++;});
   return Math.max(0,4-used);
 }
 function meldOpts(hand,disc,myIdx,discIdx,existingMelds=[]){
@@ -4458,6 +4511,12 @@ const Game={
     if(typeof MahjongNetwork!=='undefined') MahjongNetwork.broadcast({type:'host_restart'});
     this.newRound();
   },
+  hostStartRound(){
+    if(!this._isHost)return;
+    if(typeof MahjongNetwork!=='undefined') MahjongNetwork.broadcast({type:'host_start_round'});
+    document.getElementById('host-round-start-btn').style.display='none';
+    this.newRound();
+  },
 
   setTheme(name){
     document.body.dataset.theme=name;
@@ -4591,6 +4650,7 @@ const Game={
   },
 
   initRound(names,aiIdx,money,dealer=0,roundNum=1,roundWind='東',honba=0){
+    const hsb=document.getElementById('host-round-start-btn');if(hsb)hsb.style.display='none';
     const deck=shuffle(mkDeck());
     const hands=[[],[],[],[]],flowers=[[],[],[],[]];
     let pos=0;
@@ -4630,56 +4690,28 @@ const Game={
   },
 
 
-  // Generate SVG dice face with 3D illusion
-  _diceSVG(n,size=90){
-    const dots={
-      1:[[50,50]],
-      2:[[30,30],[70,70]],
-      3:[[30,30],[50,50],[70,70]],
-      4:[[30,30],[70,30],[30,70],[70,70]],
-      5:[[30,30],[70,30],[50,50],[30,70],[70,70]],
-      6:[[30,26],[70,26],[30,50],[70,50],[30,74],[70,74]],
+  // Generate SVG dice face — gold-frame style
+  _diceSVG(n, size=90){
+    const dotPos={
+      1:[[50,50,13,'#dd0000']],
+      2:[[32,36,8,'#0044cc'],[68,64,8,'#0044cc']],
+      3:[[28,28,7,'#0044cc'],[50,50,7,'#0044cc'],[72,72,7,'#0044cc']],
+      4:[[30,30,8,'#0044cc'],[70,30,8,'#0044cc'],[30,70,8,'#0044cc'],[70,70,8,'#0044cc']],
+      5:[[30,30,7,'#0044cc'],[70,30,7,'#0044cc'],[50,50,7,'#dd0000'],[30,70,7,'#0044cc'],[70,70,7,'#0044cc']],
+      6:[[30,22,7,'#0044cc'],[70,22,7,'#0044cc'],[30,50,7,'#0044cc'],[70,50,7,'#0044cc'],[30,78,7,'#0044cc'],[70,78,7,'#0044cc']]
     };
-    const pts=dots[n]||dots[1];
-    const r=7;
-    const uid='d'+n+'_'+Math.random().toString(36).slice(2,6);
-    // 3D side offset
-    const off=10;
-    const circles=pts.map(([x,y])=>`
-      <circle cx="${x}" cy="${y}" r="${r+1}" fill="rgba(0,0,0,.18)"/>
-      <circle cx="${x}" cy="${y}" r="${r}" fill="#c0241a"/>
-      <circle cx="${x-1.5}" cy="${y-1.5}" r="${r*.35}" fill="rgba(255,255,255,.35)"/>
-    `).join('');
-    return`<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="filter:drop-shadow(3px 6px 8px rgba(0,0,0,.55)) drop-shadow(0 2px 3px rgba(0,0,0,.4))">
+    const pts=dotPos[n]||dotPos[1];
+    const uid='dg'+Math.random().toString(36).slice(2,5);
+    const circles=pts.map(([cx,cy,r,fill])=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`).join('');
+    return`<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="overflow:visible">
       <defs>
-        <linearGradient id="${uid}f" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#fffef8"/>
-          <stop offset="55%" stop-color="#fdf4dc"/>
-          <stop offset="100%" stop-color="#f0e0b0"/>
+        <linearGradient id="${uid}" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#fff3c4"/>
+          <stop offset="45%" stop-color="#f7d15d"/>
+          <stop offset="100%" stop-color="#b88216"/>
         </linearGradient>
-        <linearGradient id="${uid}r" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stop-color="#c8a060"/>
-          <stop offset="100%" stop-color="#8b6020"/>
-        </linearGradient>
-        <linearGradient id="${uid}b" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="#b08040"/>
-          <stop offset="100%" stop-color="#6b4010"/>
-        </linearGradient>
-        <clipPath id="${uid}c">
-          <rect x="3" y="3" width="82" height="82" rx="14"/>
-        </clipPath>
       </defs>
-      <!-- Right 3D side -->
-      <polygon points="85,8 95,18 95,95 85,85" fill="url(#${uid}r)"/>
-      <!-- Bottom 3D side -->
-      <polygon points="8,85 85,85 95,95 18,95" fill="url(#${uid}b)"/>
-      <!-- Main face -->
-      <rect x="3" y="3" width="82" height="82" rx="14" fill="url(#${uid}f)" stroke="#c8a060" stroke-width="1.5"/>
-      <!-- Subtle top-left highlight -->
-      <rect x="4" y="4" width="80" height="80" rx="13" fill="none" stroke="rgba(255,255,255,.6)" stroke-width="1.5" clip-path="url(#${uid}c)"/>
-      <!-- Inner frame -->
-      <rect x="9" y="9" width="70" height="70" rx="10" fill="none" stroke="rgba(180,140,60,.15)" stroke-width="1"/>
-      <!-- Dots -->
+      <rect x="4" y="4" width="92" height="92" rx="18" fill="#fffdf6" stroke="url(#${uid})" stroke-width="5" filter="drop-shadow(2px 4px 6px rgba(0,0,0,.45))"/>
       ${circles}
     </svg>`;
   },
@@ -4740,7 +4772,10 @@ const Game={
         e1.style.opacity=''; e2.style.opacity='';
         dtxt.textContent='擲骰中...';
         // 3D spinning during roll
-        e1.classList.add('spinning'); e2.classList.add('spinning');
+        e1.classList.remove('spinning');
+        e2.classList.remove('spinning');
+        e1.classList.add('gold-roll-left');
+        e2.classList.add('gold-roll-right');
         Snd.dice();
         startRoll();
       },380);
@@ -4764,16 +4799,16 @@ const Game={
         // — Final reveal —
         setTimeout(()=>{
           // Remove spinning, show final values with landing animation
-          e1.className='dice-el'; e1.style.position='relative';
-          e1.innerHTML=this._diceSVG(d1,104);
+          e1.className='dice-el gold-idle'; e1.style.position='relative';
+          e1.innerHTML=this._diceSVG(d1,100);
           void e1.offsetWidth;
           e1.classList.add('landing');
           Snd.play(500,.12,'square',.08);
           // Add ring + sparks to e1
           this._addDiceFx(e1);
           setTimeout(()=>{
-            e2.className='dice-el'; e2.style.position='relative';
-            e2.innerHTML=this._diceSVG(d2,104);
+            e2.className='dice-el gold-idle'; e2.style.position='relative';
+            e2.innerHTML=this._diceSVG(d2,100);
             void e2.offsetWidth;
             e2.classList.add('landing');
             Snd.play(660,.18,'sine',.22);
@@ -6080,6 +6115,9 @@ const Game={
       }
     }
 
+    // 聽牌（宣告聽牌者胡牌加台）
+    if(s.riichiPlayers && s.riichiPlayers[p]) add(1,'聽牌 +1台');
+
     // ⑱ 莊家加台 +1
     if(p === (s.dealer??0)) add(1,'莊家 +1台');
 
@@ -7006,6 +7044,7 @@ const Game={
       wh.appendChild(sec);
     });
     ov.style.display='flex';
+    if(this._isHost){const b=document.getElementById('host-round-start-btn');if(b)b.style.display='block';}
   },
   // Peek at board from win overlay
   peekBoard(){
@@ -7301,6 +7340,7 @@ const Game={
   },
 
   newRound(){
+    const hsb=document.getElementById('host-round-start-btn');if(hsb)hsb.style.display='none';
     this.riichiMode=false;this.riichiTile=null;this.riichiWaiting=null;this._tenpaiWaiting=null;
     document.getElementById('ht0').classList.remove('riichi-mode');
     document.getElementById('wov').style.display='none';
@@ -7969,6 +8009,7 @@ const Online = {
       case 'host_restart':
         if(!Game._isHost) Game.toast('房主重啟牌局中…',2000);
         break;
+      case 'host_start_round': if(!Game._isHost) Game.newRound(); break;
       case 'game_state':
         if(!Game._isHost && data.state){
           // 【Bug1修復】局已結算（phase=ended）時，game_state 廣播可能帶著 winData，
