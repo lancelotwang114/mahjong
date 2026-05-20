@@ -4574,6 +4574,7 @@ const Game={
       drawnId:null,
       tenpai:[false,false,false,false],
       tenpaiT:[null,null,null,null],
+      riichiPlayers:[false,false,false,false], // 各玩家是否已宣告聽牌
       last:null,lastP:-1,roundWind:roundWind,roundNum:roundNum,
       log:[],dice:null,
       firstRound:true,   // 天胡/地胡 用：第一圈未有人打牌前為 true
@@ -4894,8 +4895,17 @@ const Game={
       this._centralTurnTimer=setTimeout(()=>{
         if(!this.st||this.st.phase!=='playing'||this.st.turn!==p)return;
         const hd=this.st.hands[p].filter(x=>!x.fl);if(!hd.length)return;
-        const drawn=this.st.drawnId?hd.find(t=>t.id===this.st.drawnId):null;
-        const auto=drawn||AI.discard(hd,this.st.melds[p],this.st.discards,this.st.melds,this.st.tenpai);
+        let auto;
+        const isRiichi=this.st.riichiPlayers&&this.st.riichiPlayers[p];
+        if(isRiichi){
+          // 聽牌玩家：選維持聽牌的最佳打牌
+          const valid=this.findRiichiDiscards(hd,this.st.melds[p]);
+          const drawn=this.st.drawnId?hd.find(t=>t.id===this.st.drawnId):null;
+          auto=valid.find(t=>t.id===drawn?.id)||valid[0]||drawn||hd[hd.length-1];
+        } else {
+          const drawn=this.st.drawnId?hd.find(t=>t.id===this.st.drawnId):null;
+          auto=drawn||AI.discard(hd,this.st.melds[p],this.st.discards,this.st.melds,this.st.tenpai);
+        }
         if(auto){this.clearBtns();this.doDiscard(p,auto.id);}
       },_ctt*1000);
       // 卡死看門狗：比中央計時器再多 5s 的最後防線
@@ -5110,7 +5120,9 @@ const Game={
     if(this._online&&!this._isHost&&p===0){
       if(this._isDiscarding)return; // 【Task1】雙重出牌防護鎖：等主機確認前鎖死
       this._isDiscarding=true;
-      MahjongNetwork.broadcast({type:'action',action:'discard',tileId});
+      const discMsg={type:'action',action:'discard',tileId};
+      if(this._pendingDeclareRiichi){this._pendingDeclareRiichi=false;discMsg.declareRiichi=true;}
+      MahjongNetwork.broadcast(discMsg);
       return;
     }
     if(p===0&&this._isDiscarding)return; // 【Task1】主機端防快速雙擊
@@ -5182,7 +5194,9 @@ const Game={
     const rr=[];
     for(let p=0;p<4;p++){
       if(p===discP)continue;
-      const opts=meldOpts(s.hands[p].filter(x=>!x.fl),tile,p,discP,s.melds[p]);
+      let opts=meldOpts(s.hands[p].filter(x=>!x.fl),tile,p,discP,s.melds[p]);
+      // 聽牌玩家只能胡牌，不能吃碰槓
+      if(s.riichiPlayers&&s.riichiPlayers[p]) opts=opts.filter(o=>o.type==='win');
       if(opts.length)rr.push({p,opts});
     }
     if(!rr.length){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
@@ -6192,21 +6206,32 @@ const Game={
       Snd.draw();
     }
     const winNow=canWin(s.hands[0].filter(x=>!x.fl));
+    // 【聽牌宣告後】riichiMode=true：輪到自己時自動選最佳牌打出，只顯示「停止聽牌」按鈕
+    if(this.riichiMode){
+      if(winNow){this.doWin(0,true);return;}
+      const drawn=s.drawnId?s.hands[0].find(t=>t.id===s.drawnId):null;
+      const validDiscards=this.findRiichiDiscards(s.hands[0].filter(x=>!x.fl),s.melds[0]);
+      let smartDiscard=validDiscards.find(t=>t.id===drawn?.id)||validDiscards[0]
+                       ||drawn||s.hands[0].filter(x=>!x.fl)[0]||null;
+      clearTimeout(this._riichiDiscardTimer);
+      if(smartDiscard) this._riichiDiscardTimer=setTimeout(()=>this.doDiscard(0,smartDiscard.id),300);
+      this.showBtns([{type:'stop-riichi',label:'停止聽牌',cls:'stop-riichi'}]);
+      document.getElementById('action-overlay')?.classList.add('active');
+      if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
+      this.startTimer(0);
+      const ht0R=document.getElementById('ht0');
+      ht0R?.classList.add('my-turn');ht0R?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
+      return;
+    }
     const extraBtns=[];
     if(winNow) extraBtns.push({type:'win',label:'🀄 自摸！',cls:'aw'});
     const sk=AI.selfKong(s.hands[0],s.melds[0]);
     if(sk) extraBtns.push({type:'sk',label:'暗槓',cls:'ako',tiles:sk});
+    // 【BUG 修復】摸牌後與鳴牌後都必須檢查聽牌候選，原本只在 isAfterMeld 才查是 Bug 根源
+    const riichiCands=this.findRiichiDiscards(s.hands[0],s.melds[0]);
+    if(riichiCands.length>0) extraBtns.push({type:'riichi',label:'聽牌',cls:'riichi'});
     // skip-riichi: don't call nextTurn, just dismiss overlay and let player discard
     if(extraBtns.length) extraBtns.push({type:'skip-riichi',label:'略過',cls:'ask'});
-    // 鳴牌後也檢查是否可聽牌
-    if(isAfterMeld){
-      const riichiCands=this.findRiichiDiscards(s.hands[0],s.melds[0]);
-      if(riichiCands.length>0&&!extraBtns.find(b=>b.type==='riichi')){
-        extraBtns.push({type:'riichi',label:'聽牌',cls:'riichi'});
-        if(!extraBtns.find(b=>b.type==='skip-riichi'))
-          extraBtns.push({type:'skip-riichi',label:'略過',cls:'ask'});
-      }
-    }
     this.showBtns(extraBtns);
     if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
     else this.hideTenpai();
@@ -6322,6 +6347,7 @@ const Game={
     if(this._meldPendingSet){this._meldPendingSet.clear();this._meldPendingSet=null;}
     this._meldLockData=null;this._meldResponseMap=null;
     this._isDiscarding=false; // 【Task1】強制解除出牌鎖
+    this._pendingDeclareRiichi=false; // 清除聽牌宣告暫存旗標
     clearTimeout(this._readyCheckTimeout);this._readyCheckTimeout=null;this._readyPlayers=null; // 【Task3】
   },
 
@@ -7100,9 +7126,13 @@ const Game={
     this.riichiMode=true;
     this.riichiTile=tile;
     this.riichiWaiting=waiting;  // save for display
+    // 本地同步 riichiPlayers（主機路徑）
+    if(s.riichiPlayers) s.riichiPlayers[0]=true;
     document.getElementById('ht0').classList.remove('my-turn');
     this.clearBtns();
     this.ann('tenpai');
+    // 【非主機】宣告聽牌時，在出牌封包中附帶 declareRiichi 旗標，讓主機同步記錄
+    this._pendingDeclareRiichi=true;
     this.doDiscard(0,tile.id);
     // Show tenpai panel with waiting tiles immediately after discard
     setTimeout(()=>this.showTenpai(waiting),200);
@@ -7924,7 +7954,14 @@ const Online = {
       return;
     }
     switch(data.action){
-      case 'discard': Game.doDiscard(peerIdx,data.tileId); break;
+      case 'discard':
+        // 【宣告聽牌】非主機宣告 riichi，主機同步記錄並廣播給其他客戶端
+        if(data.declareRiichi&&Game.st){
+          if(!Game.st.riichiPlayers) Game.st.riichiPlayers=[false,false,false,false];
+          Game.st.riichiPlayers[peerIdx]=true;
+        }
+        Game.doDiscard(peerIdx,data.tileId);
+        break;
       case 'meld': Game.doMeld(peerIdx,data.meldType,resolveTiles(data.tiles)); break;
       case 'selfkong': Game.doSelfKong(peerIdx,resolveTiles(data.tiles)); break;
       case 'win': Game.doWin(peerIdx,data.selfDraw); break;
@@ -7957,6 +7994,7 @@ const Online = {
       names:reorder(state.names),
       tenpai:reorder(state.tenpai||[false,false,false,false]),
       tenpaiT:reorder(state.tenpaiT||[[],[],[],[]]),
+      riichiPlayers:reorder(state.riichiPlayers||[false,false,false,false]),
       scores:state.scores?reorder(state.scores):state.scores,
       pending:reorder(state.pending||[0,0,0,0]),
       money:reorder(state.money||[0,0,0,0]),
