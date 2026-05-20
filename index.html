@@ -5108,11 +5108,15 @@ const Game={
   doDiscard(p,tileId){
     // Online non-host: send action to host instead of processing locally
     if(this._online&&!this._isHost&&p===0){
+      if(this._isDiscarding)return; // 【Task1】雙重出牌防護鎖：等主機確認前鎖死
+      this._isDiscarding=true;
       MahjongNetwork.broadcast({type:'action',action:'discard',tileId});
       return;
     }
+    if(p===0&&this._isDiscarding)return; // 【Task1】主機端防快速雙擊
     const s=this.st;
     if(!s||s.phase!=='playing')return; // Guard: ignore stale AI discard callbacks after game ends
+    if(p===0)this._isDiscarding=true; // 【Task1】主機出牌時鎖死，動畫結束後解鎖
     // 清除中央計時器與看門狗（玩家已成功出牌，不再需要強制代打）
     clearTimeout(this._centralTurnTimer);clearTimeout(this._staleWatchdog);
     this.stopTimer();this.clearBtns();
@@ -5146,6 +5150,7 @@ const Game={
     }
     if(p===0){
       this._flyTile(tileId,'dc0',()=>{
+        this._isDiscarding=false; // 【Task1】飛牌動畫結束，解除出牌鎖
         // Show waiting indicator while AI resolves reactions
         const wd=document.getElementById('wait-dots');
         if(wd){wd.classList.add('show');document.getElementById('action-overlay').classList.add('active');}
@@ -6074,9 +6079,18 @@ const Game={
     if(s.ai.includes(p))this._aiQuip(p,'win');
     this.ann('win');Snd.win();
     this.render();
-    // 【BROADCAST_GAME_OVER】主機立即廣播局終止事件，讓所有客戶端強制中斷並顯示結算畫面
+    // 【BROADCAST_GAME_OVER / Task2】主機逐一傳送旋轉後的結算封包（含金錢），確保客戶端無需自行計算
     if(this._online&&this._isHost){
-      MahjongNetwork.broadcast({type:'game_over',winner:p,selfDraw,winData:s.winData});
+      this._peers.forEach((pConn,idx)=>{
+        if(idx===0||!pConn.id)return;
+        const rot=Online._rotateState(s,idx);
+        const wd=s.winData?{
+          ...s.winData,
+          p:(s.winData.p-idx+4)%4,
+          payer:s.winData.payer>=0?(s.winData.payer-idx+4)%4:s.winData.payer
+        }:null;
+        MahjongNetwork.sendTo(pConn.id,{type:'game_over',winner:rot.turn,selfDraw,winData:wd,money:rot.money});
+      });
       setTimeout(()=>Online.broadcastState(),100); // 額外同步一次完整 state
     }
     setTimeout(()=>this.showWin(),1400);
@@ -6307,6 +6321,8 @@ const Game={
     this._meldLockWaitingHostResponse=false;
     if(this._meldPendingSet){this._meldPendingSet.clear();this._meldPendingSet=null;}
     this._meldLockData=null;this._meldResponseMap=null;
+    this._isDiscarding=false; // 【Task1】強制解除出牌鎖
+    clearTimeout(this._readyCheckTimeout);this._readyCheckTimeout=null;this._readyPlayers=null; // 【Task3】
   },
 
   // ── 防禦性狀態重置（每次回合切換時呼叫）──────────────────
@@ -6548,15 +6564,31 @@ const Game={
 
   onTile(tile){
     const s=this.st;
-    if(!s||s.phase!=='playing'||s.turn!==0)return;
-    // Block tile click only for "mandatory decision" buttons (win/pong/chi/kong/meld-candidate).
-    // Riichi/skip buttons are non-blocking — player can click a tile to discard directly.
+    if(!s||s.phase!=='playing')return;
     const ap=document.getElementById('ap');
-    const hasBlockingBtns=ap.querySelectorAll('.ab.aw,.ab.apo,.ab.ach,.ab.ako').length>0||
-                          !!document.getElementById('ht0').querySelector('.meld-candidate');
-    if(hasBlockingBtns)return;
-    // C5: 打牌確認（雙擊模式）— 首次點擊選中，再次點擊打出
     const ht0=document.getElementById('ht0');
+    // 【Task4】UX：有吃碰槓/胡牌提示時，點牌自動略過，不必先按「略過」
+    const hasMeldOffer=ap.querySelectorAll('.ab.apo,.ab.ach,.ab.ako').length>0||
+                       !!ht0.querySelector('.meld-candidate');
+    const hasWinOffer=!!ap.querySelector('.ab.aw');
+    if(hasMeldOffer||hasWinOffer){
+      // 有胡牌按鈕且輪到自己（摸牌後）：略過胡牌，直接打出此張牌
+      if(hasWinOffer&&s.turn===0&&ht0.classList.contains('my-turn')){
+        clearTimeout(this._meldTimeout);clearInterval(this._meldCountInterval);
+        this.stopTimer();this.clearBtns();
+        this.doDiscard(0,tile.id);
+        return;
+      }
+      // 吃碰提示（輪到他人打牌時）：自動略過即可，不打牌
+      if(hasMeldOffer){
+        this.nextTurn(); // nextTurn 內部處理 _meldLockWaitingHostResponse 路由
+        return;
+      }
+      return; // 其他情況：消耗點擊，不做事
+    }
+    // 正常回合：需輪到自己才能出牌
+    if(s.turn!==0)return;
+    // C5: 打牌確認（雙擊模式）— 首次點擊選中，再次點擊打出
     const already=ht0.querySelector('.t.sel');
     const clickedEl=ht0.querySelector(`.t[data-id="${tile.id}"]`);
     if(this.settings.confirmDiscard!==false){
@@ -7145,7 +7177,30 @@ const Game={
       this._showMatchSummary();
       return;
     }
-    this.initRound(prevSt.names,prevSt.ai,null,nextDealer,nextRound,nextWind,nextHonba);
+    // 【Task3】儲存下局參數，等 READY_CHECK 收齊後再 initRound
+    this._pendingRoundParams={names:prevSt.names,ai:prevSt.ai,nextDealer,nextRound,nextWind,nextHonba};
+    if(this._online&&this._isHost){
+      const humanPeers=this._peers.filter((p,i)=>i>0&&p.id);
+      if(humanPeers.length>0){
+        this._readyPlayers=new Set([0]); // 主機本身視為已就緒
+        this._readyTotal=humanPeers.length+1;
+        MahjongNetwork.broadcast({type:'ready_check'});
+        this._readyCheckTimeout=setTimeout(()=>{
+          // 超時 5 秒：強制開始，不再等剩餘玩家
+          this._readyPlayers=null;
+          this._proceedNewRound();
+        },5000);
+        return; // 等待所有 client_ready 回應
+      }
+    }
+    this._proceedNewRound(); // 單機 or 無人類客戶端：直接開始
+  },
+
+  _proceedNewRound(){
+    const p=this._pendingRoundParams;
+    if(!p){return;}
+    this._pendingRoundParams=null;
+    this.initRound(p.names,p.ai,null,p.nextDealer,p.nextRound,p.nextWind,p.nextHonba);
     this.render();
     updateTblVars();setTimeout(()=>this.showDice(),200);
     // v1.5: restart BGM for new round
@@ -7769,6 +7824,7 @@ const Online = {
         break;
       case 'game_state':
         if(!Game._isHost && data.state){
+          Game._isDiscarding=false; // 【Task1】主機已處理出牌，解除客戶端鎖
           Game.clearBtns(); // Clear any leftover meld/discard UI before applying new state
           Game.st=data.state;
           Game.render();
@@ -7794,15 +7850,16 @@ const Online = {
         if(!Game._isHost){ Game.clearBtns(); Game.hideTenpai(); }
         break;
       case 'game_over':
-        // 【BROADCAST_GAME_OVER 處理】非主機客戶端：強制中斷所有動作並等待結算畫面
+        // 【BROADCAST_GAME_OVER / Task2 處理】非主機客戶端：強制中斷所有動作並等待結算畫面
         if(!Game._isHost&&Game.st){
           // 設定 isRoundOver 鎖（phase='ended'）並清掃計時器
           Game.st.phase='ended';
           Game._killAllTimers();
           Game.clearBtns();Game.hideTenpai();
+          // 【Task2】直接套用主機傳來的旋轉後金錢數值，無需客戶端自行計算
+          if(data.money) Game.st.money=data.money;
           Game.render();
-          // 顯示結算畫面（等主機的 game_state 廣播帶來完整 state 後再 showWin）
-          // 若 winData 已在封包中，立即顯示；否則等 game_state 廣播
+          // 若 winData 已在封包中，立即顯示結算（含已更新金錢）
           if(data.winData&&Game.st){
             Game.st.winData=data.winData;
             if(data.winner!=null) Game.st.turn=data.winner;
@@ -7814,6 +7871,25 @@ const Online = {
         break;
       case 'next_round':
         if(!Game._isHost && data.state){ Game.st=data.state; Game.render(); }
+        break;
+      case 'ready_check':
+        // 【Task3】主機準備開新局，回傳就緒訊號
+        if(!Game._isHost){
+          Game.toast('準備下一局中…',2000);
+          MahjongNetwork.broadcast({type:'client_ready'});
+        }
+        break;
+      case 'client_ready':
+        // 【Task3】主機收集客戶端就緒確認，全部到齊後開局
+        if(Game._isHost&&Game._readyPlayers){
+          const rIdx=Game._peers.findIndex(peer=>peer.id===peerId);
+          if(rIdx>0) Game._readyPlayers.add(rIdx);
+          if(Game._readyPlayers.size>=Game._readyTotal){
+            clearTimeout(Game._readyCheckTimeout);Game._readyCheckTimeout=null;
+            Game._readyPlayers=null;
+            Game._proceedNewRound();
+          }
+        }
         break;
     }
   },
