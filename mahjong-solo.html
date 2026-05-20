@@ -2653,7 +2653,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.0</div>
+    <div class="lver">v1.6.1</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -2764,12 +2764,17 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
             <button class="lbtn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">離開</button>
           </div>
           <div id="ol-join-view" style="display:none">
-            <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-bottom:6px;text-align:center">貼上房主傳給你的邀請連結</div>
-            <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-              <input class="fi" id="ol-join-code" placeholder="https://lancelotwang114.github.io/mahjong/?room=...&host=..." style="font-size:.72rem">
-              <button class="lbtn" style="width:auto;padding:8px 16px;white-space:nowrap" onclick="Online.doJoin()">加入</button>
+            <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-bottom:10px;text-align:center">輸入暱稱並貼上邀請連結</div>
+            <div class="fg" style="margin-bottom:8px">
+              <label class="fl">你的名字</label>
+              <input class="fi" id="ol-join-name" maxlength="8" placeholder="輸入暱稱" oninput="Online._syncJoinName(this.value)">
             </div>
-            <button class="lbtn" onclick="Online.leave()" style="background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">取消</button>
+            <div style="margin-bottom:8px">
+              <label class="fl" style="font-size:.7rem;color:rgba(255,255,255,.4);margin-bottom:4px;display:block">邀請連結</label>
+              <input class="fi" id="ol-join-code" placeholder="https://...?room=...&host=..." style="font-size:.72rem">
+            </div>
+            <button class="lbtn" id="ol-join-btn" onclick="Online.doJoin()">加入遊戲</button>
+            <button class="lbtn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">取消</button>
           </div>
         </div>
         <div id="ol-status"></div>
@@ -6844,6 +6849,15 @@ const Online = {
     document.getElementById('ol-room-section').classList.add('show');
     document.getElementById('ol-join-view').style.display='block';
     document.getElementById('ol-create-view').style.display='none';
+    // Pre-fill join name from home screen pname
+    const homeNameEl=document.getElementById('pname');
+    const joinNameEl=document.getElementById('ol-join-name');
+    if(joinNameEl&&homeNameEl&&!joinNameEl.value) joinNameEl.value=homeNameEl.value||'玩家';
+    setTimeout(()=>joinNameEl?.focus(),80);
+  },
+  _syncJoinName(val){
+    // Keep home pname in sync when user types in join name field
+    const el=document.getElementById('pname');if(el)el.value=val;
   },
 
   copyCode(){
@@ -6864,7 +6878,8 @@ const Online = {
       hostId = u.searchParams.get('host')||'';
     } catch(e) { code=''; hostId=''; }
     if(!code||!hostId){ this._status('請貼上完整邀請連結（包含 ?room=...&host=...）'); return; }
-    const name=(document.getElementById('pname')?.value.trim()||'玩家').substring(0,8);
+    const joinNameEl=document.getElementById('ol-join-name');
+    const name=((joinNameEl?.value||document.getElementById('pname')?.value||'').trim()||'玩家').substring(0,8);
     this._status('連線中…');
     MahjongNetwork.init(name).then(()=>{
       return MahjongNetwork.joinRoom(code, hostId.trim());
