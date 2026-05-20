@@ -864,10 +864,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* Player 0 (me): full-width bottom strip — 185px gives pbar+tbar+meld+hand room */
 #p0-zone {
   position: absolute;
-  bottom: 0; left: 0; right: 0; height: 195px;
+  bottom: 0; left: 0; right: 0; height: 210px;
   display: flex; flex-direction: column;
   align-items: center; justify-content: flex-end;
-  padding: 0 4px 6px; z-index: 3; overflow: visible;
+  padding: 0 4px 8px; z-index: 3; overflow: visible;
 }
 
 /* ── Player 2 internal layout ── */
@@ -1108,7 +1108,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .t.ti::before{display:none}
 .t.hi{animation:tglow .7s infinite alternate}
 @keyframes tglow{from{border-color:var(--tbr)}to{border-color:var(--gold2);box-shadow:2px 5px 8px var(--tsh),0 0 18px rgba(212,168,67,1)}}
-.tsep{width:2px;height:56px;background:linear-gradient(to bottom,transparent,rgba(212,168,67,.8),transparent);border-radius:2px;flex-shrink:0;align-self:center;margin:0 3px}
+.tsep{width:2px;height:56px;background:linear-gradient(to bottom,transparent,rgba(212,168,67,.8),transparent);border-radius:2px;flex-shrink:0;align-self:center;margin:0 9px}
 
 /* ══ CENTER PANEL ═══════════════════════════════════════ */
 .cp{
@@ -1158,7 +1158,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   0%,100% { filter: drop-shadow(0 0 2px rgba(212,168,67,.0)); }
   50%      { filter: drop-shadow(0 0 14px rgba(212,168,67,.55)) drop-shadow(0 0 28px rgba(212,168,67,.2)); }
 }
-#action-overlay.active { animation: overlayBreath 1.9s ease-in-out infinite; }
+/* overlayBreath removed: panel design replaced it */
 
 /* ── 胡！呼吸紅光 ── */
 @keyframes winBreathe {
@@ -1191,13 +1191,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ht0.my-turn{border-radius:6px;animation:myTurnHandGlow 1.8s ease-in-out infinite;}
 
 .ab {
-  padding: 7px 16px;
+  padding: 10px 22px;
   border: 2px solid var(--gold);
-  border-radius: 8px;
+  border-radius: 9px;
   background: linear-gradient(160deg,rgba(15,8,2,.97),rgba(30,15,4,.95));
   color: var(--gold3);
   font-family: 'Noto Serif TC';
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 900;
   cursor: pointer;
   transition: all .14s;
@@ -1219,7 +1219,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .ab.apo{border-color:#e67e22;color:#f39c42;text-shadow:0 0 10px rgba(230,126,34,.5)}.ab.apo:hover{background:#e67e22;color:#fff}
 .ab.ach{border-color:#3498db;color:#5dade2;text-shadow:0 0 10px rgba(52,152,219,.5)}.ab.ach:hover{background:#3498db;color:#fff}
 .ab.ako{border-color:#9b59b6;color:#c39bd3;text-shadow:0 0 10px rgba(155,89,182,.5)}.ab.ako:hover{background:#9b59b6;color:#fff}
-.ab.ask{border-color:rgba(255,255,255,.22);color:rgba(255,255,255,.4);font-size:.88rem;padding:8px 14px}
+.ab.ask{border-color:rgba(255,255,255,.22);color:rgba(255,255,255,.4);font-size:1rem;padding:10px 20px}
 .ab.ask:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.65);border-color:rgba(255,255,255,.38)}
 
 /* Timer inline badge — 完整定義在下方 hand-bar 區塊 */
@@ -1455,8 +1455,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 
 /* Action buttons scale */
-.ab { font-size:clamp(.85rem,1.2vw,1.1rem); padding:clamp(7px,1vh,11px) clamp(12px,1.5vw,20px) }
-#tbadge { width:clamp(36px,4vw,44px); height:clamp(36px,4vw,44px); font-size:clamp(.9rem,1.2vw,1.1rem) }
+/* .ab clamp removed — fixed sizes defined in main .ab block */
+/* tbadge fixed size — defined in main #tbadge block (54×54px) */
 
 /* Info bar compact at small sizes */
 @media(max-width:600px){
@@ -1666,8 +1666,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* ══ DISCARD PREVIEW (hover-to-simulate) ═══════════════════ */
 #discard-preview {
+  display: none !important;  /* 聽牌提示已停用 */
   position: fixed;
-  display: none;
   flex-direction: column;
   align-items: center;
   gap: 6px;
@@ -1834,12 +1834,12 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   display: none;
   align-items: center;
   justify-content: center;
-  width: 40px; height: 40px;
+  width: 54px; height: 54px;
   border-radius: 50%;
   background: rgba(4,12,6,.97);
-  border: 2.5px solid var(--gold);
+  border: 3px solid var(--gold);
   font-family: 'Noto Serif TC';
-  font-size: 1rem;
+  font-size: 1.3rem;
   font-weight: 900;
   color: var(--gold);
   position: relative;
@@ -1928,8 +1928,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 
 
-/* Action panel: show when active */
-#action-overlay.active { display: flex !important; }
+/* Action panel: show when active — defined in action-overlay block above */
 
 
 
@@ -2098,6 +2097,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pa0 {
   display: flex;
   flex-direction: column;
+  justify-content: flex-end;
   align-items: center;
   width: 100%;
   height: 100%;
@@ -2120,14 +2120,23 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    flex-direction:column → hand-bar (timer) on top, ap (buttons) below. */
 #action-overlay {
   position: absolute;
-  right: 60px;
-  bottom: 192px;
+  right: 48px;
+  bottom: 215px;
   display: none;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 6px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
   pointer-events: none;
   z-index: 60;
+  /* panel background shown when active */
+}
+#action-overlay.active {
+  display: flex !important;
+  background: rgba(6,14,28,.93);
+  border: 1.5px solid rgba(180,130,50,.55);
+  border-radius: 14px;
+  padding: 10px 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.65), 0 0 14px rgba(180,130,50,.15);
 }
 
 /* ── Waiting state indicator (after p0 discard, before AI resolves) ── */
@@ -2189,29 +2198,33 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   display: none;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 3px 14px;
-  background: linear-gradient(135deg,rgba(10,5,1,.88),rgba(20,10,3,.84));
-  border: 1px solid rgba(180,130,55,.45);
-  border-radius: 20px;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
   font-family: 'Noto Serif TC';
   font-size: .72rem;
   color: rgba(255,255,255,.75);
   pointer-events: auto;
   white-space: nowrap;
-  box-shadow: 0 2px 10px rgba(0,0,0,.5);
+  box-shadow: none;
   flex-shrink: 0;
 }
 #hand-bar.show { display: flex; }
+/* Hide hb-tiles row in the panel (they're a separate UX feature) */
+#action-overlay #hb-tiles { display: none !important; }
+#action-overlay .hb-label  { display: none !important; }
 
 #ap {
   display: flex;
-  gap: 6px;
+  gap: 7px;
   align-items: center;
-  flex-wrap: nowrap;
-  justify-content: center;
+  flex-wrap: wrap;
+  justify-content: flex-start;
   pointer-events: auto;
   flex-shrink: 0;
+  max-width: 340px;
 }
 #ap:empty { display: none; }
 
@@ -2531,7 +2544,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* Tile tracker overlay */
 #tracker-btn {
-  position:absolute; right:14px; bottom:200px;
+  position:absolute; right:14px; bottom:218px;
   width:28px; height:28px; border-radius:6px;
   background:rgba(212,168,67,.18); border:1px solid rgba(212,168,67,.4);
   color:var(--gold); font-size:15px; cursor:pointer; display:none;
@@ -2539,7 +2552,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 #tracker-btn.show { display:flex; }
 #tile-tracker {
-  position:absolute; right:50px; bottom:200px;
+  position:absolute; right:50px; bottom:218px;
   width:300px; background:rgba(6,3,1,.95);
   border:1px solid rgba(212,168,67,.35); border-radius:10px;
   padding:8px; z-index:5000; display:none; pointer-events:auto;
@@ -3116,7 +3129,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div id="wait-dots"><span></span><span></span><span></span></div>
     <div id="hand-bar">
       <div id="tbadge">
-        <svg width="40" height="40" viewBox="0 0 44 44">
+        <svg width="54" height="54" viewBox="0 0 44 44">
           <circle class="rbg" cx="22" cy="22" r="19"/>
           <circle class="rfg" id="trfg" cx="22" cy="22" r="19"/>
         </svg>
@@ -3132,7 +3145,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div id="tenpai-banner"></div>
 
   <!-- v1.5 assist panel -->
-  <button id="hint-btn" onclick="Game.showHint()" title="💡 打牌建議（H鍵）" style="position:absolute;left:12px;bottom:192px;z-index:210;background:rgba(8,20,14,.88);border:1.5px solid rgba(93,173,226,.5);border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;color:rgba(93,173,226,.9);display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">💡</button>
+  <button id="hint-btn" onclick="Game.showHint()" title="💡 打牌建議（H鍵）" style="position:absolute;left:12px;bottom:218px;z-index:210;background:rgba(8,20,14,.88);border:1.5px solid rgba(93,173,226,.5);border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;color:rgba(93,173,226,.9);display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">💡</button>
   <button id="assist-toggle" onclick="Game.toggleAssistPanel()" title="分析面板（向聽數／危險牌／牌追蹤）">📊</button>
   <div id="assist-panel">
     <div class="assist-row">
