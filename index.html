@@ -4987,6 +4987,8 @@ const Game={
 
   doAITurn(p,winNow){
     const s=this.st;
+    // isRoundOver guard：局已結束，丟棄所有殘留的 AI 思考回調
+    if(!s||s.phase!=='playing')return;
     this._setAIThinking(p,true); // D4
     if(winNow){this._setAIThinking(p,false);this.doWin(p,true);return;}  // AI 永遠宣胡
     const sk=AI.selfKong(s.hands[p],s.melds[p]);
@@ -5170,6 +5172,8 @@ const Game={
 
   checkReactions(tile,discP){
     const s=this.st;
+    // isRoundOver guard：局已結束，不再處理任何棄牌反應
+    if(!s||s.phase!=='playing')return;
     const rr=[];
     for(let p=0;p<4;p++){
       if(p===discP)continue;
@@ -5829,9 +5833,10 @@ const Game={
     const s=this.st;
     // Guard: ignore if game already ended (prevents double-win from stale setTimeout callbacks)
     if(!s||s.phase!=='playing')return;
-    clearTimeout(this._meldTimeout);clearTimeout(this._riichiDiscardTimer);clearTimeout(this._nhMeldTimeout);
-    this.stopTimer();this.clearBtns();this.hideTenpai();
+    // ── 全域遊戲終止狀態鎖：第一時間設 phase='ended' 並殺掉所有計時器 ──
     s.phase='ended';s.turn=p;
+    this._killAllTimers(); // 清掃全部計時器，杜絕勝負後仍有動作繼續執行
+    this.clearBtns();this.hideTenpai();
 
     // ── Taiwan complete scoring ──────────────────────────────
     const hand=s.hands[p].filter(x=>!x.fl);
@@ -6043,7 +6048,11 @@ const Game={
     if(s.ai.includes(p))this._aiQuip(p,'win');
     this.ann('win');Snd.win();
     this.render();
-    if(this._online&&this._isHost) setTimeout(()=>Online.broadcastState(),100);
+    // 【BROADCAST_GAME_OVER】主機立即廣播局終止事件，讓所有客戶端強制中斷並顯示結算畫面
+    if(this._online&&this._isHost){
+      MahjongNetwork.broadcast({type:'game_over',winner:p,selfDraw,winData:s.winData});
+      setTimeout(()=>Online.broadcastState(),100); // 額外同步一次完整 state
+    }
     setTimeout(()=>this.showWin(),1400);
   },
 
@@ -6144,7 +6153,15 @@ const Game={
   },
 
   endDraw(){
-    this.st.phase='ended';this.render();
+    this.st.phase='ended';
+    this._killAllTimers(); // 流局也要清掃所有計時器
+    this.clearBtns();this.hideTenpai();
+    this.render();
+    // 廣播流局事件，讓所有連線客戶端同步中斷
+    if(this._online&&this._isHost){
+      MahjongNetwork.broadcast({type:'game_over',winner:null,selfDraw:false,winData:null});
+      setTimeout(()=>Online.broadcastState(),100);
+    }
     this.showWin(true);
   },
 
@@ -6213,6 +6230,30 @@ const Game={
       const ap=document.getElementById('ap');
       if(!ap||ap.children.length===0) document.getElementById('action-overlay')?.classList.remove('active');
     }
+  },
+
+  // ── 全域計時器深度清掃（局結束時呼叫）─────────────────────
+  // 確保每一個可能存在的計時器都被消滅，防止勝負結算後仍有動作在背景繼續
+  _killAllTimers(){
+    clearTimeout(this._meldTimeout);
+    clearInterval(this._meldCountInterval);
+    clearTimeout(this._nhMeldTimeout);
+    clearTimeout(this._centralTurnTimer);
+    clearTimeout(this._riichiDiscardTimer);
+    clearTimeout(this._staleWatchdog);
+    clearTimeout(this._meldResponseTimer);
+    this._meldTimeout=null;this._meldCountInterval=null;this._nhMeldTimeout=null;
+    this._centralTurnTimer=null;this._riichiDiscardTimer=null;this._staleWatchdog=null;
+    this._meldResponseTimer=null;
+    this.stopTimer(); // 清除 UI 倒數計時圓圈
+    // 強制把鳴牌計時進度條歸零（視覺上停止）
+    const mbar=document.getElementById('meld-timer-bar');
+    if(mbar){mbar.style.transition='none';mbar.style.width='0%';}
+    // 重設所有鳴牌鎖旗標
+    this._waitingMeldFrom=null;
+    this._meldLockWaitingHostResponse=false;
+    if(this._meldPendingSet){this._meldPendingSet.clear();this._meldPendingSet=null;}
+    this._meldLockData=null;this._meldResponseMap=null;
   },
 
   // ── 防禦性狀態重置（每次回合切換時呼叫）──────────────────
@@ -7699,6 +7740,25 @@ const Online = {
         // 非主機客戶端收到裁定結果：清除自己的 meld UI，等待下一次 game_state 廣播
         if(!Game._isHost){ Game.clearBtns(); Game.hideTenpai(); }
         break;
+      case 'game_over':
+        // 【BROADCAST_GAME_OVER 處理】非主機客戶端：強制中斷所有動作並等待結算畫面
+        if(!Game._isHost&&Game.st){
+          // 設定 isRoundOver 鎖（phase='ended'）並清掃計時器
+          Game.st.phase='ended';
+          Game._killAllTimers();
+          Game.clearBtns();Game.hideTenpai();
+          Game.render();
+          // 顯示結算畫面（等主機的 game_state 廣播帶來完整 state 後再 showWin）
+          // 若 winData 已在封包中，立即顯示；否則等 game_state 廣播
+          if(data.winData&&Game.st){
+            Game.st.winData=data.winData;
+            if(data.winner!=null) Game.st.turn=data.winner;
+            setTimeout(()=>Game.showWin(data.winner==null),800);
+          } else {
+            setTimeout(()=>Game.showWin(data.winner==null),800);
+          }
+        }
+        break;
       case 'next_round':
         if(!Game._isHost && data.state){ Game.st=data.state; Game.render(); }
         break;
@@ -7708,6 +7768,10 @@ const Online = {
   _processAction(peerId,data){
     const peerIdx=Game._peers.findIndex(p=>p.id===peerId);
     if(peerIdx<0) return;
+    // isRoundOver guard：局已結束，丟棄任何後到的出牌封包（防止勝負後繼續出牌）
+    if(!Game.st||Game.st.phase!=='playing'){
+      if(data.action==='discard'||data.action==='meld'||data.action==='selfkong')return;
+    }
     // Clear pending non-host meld wait when peer responds (legacy single-wait path)
     if(Game._waitingMeldFrom===peerIdx){
       Game._waitingMeldFrom=null;
