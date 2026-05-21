@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.7</div>
+    <div class="lver">v1.6.8</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -4976,6 +4976,11 @@ const Game={
       const _drawMs=this.spd('draw')+~~(Math.random()*(this.spd('draw')*.3));
       setTimeout(()=>{if(!this.paused)this.doAITurn(p,winNow);else this.pausedCb=()=>this.doAITurn(p,winNow);},_drawMs);
     } else {
+      // v1.6.8【根治】清除上回合打牌後殘留的 wait-dots Loading 指示。
+      // 問題：doDiscard→_flyTile callback 顯示 wait-dots，若 AI 回合很快循回 doTurn(0)，
+      // showBtns/startTimer 都不會清除 wait-dots，導致玩家誤以為仍在 Loading 而不點牌，
+      // 計時器倒數完後觸發強制代打，造成雙打相公。
+      document.getElementById('wait-dots')?.classList.remove('show');
       Snd.draw();
       const winNow=canWin(s.hands[p].filter(x=>!x.fl));
       const extraBtns=[];
@@ -6482,6 +6487,10 @@ const Game={
         const s=this.st;
         if(!s||s.phase!=='playing')return;
         if(s&&s.turn===0){
+          // v1.6.8【防禦】飛牌動畫仍在進行（_isDiscarding=true）時不觸發代打
+          if(this._isDiscarding)return;
+          // v1.6.8【防禦】wait-dots 仍顯示代表 doTurn(0) 尚未正確清除 Loading 狀態，拒絕代打
+          if(document.getElementById('wait-dots')?.classList.contains('show'))return;
           const hand=s.myHand||s.hands[0]||[];
           if(hand.length){
             // 自摸優先：若手牌已可胡，計時器到時自動宣胡而非打牌
@@ -6558,7 +6567,6 @@ const Game={
     this._staleWatchdog=setTimeout(()=>{
       if(!this.st||this.st.phase!=='playing')return;
       if(this.st.turn!==capTurn||this.st.drawnId!==capDrawnId)return; // 已正常進行
-      console.warn(`[Watchdog] p${p} 回合卡死 ${turnTimeoutMs}ms，強制代打`);
       const hand=(this.st.hands[p]||[]).filter(x=>!x.fl);
       if(!hand.length)return;
       const auto=capDrawnId?hand.find(t=>t.id===capDrawnId)||hand[hand.length-1]:hand[hand.length-1];
@@ -6782,6 +6790,8 @@ const Game={
   onTile(tile){
     const s=this.st;
     if(!s||s.phase!=='playing')return;
+    // v1.6.8【防禦】飛牌動畫 230ms 期間 _isDiscarding=true，此窗口內拒絕任何點擊防雙打
+    if(this._isDiscarding)return;
     const ap=document.getElementById('ap');
     const ht0=document.getElementById('ht0');
     // 【Task4】UX：有吃碰槓/胡牌提示時，點牌自動略過，不必先按「略過」
