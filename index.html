@@ -3151,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.22</div>
+    <div class="lver">v1.6.23</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6197,6 +6197,10 @@ const Game={
     this.clearBtns();this.hideTenpai();
 
     // ── Taiwan complete scoring (v1.6.19) ────────────────────────────
+    // v1.6.22: 放槍胡牌時，贏牌在 s.last，必須加入手牌才能正確分析牌型
+    if(!selfDraw&&s.last&&!s.hands[p].find(t=>t.id===s.last.id)){
+      s.hands[p].push(s.last);
+    }
     const hand=s.hands[p].filter(x=>!x.fl);
     const melds=s.melds[p];
     const allTiles=[...hand,...melds.flatMap(m=>m.tiles)].filter(x=>!x.fl);
@@ -7330,7 +7334,20 @@ const Game={
       wh.appendChild(sec);
     });
     ov.style.display='flex';
-    if(this._isHost){const b=document.getElementById('host-round-start-btn');if(b)b.style.display='block';}
+    if(this._isHost){
+      const b=document.getElementById('host-round-start-btn');if(b)b.style.display='block';
+    } else if(this._online){
+      // v1.6.22: 非房主不顯示「下一局」按鈕，改顯示等待提示；overlay 由 ready_check 自動關閉
+      const nb=document.getElementById('wov-next-btn');if(nb)nb.style.display='none';
+      let wb=document.getElementById('wov-wait-lbl');
+      if(!wb){
+        wb=document.createElement('div');wb.id='wov-wait-lbl';
+        wb.style.cssText='color:rgba(212,168,67,.7);font-size:.85rem;margin-top:4px;letter-spacing:.05em;';
+        const wact=document.querySelector('#wov .wact');
+        if(wact) wact.insertBefore(wb,wact.firstChild);
+      }
+      wb.textContent='⏳ 等待房主開始下一局…';
+    }
   },
   // Peek at board from win overlay
   peekBoard(){
@@ -8563,6 +8580,8 @@ const Online = {
           Game.hideTenpai();
           document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
           document.getElementById('wov').style.display='none';
+          const _nb2=document.getElementById('wov-next-btn');if(_nb2)_nb2.style.display='';
+          const _wb2=document.getElementById('wov-wait-lbl');if(_wb2)_wb2.remove();
           Game.toast('房主已開始下一局！',1500); // 清除等待提示
           Game.newRound();
         }
@@ -8648,7 +8667,10 @@ const Online = {
           Game.clearBtns();
           Game.hideTenpai();
           document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+          // 關閉結算 overlay，還原「下一局」按鈕供下次使用
           document.getElementById('wov').style.display='none';
+          const _nb=document.getElementById('wov-next-btn');if(_nb)_nb.style.display='';
+          const _wb=document.getElementById('wov-wait-lbl');if(_wb)_wb.remove();
           Game.toast('準備下一局中…',2000);
           MahjongNetwork.broadcast({type:'client_ready'});
         }
