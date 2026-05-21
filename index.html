@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.4</div>
+    <div class="lver">v1.6.5</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -4548,10 +4548,7 @@ const Game={
     this.riichiMode=false;this.riichiTile=null;
 
     // Default AI names (used for solo mode; online mode overrides via st.names)
-    const aiPool=[['小虎','小龍','小鶴'],['阿志','阿明','阿花'],['老王','老李','老陳']];
-    const pool=aiPool[~~(Math.random()*aiPool.length)];
-    const ai1=pool[0], ai2=pool[1], ai3=pool[2];
-    const names=[name,ai1,ai2,ai3];
+    const names=[name,'電腦A','電腦B','電腦C'];
 
     this.initRound(names,[1,2,3],this.settings.money,0,1,'東');
     document.getElementById('lobby').style.display='none';
@@ -6439,13 +6436,16 @@ const Game={
   // ── TIMER ─────────────────────────────────────────────
   startTimer(p){
     const s=this.st;
+    // Guard: 計時圓圈只用於 p0（人類玩家）出牌倒數，其他玩家一律不顯示
+    if(p!==0)return;
     // Guard: only start timer when game is live and it's actually this player's turn
     if(!s||s.phase!=='playing'||s.turn!==p)return;
     // Guard: autoPlay 代打中，p0 不顯示倒數
-    if(p===0&&this.autoPlay)return;
+    if(this.autoPlay)return;
     // Guard: do NOT start turn-timer while a meld offer (吃/碰/槓/胡) is active
+    // 鳴牌抉擇期由 meld-timer-bar 進度條計時，圓圈不參與
     const _ap=document.getElementById('ap');
-    if(_ap&&_ap.querySelectorAll('.ab.apo,.ab.ach,.ab.ako,.ab.aw').length>0)return;
+    if(_ap&&_ap.querySelectorAll('.ab.apo,.ab.ach,.ab.ako,.ab.aw,.ab.ask').length>0)return;
     const tt=this.settings.time||0;if(!tt)return;
     this.stopTimer();this.timerSec=tt;
     const badge=document.getElementById('tbadge');
@@ -6739,6 +6739,10 @@ const Game={
     }
     // Update hand-bar tenpai counts each render
     if(this._tenpaiWaiting) this._updateHandBar();
+    // 防禦：計時圓圈只在輪到 p0 且遊戲進行中才允許存在，其餘一律強制隱藏
+    if(this.timer&&s&&(s.turn!==0||s.phase!=='playing')){
+      this.stopTimer();
+    }
     // v1.5: update assist features after render
     this.updateShantenLabel();
     this.updateDangerDots();
@@ -6909,7 +6913,8 @@ const Game={
     if(hbar) hbar.style.display='';  // reset to CSS-controlled
     // Hide action-overlay if empty (no buttons and no timer)
     const tbadge=document.getElementById('tbadge');
-    const hasTimer=tbadge&&tbadge.style.display!=='none';
+    // 必須用 ===`flex` 判斷：初始 style.display 為 '' (空字串)，!=='none' 會誤判為 true
+    const hasTimer=tbadge&&tbadge.style.display==='flex';
     const hasHbar=hbar&&hbar.classList.contains('show');
     if(!hasTimer&&!hasHbar&&ap.children.length===0){
       document.getElementById('action-overlay')?.classList.remove('active');
@@ -7197,18 +7202,41 @@ const Game={
     const s=this.st;
     const hd=s.hands[p].filter(x=>!x.fl);
     const drawn=s.drawnId?hd.find(t=>t.id===s.drawnId):null;
-    // 情境A：已聽牌（riichiMode 或自動偵測聽牌）
+
+    // ── 鐵律 A：已聽牌 → 摸啥打啥，絕不拆牌型 ──────────────────
     if(p===0&&(this.riichiMode||s.tenpai[p])){
-      if(drawn)return drawn.id; // 摸啥打啥，不拆聽牌牌型
+      if(drawn)return drawn.id;
       // 鳴牌後出牌（無 drawnId）：找能維持聽牌的候選
       const safe=this.findRiichiDiscards(hd,s.melds[p]);
       return(safe[0]||hd[hd.length-1]).id;
     }
-    // 情境B：未聽牌，優先打摸進的牌（最保守）
+
+    // ── 未聽牌：孤張權重篩選器（嚴禁 Math.random()）────────────
+    // 工具：檢查一張牌在 hd 中是否完全孤立（無搭子、無對子）
+    const isIsolated=(tile,tiles)=>{
+      const same=tiles.filter(t=>t.s===tile.s&&t.v===tile.v);
+      if(same.length>1) return false; // 有對子
+      if(tile.s==='honor') return true; // 字牌無順子概念，有對子才有搭子
+      const suits=tiles.filter(t=>t.s===tile.s);
+      const vs=suits.map(t=>t.v);
+      // 有 v±1 或 v±2 的搭子
+      return![tile.v-2,tile.v-1,tile.v+1,tile.v+2].some(v=>vs.includes(v));
+    };
+
+    // 優先級 1：字牌孤張（東南西北中發白的單張）
+    const isolatedHonor=hd.find(t=>t.s==='honor'&&isIsolated(t,hd));
+    if(isolatedHonor)return isolatedHonor.id;
+
+    // 優先級 2：邊章孤張（1 或 9 的數牌，無搭子、無對子）
+    const isolatedTerminal=hd.find(t=>
+      t.s!=='honor'&&(t.v===1||t.v===9)&&isIsolated(t,hd)
+    );
+    if(isolatedTerminal)return isolatedTerminal.id;
+
+    // 優先級 3：打出剛摸進來的那張牌（最保守防守）
     if(drawn)return drawn.id;
-    // 鳴牌後出牌：找孤立字牌（無搭子的單張最安全）
-    const isolated=hd.find(t=>t.s==='honor'&&hd.filter(x=>x.s===t.s&&x.v===t.v).length===1);
-    if(isolated)return isolated.id;
+
+    // 優先級 4：交給 AI 評估（鳴牌後無 drawnId 時的最後兜底）
     return AI.discard(hd,s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced').id;
   },
 
@@ -7905,7 +7933,7 @@ const Online = {
   myIndex: 0,     // absolute seat index (0=host)
   _inviteUrl: '',
   _aiCount: 0,    // AI slots to fill (host only)
-  _aiNames: ['小虎','小龍','小鶴'],
+  _aiNames: ['電腦A','電腦B','電腦C'],
   _submitting: false, // 防重複連點鎖：建立/加入房間進行中時為 true
 
   _status(msg){ const el=document.getElementById('ol-status'); if(el) el.textContent=msg; },
