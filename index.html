@@ -3151,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.19</div>
+    <div class="lver">v1.6.20</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -3277,6 +3277,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
             <div style="font-size:.68rem;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center">點擊複製代碼</div>
             <div class="ol-room-code" id="ol-room-code" onclick="Online.copyCode()" style="text-align:center">------</div>
             <div id="ol-player-list" style="margin-top:10px;text-align:center"></div>
+            <div id="ol-host-settings">
             <div class="sec-title" style="margin-top:10px">💰 籌碼設定</div>
             <div class="sgrid" style="grid-template-columns:1fr 1fr 1fr 1fr">
               <div class="fg" style="margin:0">
@@ -3334,8 +3335,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
                 </select>
               </div>
             </div>
+            </div><!-- /ol-host-settings -->
             <button class="lbtn" id="ol-start-btn" onclick="Online.startGame()" style="margin-top:8px;opacity:.45;display:block;width:100%;text-align:center" disabled>▶ 開始遊戲 (1/4)</button>
-            <button class="lbtn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">離開</button>
+            <button class="lbtn" id="ol-leave-btn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">離開</button>
           </div>
           <div id="ol-join-view" style="display:none">
             <div style="font-size:.72rem;color:rgba(255,255,255,.4);margin-bottom:10px;text-align:center">輸入暱稱並貼上邀請連結</div>
@@ -7253,10 +7255,12 @@ const Game={
     const payerName=wd.loserName||(wd.payer>=0?s.names[wd.payer]||'?':'');
     const isMe=wd.p===0;
     document.getElementById('wtit').textContent=isMe?'🎉 你胡了！':`${pn} 胡牌！`;
-    const payTxt=wd.selfDraw?'自摸（各家付）':`${payerName} 放槍`;
+    // v1.6.20: 放槍時顯示實際扣款 = total×3，自摸顯示每家付額
+    const actualPayment = wd.selfDraw ? wd.total : wd.total * 3;
+    const payTxt=wd.selfDraw?`自摸（各家付 $${wd.total.toLocaleString()}）`:`${payerName} 放槍（×3）`;
     const mainBon=wd.bon.filter(b=>!b.startsWith('底'));
     const handDesc=mainBon.length?` ✦ ${mainBon.join(' · ')}`:'';
-    document.getElementById('wtai').textContent=`${wd.tai}台 × $${wd.perTai} = $${wd.total}（${payTxt}）${handDesc}`;
+    document.getElementById('wtai').textContent=`${wd.tai}台 × $${wd.perTai}${wd.selfDraw?'':' ×3'} = $${actualPayment.toLocaleString()}（${payTxt}）${handDesc}`;
     document.getElementById('wbon').innerHTML=wd.bon.map(b=>`<span class="wchip">${b}</span>`).join('');
     document.getElementById('wmon').innerHTML=s.names.map((n,i)=>{const m=s.money[i];return`<span style="margin:0 6px;color:${m<0?'#e74c3c':'#2ecc71'}">${n}: $${m.toLocaleString()}</span>`;}).join('');
     // Show all hands with set highlighting for winner
@@ -8288,6 +8292,11 @@ const Online = {
     document.getElementById('ol-room-section').classList.add('show');
     document.getElementById('ol-create-view').style.display='block';
     document.getElementById('ol-join-view').style.display='none';
+    // v1.6.20: 房主建立房間時確保設定區可見
+    const _olhs=document.getElementById('ol-host-settings');
+    if(_olhs) _olhs.style.display='';
+    const _olsb=document.getElementById('ol-start-btn');
+    if(_olsb) _olsb.style.display='';
     const name=(document.getElementById('pname')?.value.trim()||'玩家').substring(0,8);
     this._status('連線中…');
     MahjongNetwork.init(name).then(id=>{
@@ -8371,6 +8380,11 @@ const Online = {
       document.getElementById('ol-create-view').style.display='block';
       document.getElementById('ol-room-code').textContent=code;
       document.getElementById('ol-room-code').style.cursor='default';
+      // v1.6.20: 非房主只看玩家列表，隱藏設定與開始按鈕
+      const olhs=document.getElementById('ol-host-settings');
+      if(olhs) olhs.style.display='none';
+      const olsb=document.getElementById('ol-start-btn');
+      if(olsb) olsb.style.display='none';
       this._status('等待房主開始…');
       this._submitting=false;
     }).catch(()=>{
@@ -8527,6 +8541,8 @@ const Online = {
         break;
       case 'host_start_round':
         if(!Game._isHost){
+          // v1.6.20: 解除 'ended' 鎖再 newRound，確保後續 game_state 可通過 phase guard
+          if(Game.st&&Game.st.phase==='ended') Game.st.phase='between_rounds';
           Game.toast('房主已開始下一局！',1500); // 清除等待提示
           Game.newRound();
         }
@@ -8596,6 +8612,8 @@ const Online = {
       case 'ready_check':
         // 【Task3】主機準備開新局，回傳就緒訊號
         if(!Game._isHost){
+          // v1.6.20: 解除 'ended' 鎖，讓後續 game_state 廣播能通過 phase guard
+          if(Game.st&&Game.st.phase==='ended') Game.st.phase='between_rounds';
           Game.toast('準備下一局中…',2000);
           MahjongNetwork.broadcast({type:'client_ready'});
         }
