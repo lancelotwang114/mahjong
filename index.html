@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.8</div>
+    <div class="lver">v1.6.9</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6277,6 +6277,7 @@ const Game={
   _setupNonHostTurn(){
     this.clearBtns(); // Clear any leftover meld buttons (e.g. from a just-executed chi/pong)
     const s=this.st;
+    this._myTurnSeq=s.turnSeq||0; // v1.6.9：必須在分支前更新，確保 autoPlay/riichiMode/一般三條路徑都帶正確序號
     const nonFl=s.hands[0].filter(x=>!x.fl);
     // 判斷目前是「摸牌後出牌」還是「鳴牌後出牌」
     // 摸牌後：手牌張數 = (16 - melds*3) + 1（多出一張摸牌）
@@ -6359,7 +6360,6 @@ const Game={
     const ht0El=document.getElementById('ht0');
     ht0El?.classList.add('my-turn');
     ht0El?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
-    this._myTurnSeq=s.turnSeq||0; // 記下出牌時的序號，出牌封包帶上
     if(extraBtns.length) document.getElementById('action-overlay')?.classList.add('active');
     document.getElementById('hint-btn')?.style.setProperty('display','flex');
     if(isAfterMeld) this.toast('請選一張牌打出！');
@@ -6487,8 +6487,8 @@ const Game={
         const s=this.st;
         if(!s||s.phase!=='playing')return;
         if(s&&s.turn===0){
-          // v1.6.8【防禦】飛牌動畫仍在進行（_isDiscarding=true）時不觸發代打
-          if(this._isDiscarding)return;
+          // v1.6.9【修正】強制解鎖再代打，非房主廣播超時無回應時計時器仍可繼續（v1.6.8 的 return 是回歸 Bug）
+          this._isDiscarding=false;
           // v1.6.8【防禦】wait-dots 仍顯示代表 doTurn(0) 尚未正確清除 Loading 狀態，拒絕代打
           if(document.getElementById('wait-dots')?.classList.contains('show'))return;
           const hand=s.myHand||s.hands[0]||[];
