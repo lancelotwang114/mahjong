@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.6</div>
+    <div class="lver">v1.6.7</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6305,6 +6305,7 @@ const Game={
     if(this.autoPlay){
       if(winNow){this.doWin(0,true);return;}
       const discId=this._autoPlayDiscard(0);
+      this._isDiscarding=false; // v1.6.7：確保自動打牌路徑不被舊鎖擋住
       this.startTimer(0); // ★ autoPlay 仍顯示計時圓圈
       setTimeout(()=>{
         if(this.autoPlay&&this.st&&this.st.phase==='playing'&&this.st.turn===0)
@@ -6324,6 +6325,7 @@ const Game={
       this.showBtns([{type:'stop-riichi',label:'停止聽牌',cls:'stop-riichi'}]);
       document.getElementById('action-overlay')?.classList.add('active');
       if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
+      this._isDiscarding=false; // v1.6.7：聽牌路徑解鎖
       this.startTimer(0);
       const ht0R=document.getElementById('ht0');
       ht0R?.classList.add('my-turn');ht0R?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
@@ -6347,6 +6349,7 @@ const Game={
     this.showBtns(extraBtns);
     if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
     else this.hideTenpai();
+    this._isDiscarding=false; // v1.6.7：一般出牌路徑解鎖（補保險，startTimer 內也會再解一次）
     this.startTimer(0);
     const ht0El=document.getElementById('ht0');
     ht0El?.classList.add('my-turn');
@@ -6444,6 +6447,9 @@ const Game={
     if(p!==0)return;
     // Guard: only start timer when game is live and it's actually this player's turn
     if(!s||s.phase!=='playing'||s.turn!==p)return;
+    // ★ v1.6.7：計時器啟動 = 伺服器確認輪到自己，強制解鎖所有出牌防重入鎖
+    // 修復 P2P 非房主卡死：_isDiscarding=true 殘留導致 doDiscard/onTile 永遠被擋
+    this._isDiscarding=false;
     // Guard: 鳴牌抉擇期（吃/碰/槓/胡 按鈕已呈現）不啟動圓圈，由 meld-timer-bar 進度條負責計時
     // 注意：.ab.ask（略過）是出牌階段按鈕，不可納入此 guard，否則有聽牌提示時計時圓圈永遠不顯示
     const _ap=document.getElementById('ap');
