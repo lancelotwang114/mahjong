@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.10</div>
+    <div class="lver">v1.6.11</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -5686,11 +5686,10 @@ const Game={
     lbl.textContent=isMultiChi?'點選吃法':`可以${info.label}`;
     tip.appendChild(lbl);
 
-    // Helper: sm-size tile (32×44px) — sprite designed for this exact size
+    // Helper: full-size tile + zoom:0.52 — sm class causes sprite misalignment in tooltip context
     const mkTipTile=(t,discTile)=>{
-      const e=mkTile(t,'sm');
-      e.style.cursor='default';
-      e.style.flexShrink='0';
+      const e=mkTile(t,'');
+      e.style.cssText+='zoom:0.52;cursor:default;flex-shrink:0;';
       if(discTile&&t.id===discTile.id){
         e.style.outline='2.5px solid var(--gold2)';
         e.style.boxShadow='0 0 10px rgba(212,168,67,.85)';
@@ -6887,7 +6886,7 @@ const Game={
     const el=document.getElementById('meld-preview');
     el.innerHTML=`<span class="mp-label">${label}</span>`;
     tiles.forEach(t=>{
-      const e=mkTile(t,'sm');e.style.cursor=action?'pointer':'default';
+      const e=mkTile(t,'');e.style.cssText+='zoom:0.52;flex-shrink:0;';e.style.cursor=action?'pointer':'default';
       el.appendChild(e);
     });
     // 允許直接點擊字卡確認鳴牌
