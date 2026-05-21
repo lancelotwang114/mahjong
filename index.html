@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.11</div>
+    <div class="lver">v1.6.14</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -4441,6 +4441,22 @@ function _tileSVGGen(tile){
   return tile.n||'?';
 }
 
+// mkPreviewTile: SVG-based tile for meld-preview / tooltip (no .t class → no sprite, SVG shows)
+// Use instead of mkTile+zoom for any floating preview context outside the main board.
+function mkPreviewTile(tile,discTile=null){
+  const d=document.createElement('div');
+  d.style.cssText='width:32px;height:44px;border-radius:4px;flex-shrink:0;cursor:default;'+
+    'background:linear-gradient(145deg,#f5ecd7,#e8d8b8);'+
+    'border:1.5px solid rgba(120,80,20,.5);'+
+    'display:flex;align-items:center;justify-content:center;overflow:hidden;'+
+    'box-shadow:2px 5px 10px rgba(20,10,0,.45);color:#1a0e04;';
+  d.innerHTML=tileSVG(tile);
+  if(discTile&&tile.id===discTile.id){
+    d.style.outline='2.5px solid var(--gold2)';
+    d.style.boxShadow='0 0 10px rgba(212,168,67,.85)';
+  }
+  return d;
+}
 function mkTile(tile,cls='',click=null){
   const d=document.createElement('div');
   d.className=`t ${tile.s||''} v${tile.v} ${cls}`.trim();
@@ -5003,6 +5019,7 @@ const Game={
       if(sk)extraBtns.push({type:'sk',label:'暗槓',cls:'ako',tiles:sk});
       // Riichi mode: auto-handle turn — smart discard: prefer drawn tile if it keeps tenpai
       if(this.riichiMode){
+        this.stopTimer(); // v1.6.14：清除殘留計時圓圈（鳴牌後可能遺留）
         if(winNow){this.doWin(0,true);return;}
         const drawn=s.drawnId?s.hands[0].find(t=>t.id===s.drawnId):null;
         // Find all tiles whose discard maintains tenpai
@@ -5228,6 +5245,9 @@ const Game={
       } else {
         this.hideTenpai();
       }
+    } else if(s.tenpai[0]&&s.tenpaiT[0]){
+      // v1.6.14：對手打牌後也即時更新 p=0 的聽牌剩餘張數（因為棄牌已進 discards，discRemaining 會重新計算）
+      this.showTenpai(s.tenpaiT[0]);
     }
     this.log(`${s.names[p]} 打出 ${tile.n}`);
     Snd.discard();
@@ -5686,16 +5706,8 @@ const Game={
     lbl.textContent=isMultiChi?'點選吃法':`可以${info.label}`;
     tip.appendChild(lbl);
 
-    // Helper: full-size tile + zoom:0.52 — sm class causes sprite misalignment in tooltip context
-    const mkTipTile=(t,discTile)=>{
-      const e=mkTile(t,'');
-      e.style.cssText+='zoom:0.52;cursor:default;flex-shrink:0;';
-      if(discTile&&t.id===discTile.id){
-        e.style.outline='2.5px solid var(--gold2)';
-        e.style.boxShadow='0 0 10px rgba(212,168,67,.85)';
-      }
-      return e;
-    };
+    // Helper: SVG-based preview tile (no sprite class → tileSVG shows correctly)
+    const mkTipTile=(t,discTile)=>mkPreviewTile(t,discTile);
 
     if(info.chiOpts){
       // Chi: render clickable combo rows using chiOpts for accurate action binding
@@ -6335,7 +6347,7 @@ const Game={
       document.getElementById('action-overlay')?.classList.add('active');
       if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
       this._isDiscarding=false; // v1.6.7：聽牌路徑解鎖
-      this.startTimer(0);
+      // v1.6.14：聽牌模式自動打牌（300ms），不啟動倒數計時器避免混淆
       const ht0R=document.getElementById('ht0');
       ht0R?.classList.add('my-turn');ht0R?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
       return;
@@ -6499,6 +6511,14 @@ const Game={
             // 自摸優先：若手牌已可胡，計時器到時自動宣胡而非打牌
             if(canWin(hand.filter(x=>!x.fl))){this.doWin(0,true);return;}
             const t2=s.drawnId?hand.find(t=>t.id===s.drawnId)||hand[0]:hand[0];
+            // AFK 偵測：連續倒數代打 2 次 → 自動切換 AI 代打
+            this._afkStreak=(this._afkStreak||0)+1;
+            if(this._afkStreak>=2&&!this.autoPlay){
+              this.autoPlay=true;
+              this.toast('⏰ 偵測到長時間未操作，已自動切換 AI 代打',4000);
+              const apBtn=document.getElementById('autoplay-btn');
+              if(apBtn){apBtn.classList.add('on');apBtn.textContent='🤖 自動 ON';}
+            }
             this.doDiscard(0,t2.id);
           }
         }
@@ -6698,11 +6718,13 @@ const Game={
         mg.className='mg'+(isDarkKong?' dark-kong':'');
         meld.tiles.forEach((t,idx)=>{
           let e;
-          if(isDarkKong){
-            // 暗槓四張全反蓋（台灣慣例）
+          if(isDarkKong && i!==0){
+            // 暗槓：其他玩家全反蓋（台灣慣例）
             e=mkBack(meldSz);e.style.cursor='default';
           } else {
+            // 自己的暗槓 or 明槓：正面顯示
             e=mkTile(t,meldSz);e.style.cursor='default';
+            if(isDarkKong) e.classList.add('dark-kong-outer');
           }
           mg.appendChild(e);
         });
@@ -6794,6 +6816,8 @@ const Game={
     if(!s||s.phase!=='playing')return;
     // v1.6.8【防禦】飛牌動畫 230ms 期間 _isDiscarding=true，此窗口內拒絕任何點擊防雙打
     if(this._isDiscarding)return;
+    // 玩家主動操作 → 重設 AFK 連續超時計數
+    this._afkStreak=0;
     const ap=document.getElementById('ap');
     const ht0=document.getElementById('ht0');
     // 【Task4】UX：有吃碰槓/胡牌提示時，點牌自動略過，不必先按「略過」
@@ -6886,7 +6910,7 @@ const Game={
     const el=document.getElementById('meld-preview');
     el.innerHTML=`<span class="mp-label">${label}</span>`;
     tiles.forEach(t=>{
-      const e=mkTile(t,'');e.style.cssText+='zoom:0.52;flex-shrink:0;';e.style.cursor=action?'pointer':'default';
+      const e=mkPreviewTile(t);e.style.cursor=action?'pointer':'default';
       el.appendChild(e);
     });
     // 允許直接點擊字卡確認鳴牌
@@ -7289,6 +7313,7 @@ const Game={
       btn.classList.remove('on');
       btn.textContent='🤖 自動';
       this.toast('自動打牌已關閉',1500);
+      this._afkStreak=0; // 玩家手動關閉代打，重設 AFK 計數
     }
   },
 
@@ -7478,6 +7503,7 @@ const Game={
   newRound(){
     const hsb=document.getElementById('host-round-start-btn');if(hsb)hsb.style.display='none';
     this.riichiMode=false;this.riichiTile=null;this.riichiWaiting=null;this._tenpaiWaiting=null;
+    this._afkStreak=0; // 每局開始重設 AFK 計數
     document.getElementById('ht0').classList.remove('riichi-mode');
     document.getElementById('wov').style.display='none';
     this.hideTenpai();this.clearBtns();
