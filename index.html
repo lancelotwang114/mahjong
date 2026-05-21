@@ -3151,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.20</div>
+    <div class="lver">v1.6.22</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6298,15 +6298,24 @@ const Game={
       if(windTripVals.size===4)                  add(16,'大四喜 +16台');
       else if(windTripVals.size===3&&pairIsWind) add(8,'小四喜 +8台');
 
-      // 役牌：圈風刻子 +1 / 自風刻子 +1
+      // 役牌：圈風刻子 +1 / 自風刻子 +1 / 三元牌刻子（中/發/白）各 +1
       {
         const windNames=['東','南','西','北'];
+        const dragonNames={4:'中',5:'白',6:'發'};
         const roundWindV=windNames.indexOf(s.roundWind||'東');
         triplets.forEach(g=>{
           const t=g.tiles&&g.tiles[0];
-          if(!t||t.s!=='honor'||t.v>3)return;
-          if(t.v===roundWindV) add(1,`圈風（${windNames[t.v]}）刻子 +1台`);
-          if(t.v===seatWindV)  add(1,`自風（${windNames[t.v]}）刻子 +1台`);
+          if(!t||t.s!=='honor')return;
+          if(t.v<=3){
+            // 風牌役牌（大四喜時不重複計）
+            if(windTripVals.size<4){
+              if(t.v===roundWindV) add(1,`圈風（${windNames[t.v]}）刻子 +1台`);
+              if(t.v===seatWindV)  add(1,`自風（${windNames[t.v]}）刻子 +1台`);
+            }
+          } else {
+            // 三元牌役牌 +1（大三元時仍各計1，大三元是額外加分）
+            add(1,`${dragonNames[t.v]||'三元'}刻子 +1台`);
+          }
         });
       }
     }
@@ -8543,6 +8552,17 @@ const Online = {
         if(!Game._isHost){
           // v1.6.20: 解除 'ended' 鎖再 newRound，確保後續 game_state 可通過 phase guard
           if(Game.st&&Game.st.phase==='ended') Game.st.phase='between_rounds';
+          // v1.6.22: 同 ready_check，清除上一局殘留狀態
+          Game.riichiMode=false;
+          Game.riichiTile=null;
+          Game._isDiscarding=false;
+          clearTimeout(Game._riichiDiscardTimer);
+          Game._riichiDiscardTimer=null;
+          Game._killAllTimers();
+          Game.clearBtns();
+          Game.hideTenpai();
+          document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+          document.getElementById('wov').style.display='none';
           Game.toast('房主已開始下一局！',1500); // 清除等待提示
           Game.newRound();
         }
@@ -8614,6 +8634,21 @@ const Online = {
         if(!Game._isHost){
           // v1.6.20: 解除 'ended' 鎖，讓後續 game_state 廣播能通過 phase guard
           if(Game.st&&Game.st.phase==='ended') Game.st.phase='between_rounds';
+          // v1.6.22: 清除上一局殘留的遊戲狀態，避免 riichiMode/計時器流入新局卡死非房主
+          Game.riichiMode=false;
+          Game.riichiTile=null;
+          Game.riichiWaiting=null;
+          Game._tenpaiWaiting=null;
+          Game._isDiscarding=false;
+          clearTimeout(Game._riichiDiscardTimer);
+          Game._riichiDiscardTimer=null;
+          clearTimeout(Game._riichiModeTimer);
+          Game._riichiModeTimer=null;
+          Game._killAllTimers();
+          Game.clearBtns();
+          Game.hideTenpai();
+          document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+          document.getElementById('wov').style.display='none';
           Game.toast('準備下一局中…',2000);
           MahjongNetwork.broadcast({type:'client_ready'});
         }
