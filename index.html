@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.3</div>
+    <div class="lver">v1.6.4</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -7906,10 +7906,21 @@ const Online = {
   _inviteUrl: '',
   _aiCount: 0,    // AI slots to fill (host only)
   _aiNames: ['小虎','小龍','小鶴'],
+  _submitting: false, // 防重複連點鎖：建立/加入房間進行中時為 true
 
   _status(msg){ const el=document.getElementById('ol-status'); if(el) el.textContent=msg; },
 
+  // 顯示或隱藏「建立房間」「加入房間」模式按鈕
+  _setModeBtnsVisible(v){
+    const d=document.querySelector('.online-mode-btns');
+    if(d) d.style.display=v?'flex':'none';
+  },
+
   showCreate(){
+    // ── 防重複連點鎖 ─────────────────────────────────────────
+    if(this._submitting) return;
+    this._submitting=true;
+    this._setModeBtnsVisible(false); // 隱藏「建立/加入房間」按鈕，防止進房後再次誤觸
     document.getElementById('ol-room-section').classList.add('show');
     document.getElementById('ol-create-view').style.display='block';
     document.getElementById('ol-join-view').style.display='none';
@@ -7922,8 +7933,11 @@ const Online = {
       document.getElementById('ol-room-code').textContent=this._inviteUrl;
       this._updatePlayerList();
       this._status('等待玩家加入…');
+      this._submitting=false; // 成功後解鎖（房間建立完成，可正常操作）
       MahjongNetwork.onPlayerJoin=(peerId,peerName)=>{
         if(this.peers.length>=4) return;
+        // ── 後端唯一性防禦：同一 peerId 不可重複加入 ────────────
+        if(this.peers.some(p=>p.id===peerId)) return;
         this.peers.push({id:peerId,name:peerName.substring(0,8)});
         this._updatePlayerList();
         MahjongNetwork.broadcast({type:'player_list',peers:this.peers.map(p=>p.name)});
@@ -7934,7 +7948,11 @@ const Online = {
         this._updatePlayerList();
       };
       MahjongNetwork.onMessage=(peerId,data)=>this._handleMsg(peerId,data);
-    }).catch(()=>this._status('連線失敗，請重試'));
+    }).catch(()=>{
+      this._status('連線失敗，請重試');
+      this._submitting=false;
+      this._setModeBtnsVisible(true); // 失敗時恢復按鈕
+    });
   },
 
   showJoin(){
@@ -7960,6 +7978,8 @@ const Online = {
   },
 
   doJoin(){
+    // ── 防重複連點鎖 ─────────────────────────────────────────
+    if(this._submitting) return;
     const raw=document.getElementById('ol-join-code')?.value.trim();
     if(!raw){ this._status('請貼上邀請連結'); return; }
     // Accept full invite URL (preferred) or "CODE:PEERID" shorthand
@@ -7970,6 +7990,10 @@ const Online = {
       hostId = u.searchParams.get('host')||'';
     } catch(e) { code=''; hostId=''; }
     if(!code||!hostId){ this._status('請貼上完整邀請連結（包含 ?room=...&host=...）'); return; }
+    // 鎖定按鈕，防止重複送出
+    this._submitting=true;
+    const joinBtn=document.getElementById('ol-join-btn');
+    if(joinBtn){ joinBtn.disabled=true; joinBtn.style.opacity='.45'; }
     const joinNameEl=document.getElementById('ol-join-name');
     const name=((joinNameEl?.value||document.getElementById('pname')?.value||'').trim()||'玩家').substring(0,8);
     this._status('連線中…');
@@ -7978,12 +8002,18 @@ const Online = {
     }).then(()=>{
       MahjongNetwork.onMessage=(peerId,data)=>this._handleMsg(peerId,data);
       MahjongNetwork.onPlayerLeave=()=>Game.toast('有玩家離線',2000);
+      this._setModeBtnsVisible(false); // 成功加入後隱藏「建立/加入房間」按鈕
       document.getElementById('ol-join-view').style.display='none';
       document.getElementById('ol-create-view').style.display='block';
       document.getElementById('ol-room-code').textContent=code;
       document.getElementById('ol-room-code').style.cursor='default';
       this._status('等待房主開始…');
-    }).catch(()=>this._status('加入失敗，請確認代碼'));
+      this._submitting=false;
+    }).catch(()=>{
+      this._status('加入失敗，請確認代碼');
+      this._submitting=false;
+      if(joinBtn){ joinBtn.disabled=false; joinBtn.style.opacity=''; }
+    });
   },
 
   _updatePlayerList(){
@@ -8064,8 +8094,14 @@ const Online = {
   leave(){
     MahjongNetwork.disconnect();
     this.peers=[]; this._aiCount=0;
+    this._submitting=false; // 解除任何殘留鎖定
     document.getElementById('ol-create-view').style.display='none';
     document.getElementById('ol-join-view').style.display='none';
+    document.getElementById('ol-room-section').classList.remove('show');
+    // 恢復「建立房間」「加入房間」按鈕
+    this._setModeBtnsVisible(true);
+    const joinBtn=document.getElementById('ol-join-btn');
+    if(joinBtn){ joinBtn.disabled=false; joinBtn.style.opacity=''; }
     this._status('');
     Game._online=false; Game._isHost=false; Game._myIndex=0;
     Lobby.showHome();
