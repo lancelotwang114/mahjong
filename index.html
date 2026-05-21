@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.5</div>
+    <div class="lver">v1.6.6</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6301,11 +6301,15 @@ const Game={
       Snd.draw();
     }
     const winNow=canWin(s.hands[0].filter(x=>!x.fl));
-    // 【自動打牌模式】：不顯示 UI，直接執行防亂打策略出牌
+    // 【自動打牌模式】：即便代打，計時圓圈仍須顯示讓玩家看到剩餘思考時間
     if(this.autoPlay){
       if(winNow){this.doWin(0,true);return;}
       const discId=this._autoPlayDiscard(0);
-      setTimeout(()=>this.doDiscard(0,discId),this.spd('discard'));
+      this.startTimer(0); // ★ autoPlay 仍顯示計時圓圈
+      setTimeout(()=>{
+        if(this.autoPlay&&this.st&&this.st.phase==='playing'&&this.st.turn===0)
+          this.doDiscard(0,discId);
+      },this.spd('discard'));
       return;
     }
     // 【聽牌宣告後】riichiMode=true：輪到自己時自動選最佳牌打出，只顯示「停止聽牌」按鈕
@@ -6440,12 +6444,10 @@ const Game={
     if(p!==0)return;
     // Guard: only start timer when game is live and it's actually this player's turn
     if(!s||s.phase!=='playing'||s.turn!==p)return;
-    // Guard: autoPlay 代打中，p0 不顯示倒數
-    if(this.autoPlay)return;
-    // Guard: do NOT start turn-timer while a meld offer (吃/碰/槓/胡) is active
-    // 鳴牌抉擇期由 meld-timer-bar 進度條計時，圓圈不參與
+    // Guard: 鳴牌抉擇期（吃/碰/槓/胡 按鈕已呈現）不啟動圓圈，由 meld-timer-bar 進度條負責計時
+    // 注意：.ab.ask（略過）是出牌階段按鈕，不可納入此 guard，否則有聽牌提示時計時圓圈永遠不顯示
     const _ap=document.getElementById('ap');
-    if(_ap&&_ap.querySelectorAll('.ab.apo,.ab.ach,.ab.ako,.ab.aw,.ab.ask').length>0)return;
+    if(_ap&&_ap.querySelectorAll('.ab.apo,.ab.ach,.ab.ako').length>0)return;
     const tt=this.settings.time||0;if(!tt)return;
     this.stopTimer();this.timerSec=tt;
     const badge=document.getElementById('tbadge');
@@ -7253,11 +7255,13 @@ const Game={
         clearTimeout(this._riichiDiscardTimer);
         this.clearBtns();
         document.getElementById('ht0')?.classList.remove('my-turn','meld-alert');
-        this.stopTimer();
+        // ★ 切換自動打牌時不停止計時圓圈：讓玩家看到剩餘思考時間
+        // this.stopTimer() 已移除；計時圓圈由 doDiscard → stopTimer() 在出牌後自然清除
         const hd=s.hands[0].filter(x=>!x.fl);
         const winNow=canWin(hd);
         if(winNow){this.doWin(0,true);return;}
         const discId=this._autoPlayDiscard(0);
+        if(!this.timer) this.startTimer(0); // 若計時圓圈尚未啟動則啟動
         setTimeout(()=>{
           if(this.autoPlay&&this.st&&this.st.phase==='playing'&&this.st.turn===0)
             this.doDiscard(0,discId);
