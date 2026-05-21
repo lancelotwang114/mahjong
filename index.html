@@ -3142,7 +3142,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.16</div>
+    <div class="lver">v1.6.17</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -3268,6 +3268,17 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
             <div style="font-size:.68rem;color:rgba(255,255,255,.35);margin-bottom:4px">點擊複製代碼</div>
             <div class="ol-room-code" id="ol-room-code" onclick="Online.copyCode()">------</div>
             <div id="ol-player-list" style="margin-top:10px"></div>
+            <div style="display:flex;gap:8px;margin:8px 0;align-items:center;justify-content:center">
+              <label style="font-size:.72rem;color:rgba(255,255,255,.5)">出牌限時</label>
+              <select class="fi" id="stime-online" style="width:auto;font-size:.72rem;padding:4px 8px">
+                <option value="0">無限制</option>
+                <option value="8">8秒</option>
+                <option value="12">12秒</option>
+                <option value="15" selected>15秒</option>
+                <option value="20">20秒</option>
+                <option value="30">30秒</option>
+              </select>
+            </div>
             <button class="lbtn" id="ol-start-btn" onclick="Online.startGame()" style="margin-top:8px;opacity:.45" disabled>▶ 開始遊戲 (1/4)</button>
             <button class="lbtn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">離開</button>
           </div>
@@ -7214,7 +7225,6 @@ const Game={
     const pn=wd.winnerName||s.names[wd.p]||'?';
     const payerName=wd.loserName||(wd.payer>=0?s.names[wd.payer]||'?':'');
     const isMe=wd.p===0;
-    console.log('結算封包:',{winnerIdx:wd.p,pn,payerName,tai:wd.tai,bon:wd.bon,selfDraw:wd.selfDraw});
     document.getElementById('wtit').textContent=isMe?'🎉 你胡了！':`${pn} 胡牌！`;
     const payTxt=wd.selfDraw?'自摸（各家付）':`${payerName} 放槍`;
     const mainBon=wd.bon.filter(b=>!b.startsWith('底'));
@@ -8355,15 +8365,18 @@ const Online = {
     });
     // Generate dice once so all players see the same result
     const diceVals=[1+~~(Math.random()*6),1+~~(Math.random()*6)];
+    // v1.6.17: 讀取出牌限時設定並廣播給所有非房主玩家
+    const timeLimit=+(document.getElementById('stime-online')?.value??15);
     Game._hostDice=diceVals;
     this.peers.forEach((p,i)=>{
       if(i===0||!p.id) return;
-      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals});
+      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals,timeLimit});
     });
     Game._online=true; Game._isHost=true; Game._myIndex=0;
     Game._peers=this.peers;
     document.getElementById('pname').value=names[0]||'玩家';
     Game.start('east');
+    if(Game.settings) Game.settings.time=timeLimit; // v1.6.17: 房主套用自己設定的限時
     const aiIndices=Array.from({length:4},(_,i)=>i).filter(i=>!this.peers[i]);
     if(Game.settings) Game.settings.aiStyle=Array.from({length:4},(_,i)=>aiIndices.includes(i)?'balanced':null);
     if(Game.st){ Game.st.ai=aiIndices; Game.st.names=names; }
@@ -8399,6 +8412,7 @@ const Online = {
         document.getElementById('pname').value=data.names[data.playerIndex]||'玩家';
         if(data.dice) Game._hostDice=data.dice; // use host's dice so all players see same result
         Game.start('east');
+        if(data.timeLimit!==undefined&&Game.settings) Game.settings.time=data.timeLimit; // v1.6.17: 套用房主設定的出牌限時
         if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
         if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
         Game._applyOnlineRole(); // hide speed/pause for guests
@@ -8430,6 +8444,14 @@ const Online = {
           // Set up interactive turn UI when it's our turn (tile already in hand)
           if(data.state.phase==='playing'&&data.state.turn===0&&!data.state.ai?.includes(0)){
             Game._setupNonHostTurn();
+          } else if(data.state.phase==='playing'){
+            // v1.6.17: 輪到對手時，仍需即時更新聽牌剩餘張數（v1.6.14 只修了單機路徑）
+            const _gs=data.state;
+            if(_gs.tenpai&&_gs.tenpai[0]&&_gs.tenpaiT&&_gs.tenpaiT[0]){
+              Game.showTenpai(_gs.tenpaiT[0]);
+            } else {
+              Game.hideTenpai();
+            }
           }
         }
         break;
