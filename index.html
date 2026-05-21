@@ -1487,48 +1487,46 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #info-box .ib-sc .sm.neg { color:#e74c3c; }
 
 /* Pause button */
-#pause-btn {
-  position:absolute; top:10px; left:10px; z-index:300;
+/* ═══ TopBar Flex 容器（取代所有按鈕的獨立 absolute 定位）═══════ */
+#game-topbar {
+  position:absolute; top:10px; left:10px; right:10px; z-index:300;
+  display:none; align-items:center; justify-content:space-between;
+  pointer-events:none;
+}
+#topbar-left {
+  display:flex; gap:15px; align-items:center; pointer-events:auto;
+}
+#topbar-right {
+  display:flex; gap:8px; align-items:center; pointer-events:auto;
+}
+/* 共用按鈕基礎樣式 */
+.tb-btn {
   background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
   border:1.5px solid rgba(180,130,55,.4);
-  border-radius:8px; padding:6px 14px; color:var(--gold);
+  border-radius:8px; padding:6px 14px;
   font-family:'Noto Serif TC'; font-size:.82rem; font-weight:700;
-  cursor:pointer; backdrop-filter:blur(6px); display:none;
+  cursor:pointer; backdrop-filter:blur(6px);
   transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.45);
+  white-space:nowrap;
 }
+#pause-btn { color:var(--gold); display:none; }
 #pause-btn:hover { background:rgba(212,168,67,.18); }
 
 /* Auto-play toggle button */
 #autoplay-btn {
-  position:absolute; top:10px; right:60px; z-index:300;
-  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
-  border:1.5px solid rgba(180,130,55,.4);
-  border-radius:8px; padding:6px 14px; color:rgba(212,168,67,.6);
-  font-family:'Noto Serif TC'; font-size:.82rem; font-weight:700;
-  cursor:pointer; backdrop-filter:blur(6px); display:none;
-  transition:all .2s; box-shadow:0 2px 8px rgba(0,0,0,.45);
-  letter-spacing:.04em;
+  color:rgba(212,168,67,.6); display:none; letter-spacing:.04em;
 }
 #autoplay-btn:hover { border-color:rgba(46,204,113,.6); color:rgba(46,204,113,.8); }
+
+/* 房主開局按鈕 */
 #host-round-start-btn {
-  position:absolute; top:10px; right:120px; z-index:300;
-  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
-  border:1.5px solid rgba(180,130,55,.6);
-  border-radius:8px; padding:6px 14px; color:var(--gold);
-  font-family:'Noto Serif TC'; font-size:.82rem; font-weight:700;
-  cursor:pointer; backdrop-filter:blur(6px); display:none;
-  transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.45);
+  color:var(--gold); border-color:rgba(180,130,55,.7); display:none;
 }
 #host-round-start-btn:hover { background:rgba(212,168,67,.22); border-color:var(--gold); }
+
 /* Leave & save button */
 #leave-btn {
-  position:absolute; top:10px; left:106px; z-index:300;
-  background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
-  border:1.5px solid rgba(180,80,55,.4);
-  border-radius:8px; padding:6px 14px; color:rgba(212,130,100,.7);
-  font-family:'Noto Serif TC'; font-size:.82rem; font-weight:700;
-  cursor:pointer; backdrop-filter:blur(6px); display:none;
-  transition:all .15s; box-shadow:0 2px 8px rgba(0,0,0,.45);
+  color:rgba(212,130,100,.7); border-color:rgba(180,80,55,.4); display:none;
 }
 #leave-btn:hover { border-color:rgba(255,100,60,.6); color:rgba(255,140,100,.9); }
 #autoplay-btn.on {
@@ -1728,7 +1726,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* ══ IN-GAME SPEED PANEL ════════════════════════════════════ */
 #speed-panel {
-  position:absolute; top:10px; left:182px;
+  /* 已移入 #topbar-right，不再使用 absolute 定位 */
   z-index:310; display:none; align-items:center; gap:6px;
   background:linear-gradient(160deg,rgba(22,11,3,.88),rgba(38,20,6,.82));
   border:1.5px solid rgba(180,130,55,.3);
@@ -1739,7 +1737,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #speed-panel:hover { opacity:1; }
 /* ── 房主控制面板 ── */
 #host-ctrl-btn {
-  position:absolute; top:10px; left:100px; z-index:310;
+  /* 已移入 #topbar-right，不再使用 absolute 定位 */
+  z-index:310;
   display:none; align-items:center; gap:5px; padding:5px 12px;
   background:linear-gradient(160deg,rgba(22,11,3,.88),rgba(38,20,6,.82));
   border:1.5px solid rgba(212,168,67,.45); border-radius:9px;
@@ -1749,7 +1748,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 #host-ctrl-btn:hover { opacity:1; color:var(--gold2); border-color:var(--gold2); }
 #host-ctrl-panel {
-  position:absolute; top:42px; left:100px; z-index:320;
+  position:absolute; top:42px; right:10px; z-index:320;
   display:none;
   background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
   border:1.5px solid rgba(212,168,67,.4); border-radius:10px;
@@ -2558,7 +2557,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* ── Feature 1: Assist Panel ─────────────────────────────── */
 /* ── In-game audio control ────────────────────────── */
 #audio-btn {
-  position:absolute; right:10px; top:10px; z-index:300;
+  /* 已移入 #topbar-right，不再使用 absolute 定位 */
   background:linear-gradient(160deg,rgba(22,11,3,.95),rgba(38,20,6,.92));
   border:1.5px solid rgba(180,130,55,.4); border-radius:8px;
   padding:5px 10px; color:rgba(212,168,67,.7);
@@ -3369,13 +3368,27 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
   </div>
 
-<!-- UI overlays inside tbl (scale with board) -->
-  <button id="pause-btn" onclick="Game.togglePause()">⏸ 暫停</button>
-  <button id="leave-btn" onclick="Game.leaveAndSave()" title="儲存牌局並返回大廳（AI 代打）">🚪 離開</button>
-  <button id="host-round-start-btn" onclick="Game.hostStartRound()" title="房主：開始下一局">▶ 開始</button>
-  <button id="autoplay-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
-  <!-- In-game audio control -->
-  <button id="audio-btn" onclick="Game.toggleAudioPanel()" title="音效 &amp; 音樂">🔊</button>
+<!-- ═══ TopBar：所有頂部按鈕統一放在 flex 容器，杜絕 absolute 重疊 ═══ -->
+  <div id="game-topbar">
+    <!-- 左側：系統操作 -->
+    <div id="topbar-left">
+      <button id="pause-btn" class="tb-btn" onclick="Game.togglePause()">⏸ 暫停</button>
+      <button id="leave-btn" class="tb-btn" onclick="Game.leaveAndSave()" title="儲存牌局並返回大廳（AI 代打）">🚪 離開</button>
+    </div>
+    <!-- 右側：控制工具（房主開局、速度、自動、音效） -->
+    <div id="topbar-right">
+      <button id="host-round-start-btn" class="tb-btn" onclick="Game.hostStartRound()" title="房主：開始下一局">▶ 開始</button>
+      <button id="host-ctrl-btn" onclick="Game.toggleHostPanel()">🎮 房主</button>
+      <div id="speed-panel">
+        <button class="spd-btn" id="spd-slow" onclick="Game.setSpeed('slow')">慢</button>
+        <button class="spd-btn active" id="spd-normal" onclick="Game.setSpeed('normal')">正常</button>
+        <button class="spd-btn" id="spd-fast" onclick="Game.setSpeed('fast')">快</button>
+        <button class="spd-btn" id="spd-turbo" onclick="Game.setSpeed('turbo')">極快</button>
+      </div>
+      <button id="autoplay-btn" class="tb-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
+      <button id="audio-btn" onclick="Game.toggleAudioPanel()" title="音效 &amp; 音樂">🔊</button>
+    </div>
+  </div>
   <div id="audio-panel">
     <div class="aud-row">
       <span>🔊 音效</span>
@@ -3398,15 +3411,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     </div>
   </div>
 
-  <div id="speed-panel" title="AI 出牌速度">
-    <button class="spd-btn" id="spd-slow" onclick="Game.setSpeed('slow')">慢</button>
-    <button class="spd-btn active" id="spd-normal" onclick="Game.setSpeed('normal')">正常</button>
-    <button class="spd-btn" id="spd-fast" onclick="Game.setSpeed('fast')">快</button>
-    <button class="spd-btn" id="spd-turbo" onclick="Game.setSpeed('turbo')">極快</button>
-  </div>
-
-  <!-- 房主控制（連線模式房主專用） -->
-  <button id="host-ctrl-btn" onclick="Game.toggleHostPanel()">🎮 房主</button>
+  <!-- speed-panel 與 host-ctrl-btn 已移入 #game-topbar #topbar-right，此處保留 host-ctrl-panel dropdown -->
   <div id="host-ctrl-panel">
     <div class="hcp-title">🎮 房主控制</div>
     <div class="hcp-row">
@@ -4557,6 +4562,8 @@ const Game={
     const gEl=document.getElementById('game');
     gEl.classList.add('show');
     setTimeout(updateTblVars, 50);
+    // 顯示 TopBar 容器，再由 _applyOnlineRole 控制各按鈕可見性
+    document.getElementById('game-topbar').style.display='flex';
     document.getElementById('pause-btn').style.display='block';
     document.getElementById('leave-btn').style.display='block';
     this._applyOnlineRole();
@@ -4621,6 +4628,7 @@ const Game={
     document.getElementById('lobby').style.display='none';
     const gEl=document.getElementById('game');gEl.classList.add('show');
     setTimeout(updateTblVars,50);
+    document.getElementById('game-topbar').style.display='flex';
     document.getElementById('pause-btn').style.display='block';
     document.getElementById('leave-btn').style.display='block';
     document.getElementById('speed-panel').style.display='flex';
@@ -7439,10 +7447,13 @@ const Game={
     document.getElementById('wov').style.display='none';
     document.getElementById('match-ov').style.display='none';
     document.getElementById('game').classList.remove('show');
+    // 隱藏 TopBar 本體（返回大廳時整個 bar 消失）
+    document.getElementById('game-topbar').style.display='none';
     document.getElementById('speed-panel').style.display='none';
     document.getElementById('autoplay-btn').style.display='none';
     document.getElementById('leave-btn').style.display='none';
     document.getElementById('audio-btn').style.display='none';
+    document.getElementById('host-round-start-btn').style.display='none';
     document.getElementById('audio-panel').classList.remove('open');
     this.autoPlay=false;
     document.getElementById('autoplay-btn').classList.remove('on');
