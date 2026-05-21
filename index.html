@@ -3142,7 +3142,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.15</div>
+    <div class="lver">v1.6.16</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -3605,7 +3605,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div class="wmon" id="wmon"></div>
   <div class="whands" id="whands"></div>
   <div class="wact">
-    <button class="btn bp" style="width:auto;padding:9px 28px" onclick="Game.newRound()">下一局</button>
+    <button class="btn bp" style="width:auto;padding:9px 28px" id="wov-next-btn" onclick="Game.nextRoundFromOverlay()">下一局</button>
     <button class="btn" style="width:auto;padding:9px 18px;background:rgba(80,120,80,.18);border:1px solid rgba(100,180,100,.35);color:#7dd4a8" onclick="Game.peekBoard()">👁 查看牌桌</button>
     <button class="btn" style="width:auto;padding:9px 20px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:var(--txt)" onclick="Game.returnLobby()">返回大廳</button>
   </div>
@@ -6165,13 +6165,13 @@ const Game={
       const isSeq     = g => g.type==='chi'||(g.type==='set'&&!g.triple);
       const triplets  = allGroups.filter(isTriplet);
       const seqs      = allGroups.filter(isSeq);
-      const nGroups   = allGroups.length; // should be 4
+      const nGroups   = allGroups.length; // Taiwan 16-tile: 5 groups (5×3 + pair = 17 tiles)
 
-      // ⑤ 對對胡 +4 (all 4 groups are triplets/kongs)
-      if(triplets.length===4) add(4,'對對胡 +4台');
+      // ⑤ 對對胡/碰碰胡 +4 (all groups are triplets/kongs)
+      if(triplets.length===nGroups) add(4,'碰碰胡 +4台');
 
-      // ⑥ 平胡 +1 (all 4 groups are sequences, no open melds)
-      if(seqs.length===4 && !hasOpenMeld) add(1,'平胡 +1台');
+      // ⑥ 平胡 +1 (all groups are sequences, no open melds)
+      if(seqs.length===nGroups && !hasOpenMeld) add(1,'平胡 +1台');
 
       // ⑦ 一色三順 +3 (same suit + same value-combo sequence, appears 3 times)
       if(seqs.length>=3){
@@ -6199,8 +6199,8 @@ const Game={
       if(dragonTrip.length===3)               add(6,'大三元 +6台');
       else if(dragonTrip.length===2&&dragonPair) add(3,'小三元 +3台');
 
-      // ⑩ 四暗刻 +6 (four concealed triplets, no open melds)
-      if(triplets.length===4 && !hasOpenMeld) add(6,'四暗刻 +6台');
+      // ⑩ 五暗刻 +6 (all concealed triplets, no open melds) — Taiwan 16-tile has 5 groups
+      if(triplets.length===nGroups && !hasOpenMeld) add(6,'五暗刻 +6台');
 
       // ⑪ 混一色 +3 (exactly one number suit + honor tiles, not all honor)
       const numSuits = new Set(allTiles.filter(t=>t.s!=='honor').map(t=>t.s));
@@ -6741,7 +6741,10 @@ const Game={
       }
     }
     // Info box (top-right)
-    const roundLabel=s.roundNum?`${s.roundWind||'東'}${s.roundNum%4||4}局`:(s.roundWind||'東')+'風';
+    // v1.6.16: 更清楚的局數標示，避免「東3局」被誤解為「第3家」
+    const rw=s.roundWind||'東';
+    const rn=s.roundNum||1;
+    const roundLabel=`${rw}風 第${rn}局`;
     document.getElementById('ib-wind').textContent=roundLabel;
     const deckEl=document.getElementById('ib-deck');
     deckEl.textContent=s.deck.length;
@@ -6766,7 +6769,9 @@ const Game={
       return`<div class="ib-sc"><span class="sn">${n.slice(0,5)}</span><span class="sm${m<0?' neg':''}">${m>=0?'$':'-$'}${Math.abs(m).toLocaleString()}${w?' 🏆'+w:''}</span></div>`;
     }).join('');
     // Center panel
-    document.getElementById('rwind').textContent=(s.roundWind||'東')+'風'+(s.honba>0?` ${s.honba}本`:'');
+    // v1.6.16: 中央圓圈顯示 連莊 字樣，避免和風向混淆
+    const honbaTxt=s.honba>0?` ${s.honba}連莊`:'';
+    document.getElementById('rwind').textContent=(s.roundWind||'東')+'風'+honbaTxt;
     if(s.dice) document.getElementById('cdice').textContent=nums[s.dice[0]]+nums[s.dice[1]];
     // Compass score badges: p2=N, p3=W, p0=S(me), p1=E
     [{id:'ps-N',p:2},{id:'ps-S',p:0},{id:'ps-W',p:3},{id:'ps-E',p:1}].forEach(({id,p})=>{
@@ -7730,6 +7735,18 @@ const Game={
     this._proceedNewRound(); // 單機 or 無人類客戶端：直接開始
   },
 
+  // v1.6.16：結算畫面「下一局」按鈕的入口
+  // 非主機玩家：關閉 overlay 等主機廣播 host_start_round，不自行發牌
+  // 主機/單機：走正常 newRound() 流程
+  nextRoundFromOverlay(){
+    if(this._online&&!this._isHost){
+      document.getElementById('wov').style.display='none';
+      this.toast('等待房主開始下一局…',0);
+      return;
+    }
+    this.newRound();
+  },
+
   _proceedNewRound(){
     const p=this._pendingRoundParams;
     if(!p){return;}
@@ -8395,7 +8412,12 @@ const Online = {
       case 'host_restart':
         if(!Game._isHost) Game.toast('房主重啟牌局中…',2000);
         break;
-      case 'host_start_round': if(!Game._isHost) Game.newRound(); break;
+      case 'host_start_round':
+        if(!Game._isHost){
+          Game.toast('房主已開始下一局！',1500); // 清除等待提示
+          Game.newRound();
+        }
+        break;
       case 'game_state':
         if(!Game._isHost && data.state){
           // 【Bug1修復】局已結算（phase=ended）時，game_state 廣播可能帶著 winData，
