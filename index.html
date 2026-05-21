@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.9</div>
+    <div class="lver">v1.6.10</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -3609,12 +3609,25 @@ function is7p(tiles){
   }
   return false;
 }
+// isShiSanYaoHand: all 13 terminal/honor types present, and every tile is a terminal or honor
+// Works for both 13-tile (14 tiles) and 16-tile (17 tiles) game variants
+function isShiSanYaoHand(tiles){
+  const req=[
+    {s:'man',v:1},{s:'man',v:9},{s:'pin',v:1},{s:'pin',v:9},
+    {s:'sou',v:1},{s:'sou',v:9},
+    {s:'honor',v:0},{s:'honor',v:1},{s:'honor',v:2},{s:'honor',v:3},
+    {s:'honor',v:4},{s:'honor',v:5},{s:'honor',v:6}
+  ];
+  if(!req.every(r=>tiles.some(t=>t.s===r.s&&t.v===r.v)))return false;
+  return tiles.every(t=>t.s==='honor'||(t.v===1||t.v===9));
+}
 // canWin: Taiwan 16-tile — must have exactly 1 pair (眼) + melds
 // valid tile counts after flowers removed: 2, 5, 8, 11, 14, 17 (= n*3+2)
 // meldCount: number of existing melds (used to enforce 門清 for 八對子)
 function canWin(hand,drawn,meldCount=0){
   const p=[...(drawn?[...hand,drawn]:hand)].filter(x=>!x.fl);
   if(p.length===16&&meldCount===0&&is7p(p))return true;  // 八對半放炮胡（門清）
+  if(meldCount===0&&isShiSanYaoHand(p))return true;       // 十三么（門清）
   if(p.length<2||(p.length-2)%3!==0)return false;
   if(p.length===14&&meldCount===0&&is7p(p))return true;  // 七對放炮（門清）
   const t=sortH(p);
@@ -5944,7 +5957,7 @@ const Game={
       s.turn=p;s.drawnId=null;
       this.log(`${s.names[p]} 加槓`);this.ann('kong');this.render();
     } else {
-      // 暗槓 — dark:true 讓 render 時中間兩張反蓋
+      // 暗槓 — dark:true 讓 render 時四張全反蓋（台灣慣例）
       tiles.forEach(t=>{const i=s.hands[p].findIndex(h=>h.id===t.id);if(i>=0)s.hands[p].splice(i,1)});
       s.melds[p].push({type:'kong',tiles:[...tiles],dark:true});
       s.turn=p;s.drawnId=null;
@@ -6062,8 +6075,8 @@ const Game={
       const hasHonor = allTiles.some(t=>t.s==='honor');
       if(numSuits.size===1 && hasHonor) add(3,'混一色 +3台');
 
-      // ⑫ 清一色 +3 (one number suit only, no honors)
-      if(numSuits.size===1 && !hasHonor) add(3,'清一色 +3台');
+      // ⑫ 清一色 +5 (one number suit only, no honors)
+      if(numSuits.size===1 && !hasHonor) add(5,'清一色 +5台');
 
       // ⑬ 幺九刻 +1 each (triplet containing 1, 9, or honor)
       if(hasMed){
@@ -6133,18 +6146,9 @@ const Game={
     // ㉑ 槓上開花 +2 (self-draw win on supplemental tile after kong)
     if(selfDraw && s._kongWin) add(2,'槓上開花 +2台');
 
-    // ⑱ 十三么 +13 (thirteen orphans)
-    const isShiSanYao=(()=>{
-      const required=[
-        {s:'man',v:1},{s:'man',v:9},{s:'pin',v:1},{s:'pin',v:9},
-        {s:'sou',v:1},{s:'sou',v:9},
-        {s:'honor',v:0},{s:'honor',v:1},{s:'honor',v:2},{s:'honor',v:3},
-        {s:'honor',v:4},{s:'honor',v:5},{s:'honor',v:6}
-      ];
-      if(allTiles.length!==14&&allTiles.length!==13)return false;
-      return required.every(r=>allTiles.some(t=>t.s===r.s&&t.v===r.v));
-    })();
-    if(isShiSanYao && !hasOpenMeld) add(13,'十三么 +13台');
+    // ⑱ 十三么 +13 (thirteen orphans) — uses shared isShiSanYaoHand helper (supports 16-tile game)
+    const isShiSanYao = !hasOpenMeld && isShiSanYaoHand(allTiles);
+    if(isShiSanYao) add(13,'十三么 +13台');
 
     // ── Payment ──────────────────────────────────────────────
     const perTai=this.settings.tai||100;
@@ -6695,12 +6699,11 @@ const Game={
         mg.className='mg'+(isDarkKong?' dark-kong':'');
         meld.tiles.forEach((t,idx)=>{
           let e;
-          if(isDarkKong&&(idx===1||idx===2)){
-            // 暗槓中間兩張反蓋
+          if(isDarkKong){
+            // 暗槓四張全反蓋（台灣慣例）
             e=mkBack(meldSz);e.style.cursor='default';
           } else {
             e=mkTile(t,meldSz);e.style.cursor='default';
-            if(isDarkKong) e.classList.add('dark-kong-outer');
           }
           mg.appendChild(e);
         });
