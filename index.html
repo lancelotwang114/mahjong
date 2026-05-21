@@ -3087,7 +3087,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.2</div>
+    <div class="lver">v1.6.3</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -5062,11 +5062,13 @@ const Game={
     // isRoundOver guard：局已結束，丟棄所有殘留的 AI 思考回調
     if(!s||s.phase!=='playing')return;
     this._setAIThinking(p,true); // D4
-    if(winNow){this._setAIThinking(p,false);this.doWin(p,true);return;}  // AI 永遠宣胡
+    if(winNow){this._setAIThinking(p,false);this.doWin(p,true);return;}  // 永遠宣胡
     const sk=AI.selfKong(s.hands[p],s.melds[p]);
     if(sk&&Math.random()>.5){this._setAIThinking(p,false);this.doSelfKong(p,sk);return;}
-    const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');
+    // p=0（自動打牌模式）：使用防亂打策略，不讓 AI 擅自拆聽牌牌型
+    if(p===0){this.doDiscard(0,this._autoPlayDiscard(0));return;}
     // D4: thinking cleared inside doDiscard→_flyOpponent callback
+    const d=AI.discard(s.hands[p],s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced');
     this.doDiscard(p,d.id);
   },
 
@@ -5845,10 +5847,10 @@ const Game={
       // 【Bug5修復】吃碰後立即重新偵測聽牌（手牌此時 = waiting size = expBase，checkTenpai 可正確計算）
       s.tenpai[0]=false; s.tenpaiT[0]=null;
       this.checkTenpai(0); // 重新計算聽牌狀態（手牌剛好 = expBase，符合 checkTenpai 條件）
-      // autoPlay: let AI pick the discard immediately
+      // autoPlay: 使用防亂打策略立即出牌
       if(this.autoPlay){
-        const d=AI.discard(s.hands[0],s.melds[0],s.discards,s.melds,s.tenpai,s.aiStyle?.[0]||'balanced');
-        setTimeout(()=>this.doDiscard(0,d.id),this.spd('discard'));
+        const discId=this._autoPlayDiscard(0);
+        setTimeout(()=>this.doDiscard(0,discId),this.spd('discard'));
         return;
       }
       // Show riichi button if player can enter tenpai by discarding
@@ -6302,6 +6304,13 @@ const Game={
       Snd.draw();
     }
     const winNow=canWin(s.hands[0].filter(x=>!x.fl));
+    // 【自動打牌模式】：不顯示 UI，直接執行防亂打策略出牌
+    if(this.autoPlay){
+      if(winNow){this.doWin(0,true);return;}
+      const discId=this._autoPlayDiscard(0);
+      setTimeout(()=>this.doDiscard(0,discId),this.spd('discard'));
+      return;
+    }
     // 【聽牌宣告後】riichiMode=true：輪到自己時自動選最佳牌打出，只顯示「停止聽牌」按鈕
     if(this.riichiMode){
       if(winNow){this.doWin(0,true);return;}
@@ -6432,6 +6441,8 @@ const Game={
     const s=this.st;
     // Guard: only start timer when game is live and it's actually this player's turn
     if(!s||s.phase!=='playing'||s.turn!==p)return;
+    // Guard: autoPlay 代打中，p0 不顯示倒數
+    if(p===0&&this.autoPlay)return;
     // Guard: do NOT start turn-timer while a meld offer (吃/碰/槓/胡) is active
     const _ap=document.getElementById('ap');
     if(_ap&&_ap.querySelectorAll('.ab.apo,.ab.ach,.ab.ako,.ab.aw').length>0)return;
@@ -7179,6 +7190,28 @@ const Game={
     const bgmVolEl=document.getElementById('bgm-ig-vol');
     if(bgmVolEl&&bv){bgmVolEl.value=Math.round(+bv*100);document.getElementById('bgm-ig-vol-val').textContent=Math.round(+bv*100)+'%';}
   },
+  // ── 自動打牌選牌策略 ─────────────────────────────────────
+  // 情境A（聽牌）：摸啥打啥，絕不拆牌
+  // 情境B（未聽牌）：優先打摸進的牌，次選孤立字牌，fallback AI
+  _autoPlayDiscard(p){
+    const s=this.st;
+    const hd=s.hands[p].filter(x=>!x.fl);
+    const drawn=s.drawnId?hd.find(t=>t.id===s.drawnId):null;
+    // 情境A：已聽牌（riichiMode 或自動偵測聽牌）
+    if(p===0&&(this.riichiMode||s.tenpai[p])){
+      if(drawn)return drawn.id; // 摸啥打啥，不拆聽牌牌型
+      // 鳴牌後出牌（無 drawnId）：找能維持聽牌的候選
+      const safe=this.findRiichiDiscards(hd,s.melds[p]);
+      return(safe[0]||hd[hd.length-1]).id;
+    }
+    // 情境B：未聽牌，優先打摸進的牌（最保守）
+    if(drawn)return drawn.id;
+    // 鳴牌後出牌：找孤立字牌（無搭子的單張最安全）
+    const isolated=hd.find(t=>t.s==='honor'&&hd.filter(x=>x.s===t.s&&x.v===t.v).length===1);
+    if(isolated)return isolated.id;
+    return AI.discard(hd,s.melds[p],s.discards,s.melds,s.tenpai,s.aiStyle?.[p]||'balanced').id;
+  },
+
   toggleAutoPlay(){
     this.autoPlay=!this.autoPlay;
     const btn=document.getElementById('autoplay-btn');
@@ -7186,15 +7219,21 @@ const Game={
       btn.classList.add('on');
       btn.textContent='🤖 自動 ON';
       this.toast('自動打牌已開啟，AI 將代替你出牌',2000);
-      // If it's currently p0's turn, trigger AI immediately
+      // 立刻接管：若目前輪到 p0 且處於出牌階段，馬上代打
       const s=this.st;
-      if(s&&s.turn===0){
+      if(s&&s.phase==='playing'&&s.turn===0){
+        clearTimeout(this._riichiDiscardTimer);
         this.clearBtns();
-        document.getElementById('ht0').classList.remove('my-turn','meld-alert');
+        document.getElementById('ht0')?.classList.remove('my-turn','meld-alert');
         this.stopTimer();
-        const winNow=canWin(s.hands[0].filter(x=>!x.fl));
-        const delay=this.spd('draw')+~~(Math.random()*(this.spd('draw')*.3));
-        setTimeout(()=>this.doAITurn(0,winNow),delay);
+        const hd=s.hands[0].filter(x=>!x.fl);
+        const winNow=canWin(hd);
+        if(winNow){this.doWin(0,true);return;}
+        const discId=this._autoPlayDiscard(0);
+        setTimeout(()=>{
+          if(this.autoPlay&&this.st&&this.st.phase==='playing'&&this.st.turn===0)
+            this.doDiscard(0,discId);
+        },this.spd('discard'));
       }
     } else {
       btn.classList.remove('on');
@@ -8575,8 +8614,15 @@ document.addEventListener('keydown',e=>{
     }
 
     if(currentMode==='swipe'||(!currentMode&&dy<-40)){
-      if(_isPlayerTurn()&&!_hasBtns()){
-        Game.doDiscard(0,id);
+      if(_isPlayerTurn()){
+        if(_hasBtns()){
+          // 鳴牌提示中上滑：等同點非候選牌 → 自動跳過並打出此牌
+          const s=Game.st;
+          const tile=s&&s.hands[0].find(t=>t.id===id);
+          if(tile)Game.onTile(tile);
+        } else {
+          Game.doDiscard(0,id);
+        }
       }
       return;
     }
