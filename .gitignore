@@ -25,3 +25,10 @@ CLAUDE.md
 
 # Node（如果未來加入）
 node_modules/
+
+# Skill 打包產物（由 .claude/ 生成，可隨時重建，不進 repo）
+*.skill
+
+# zip 操作失敗產生的暫存垃圾（隨機檔名，無副檔名）
+ziChN8IB
+zikIe0bP
