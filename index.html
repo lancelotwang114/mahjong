@@ -3151,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.18</div>
+    <div class="lver">v1.6.19</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -4896,7 +4896,7 @@ const Game={
       log:[],dice:null,
       firstRound:true,   // 天胡/地胡 用：第一圈未有人打牌前為 true
       aiStyle:this.settings.aiStyle||[null,'balanced','balanced','balanced'],
-      _afterKong:false,_kongWin:false,
+      _afterKong:false,_kongWin:false,_renhu:false,_robKong:false,
       honba:honba,       // 本場點：連莊累積
       turnSeq:0,         // 【防雙打】回合序號令牌，每次 doTurn 遞增
     };
@@ -5496,12 +5496,12 @@ const Game={
     if(!rr.length){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
 
     // Win takes absolute priority (any player)
-    // 地胡：莊家第一張打出，閒家胡
-    const isDihu = s.discards[discP].length===1 && s.discards.every((d,i)=>i===discP?d.length===1:d.length===0);
+    // 人胡：莊家第一張打出，閒家以榮和胡牌（未摸牌即胡）
+    const isRenhu = s.discards[discP].length===1 && s.discards.every((d,i)=>i===discP?d.length===1:d.length===0);
+    if(isRenhu) s._renhu=true; // v1.6.19: 人胡旗標（供 doWin 計分使用）
     for(const r of rr){
       const win=r.opts.find(o=>o.type==='win');
       if(win){
-        if(isDihu) win._dihu=true;  // 標記地胡
         if(s.ai.includes(r.p)){
           setTimeout(()=>{if(!this.st||this.st.phase!=='playing')return;this.doWin(r.p,false);},this.spd('reaction'));
         } else if(r.p===0){
@@ -6140,6 +6140,7 @@ const Game={
         if(robbers.length>0){
           // 暫時設定 last 讓 doWin 能找到放槍方
           s.last=addedTile;s.lastP=p;
+          s._robKong=true; // v1.6.19: 搶槓旗標（供 doWin 計分使用）
           const aiRobber=robbers.find(i=>s.ai.includes(i));
           const humanRobber=robbers.find(i=>!s.ai.includes(i));
           if(humanRobber!==undefined){
@@ -6193,111 +6194,112 @@ const Game={
     this._killAllTimers(); // 清掃全部計時器，杜絕勝負後仍有動作繼續執行
     this.clearBtns();this.hideTenpai();
 
-    // ── Taiwan complete scoring ──────────────────────────────
+    // ── Taiwan complete scoring (v1.6.19) ────────────────────────────
     const hand=s.hands[p].filter(x=>!x.fl);
-    const fc=s.flowers[p].length;
     const melds=s.melds[p];
     const allTiles=[...hand,...melds.flatMap(m=>m.tiles)].filter(x=>!x.fl);
     let tai=this.settings.base||1;
     const bon=[`底 ${tai}台`];
     const add=(n,label)=>{tai+=n;bon.push(label);};
-    // E3: 計分模式 — simple=基本台型, standard=+役牌/七對, expert=+清龍/大四喜/本場
-    const mode=this._scoringMode||'standard';
-    const hasMed=mode==='standard'||mode==='expert'; // 役牌、七對、幺九刻 等
-    const hasAdv=mode==='expert'; // 清龍、大四喜/小四喜、三槓子、本場
 
-    // ① 花牌 +1 per flower
-    if(fc>0) add(fc,`花牌 ${fc}台`);
+    // ① 花牌：只計座位對應花（自風 v 和 v+4），最多2台；花槓+2
+    const seatWindV=(p-(s.dealer??0)+4)%4;
+    const myFlowers=s.flowers[p];
+    const matchFc=myFlowers.filter(f=>f.v===seatWindV||f.v===seatWindV+4).length;
+    if(matchFc>0) add(Math.min(matchFc,2),`花牌 ${Math.min(matchFc,2)}台`);
+    const flowerVals=new Set(myFlowers.map(f=>f.v));
+    if([0,1,2,3].every(v=>flowerVals.has(v))) add(2,'四君子 花槓 +2台');
+    if([4,5,6,7].every(v=>flowerVals.has(v))) add(2,'四季 花槓 +2台');
 
-    // ② 天胡 +3 / 地胡 +3 / 自摸 +1
+    // ② 天胡+16 / 人胡+16 / 地胡+16 / 自摸+1
     const isTianhu=selfDraw && s.discards.every(d=>d.length===0) && p===s.dealer;
-    const isDihu  =!selfDraw && s.discards[s.lastP]?.length===1 && s.discards.every((d,i)=>i===s.lastP?d.length===1:d.length===0);
-    if(isTianhu)      add(3,'天胡 +3台');
-    else if(isDihu)   add(3,'地胡 +3台');
+    const isRenhu =!selfDraw && !!s._renhu;
+    const isDihu  =selfDraw && p!==s.dealer && s.discards.every((d,i)=>i===s.dealer?(d.length===1):(d.length===0));
+    if(isTianhu)      add(16,'天胡 +16台');
+    else if(isRenhu)  add(16,'人胡 +16台');
+    else if(isDihu)   add(16,'地胡 +16台');
     else if(selfDraw) add(1,'自摸 +1台');
 
-    // ③ 門清 +1 (no declared melds at all)
-    const hasOpenMeld = melds.length > 0;
+    // ③ 門清 +1（暗槓不算副露）
+    const hasOpenMeld=melds.some(m=>!m.dark);
     if(!hasOpenMeld) add(1,'門清 +1台');
 
-    // ── Analyse hand structure ────────────────────────────────
-    const nonFlower = hand;
-    const is7pHand  = is7p(nonFlower);
+    // ④ 獨聽 +1
+    const waitTiles=s.tenpaiT&&s.tenpaiT[p];
+    const isDokutan=waitTiles&&new Set(waitTiles.map(t=>t.s+'_'+t.v)).size===1;
+    if(isDokutan) add(1,'獨聽 +1台');
+
+    // ⑤ 搶槓 +1
+    if(s._robKong) add(1,'搶槓 +1台');
+
+    // ── 手牌分析 ─────────────────────────────────────────────────────
+    const nonFlower=hand;
+    const is7pHand=is7p(nonFlower);
 
     if(is7pHand){
-      // ④ 七對 / 八對子
-      add(3, nonFlower.length>=16 ? '八對子 +3台' : '七對 +3台');
+      // 七對 / 八對子
+      add(3,nonFlower.length>=16?'八對子 +3台':'七對 +3台');
     } else {
-      // Decompose hand into pair + melds
-      const handGroups = this._analyseHandGroups(nonFlower);
-      const pair       = handGroups.pair;   // {s,v,...}
-      const handMelds  = handGroups.melds;  // [{type,triple,tiles}]
-      const allGroups  = [...melds, ...handMelds]; // all groups including declared
-      // Classify
-      const isTriplet = g => g.type==='pong'||g.type==='kong'||(g.type==='set'&&g.triple);
-      const isSeq     = g => g.type==='chi'||(g.type==='set'&&!g.triple);
-      const triplets  = allGroups.filter(isTriplet);
-      const seqs      = allGroups.filter(isSeq);
-      const nGroups   = allGroups.length; // Taiwan 16-tile: 5 groups (5×3 + pair = 17 tiles)
+      const handGroups=this._analyseHandGroups(nonFlower);
+      const pair=handGroups.pair;
+      const handMelds=handGroups.melds;
+      const allGroups=[...melds,...handMelds];
+      const isTriplet=g=>g.type==='pong'||g.type==='kong'||(g.type==='set'&&g.triple);
+      const isSeq    =g=>g.type==='chi'||(g.type==='set'&&!g.triple);
+      const triplets =allGroups.filter(isTriplet);
+      const seqs     =allGroups.filter(isSeq);
+      const nGroups  =allGroups.length;
 
-      // ⑤ 對對胡/碰碰胡 +4 (all groups are triplets/kongs)
+      // 全求人 +2（所有副露皆公開、只剩對子、非自摸）
+      if(melds.length===5&&melds.every(m=>!m.dark)&&!selfDraw&&hand.length===2)
+        add(2,'全求人 +2台');
+
+      // 碰碰胡 +4
       if(triplets.length===nGroups) add(4,'碰碰胡 +4台');
 
-      // ⑥ 平胡 +1 (all groups are sequences, no open melds)
-      if(seqs.length===nGroups && !hasOpenMeld) add(1,'平胡 +1台');
+      // 平胡 +2（全順子、門清、非自摸、無字牌、非獨聽）
+      if(seqs.length===nGroups&&!hasOpenMeld&&!selfDraw
+         &&!allTiles.some(t=>t.s==='honor')&&!isDokutan)
+        add(2,'平胡 +2台');
 
-      // ⑦ 一色三順 +3 (same suit + same value-combo sequence, appears 3 times)
-      if(seqs.length>=3){
-        const seqKey = g => g.tiles ? `${g.tiles[0].s}-${g.tiles.map(t=>t.v).sort((a,b)=>a-b).join('')}` : '';
-        const cnt={};
-        seqs.forEach(g=>{const k=seqKey(g);cnt[k]=(cnt[k]||0)+1;});
-        if(Object.values(cnt).some(c=>c>=3)) add(3,'一色三順 +3台');
-      }
+      // 門清一摸三 +3（門清 + 自摸）
+      if(!hasOpenMeld&&selfDraw) add(3,'門清一摸三 +3台');
 
-      // ⑧ 字一色 +5 (all tiles are honors)
-      if(allTiles.every(t=>t.s==='honor')) add(5,'字一色 +5台');
+      // 字一色 +16
+      if(allTiles.every(t=>t.s==='honor')) add(16,'字一色 +16台');
 
-      // ⑧b 斷么 +1 (all number tiles are 2–8, no 1/9/字)
-      const hasNoTermHon=allTiles.every(t=>t.s!=='honor'&&t.v>=2&&t.v<=8);
-      if(hasNoTermHon) add(1,'斷么 +1台');
+      // 三元牌：大三元 +8 / 小三元 +4
+      const dragonTrip=triplets.filter(g=>{const t=g.tiles&&g.tiles[0];return t&&t.s==='honor'&&t.v>=4;});
+      const dragonPair=pair&&pair.s==='honor'&&pair.v>=4;
+      if(dragonTrip.length===3)                  add(8,'大三元 +8台');
+      else if(dragonTrip.length===2&&dragonPair) add(4,'小三元 +4台');
 
-      // ⑨ 三元牌 analysis
-      // TN.honor = ['東','南','西','北','中','白','發'] → v=0..6
-      // 三元牌: 中=v4, 白=v5, 發=v6
-      const dragonTrip = triplets.filter(g=>{
-        const t=g.tiles&&g.tiles[0];
-        return t && t.s==='honor' && t.v>=4;
-      });
-      const dragonPair = pair && pair.s==='honor' && pair.v>=4;
-      if(dragonTrip.length===3)               add(6,'大三元 +6台');
-      else if(dragonTrip.length===2&&dragonPair) add(3,'小三元 +3台');
+      // 暗刻：五暗刻 +8 / 四暗刻 +5 / 三暗刻 +2（互斥，取最高）
+      const concealedTrips=handMelds.filter(g=>g.type==='set'&&g.triple).length
+                           +melds.filter(m=>m.dark).length;
+      if(triplets.length===nGroups&&!hasOpenMeld) add(8,'五暗刻 +8台');
+      else if(concealedTrips>=4)                  add(5,'四暗刻 +5台');
+      else if(concealedTrips>=3)                  add(2,'三暗刻 +2台');
 
-      // ⑩ 五暗刻 +6 (all concealed triplets, no open melds) — Taiwan 16-tile has 5 groups
-      if(triplets.length===nGroups && !hasOpenMeld) add(6,'五暗刻 +6台');
+      // 混一色 +4 / 清一色 +8
+      const numSuits=new Set(allTiles.filter(t=>t.s!=='honor').map(t=>t.s));
+      const hasHonor=allTiles.some(t=>t.s==='honor');
+      if(numSuits.size===1&&hasHonor)  add(4,'混一色 +4台');
+      if(numSuits.size===1&&!hasHonor) add(8,'清一色 +8台');
 
-      // ⑪ 混一色 +3 (exactly one number suit + honor tiles, not all honor)
-      const numSuits = new Set(allTiles.filter(t=>t.s!=='honor').map(t=>t.s));
-      const hasHonor = allTiles.some(t=>t.s==='honor');
-      if(numSuits.size===1 && hasHonor) add(3,'混一色 +3台');
+      // 大四喜 +16 / 小四喜 +8
+      const windTripVals=new Set(
+        triplets.filter(g=>g.tiles&&g.tiles[0]&&g.tiles[0].s==='honor'&&g.tiles[0].v<=3)
+                .map(g=>g.tiles[0].v)
+      );
+      const pairIsWind=pair&&pair.s==='honor'&&pair.v<=3;
+      if(windTripVals.size===4)                  add(16,'大四喜 +16台');
+      else if(windTripVals.size===3&&pairIsWind) add(8,'小四喜 +8台');
 
-      // ⑫ 清一色 +5 (one number suit only, no honors)
-      if(numSuits.size===1 && !hasHonor) add(5,'清一色 +5台');
-
-      // ⑬ 幺九刻 +1 each (triplet containing 1, 9, or honor)
-      if(hasMed){
-        let yj=0;
-        triplets.forEach(g=>{
-          const t=g.tiles&&g.tiles[0];
-          if(t&&(t.s==='honor'||t.v===1||t.v===9)) yj++;
-        });
-        if(yj>0) add(yj,`幺九刻 +${yj}台`);
-      }
-
-      // ⑭ 役牌：圈風刻子 +1 / 自風刻子 +1
-      if(hasMed){
+      // 役牌：圈風刻子 +1 / 自風刻子 +1
+      {
         const windNames=['東','南','西','北'];
         const roundWindV=windNames.indexOf(s.roundWind||'東');
-        const seatWindV=(p-(s.dealer??0)+4)%4;
         triplets.forEach(g=>{
           const t=g.tiles&&g.tiles[0];
           if(!t||t.s!=='honor'||t.v>3)return;
@@ -6305,54 +6307,17 @@ const Game={
           if(t.v===seatWindV)  add(1,`自風（${windNames[t.v]}）刻子 +1台`);
         });
       }
-
-      // ⑮ 三槓子 +3 (three kongs in allGroups)
-      if(hasAdv){
-        const kongCount=allGroups.filter(g=>g.type==='kong').length;
-        if(kongCount>=3) add(3,`三槓子 +3台`);
-      }
-
-      // ⑯ 清龍 +3 (sequences 1-2-3, 4-5-6, 7-8-9 same suit across all groups)
-      if(hasAdv){
-        for(const suit of ['man','pin','sou']){
-          const suitSeqs=allGroups.filter(g=>isSeq(g)&&g.tiles&&g.tiles[0].s===suit);
-          const hasBlock=(mn)=>suitSeqs.some(g=>{
-            const vs=g.tiles.map(t=>t.v).sort((a,b)=>a-b);
-            return vs[0]===mn&&vs[1]===mn+1&&vs[2]===mn+2;
-          });
-          if(hasBlock(1)&&hasBlock(4)&&hasBlock(7)){add(3,'清龍 +3台');break;}
-        }
-      }
-
-      // ⑰ 大四喜 +6 / 小四喜 +3
-      if(hasAdv){
-        const windTripVals=new Set(
-          triplets.filter(g=>g.tiles&&g.tiles[0]&&g.tiles[0].s==='honor'&&g.tiles[0].v<=3)
-                  .map(g=>g.tiles[0].v)
-        );
-        const pairIsWind=pair&&pair.s==='honor'&&pair.v<=3;
-        if(windTripVals.size===4)                          add(6,'大四喜 +6台');
-        else if(windTripVals.size===3&&pairIsWind)         add(3,'小四喜 +3台');
-      }
     }
 
-    // 聽牌（宣告聽牌者胡牌加台）
-    if(s.riichiPlayers && s.riichiPlayers[p]) add(1,'聽牌 +1台');
+    // 海底撈月 +1 / 河底撈魚 +1
+    if(selfDraw&&s.deck.length===0)  add(1,'海底撈月 +1台');
+    if(!selfDraw&&s.deck.length===0) add(1,'河底撈魚 +1台');
 
-    // ⑱ 莊家加台 +1
-    if(p === (s.dealer??0)) add(1,'莊家 +1台');
+    // 槓上開花 +1
+    if(selfDraw&&s._kongWin) add(1,'槓上開花 +1台');
 
-    // ⑲ 海底撈月 +1 (self-draw on very last tile from deck)
-    if(selfDraw && s.deck.length === 0) add(1,'海底撈月 +1台');
-
-    // ⑳ 河底撈魚 +1 (win on discard when deck is empty)
-    if(!selfDraw && s.deck.length === 0) add(1,'河底撈魚 +1台');
-
-    // ㉑ 槓上開花 +2 (self-draw win on supplemental tile after kong)
-    if(selfDraw && s._kongWin) add(2,'槓上開花 +2台');
-
-    // ⑱ 十三么 +13 (thirteen orphans) — uses shared isShiSanYaoHand helper (supports 16-tile game)
-    const isShiSanYao = !hasOpenMeld && isShiSanYaoHand(allTiles);
+    // 十三么 +13
+    const isShiSanYao=!hasOpenMeld&&isShiSanYaoHand(allTiles);
     if(isShiSanYao) add(13,'十三么 +13台');
 
     // ── Payment ──────────────────────────────────────────────
@@ -6365,8 +6330,8 @@ const Game={
       s.money[payer]-=total*3;
       s.money[p]+=total*3;
     }
-    // 本場加計：每本場 100 籌，各人額外支付（僅 expert 模式）
-    const honba=(hasAdv)?s.honba||0:0;
+    // 本場加計：每本場 100 籌，各人額外支付
+    const honba=s.honba||0;
     if(honba>0){
       const honbaPay=honba*100;
       if(selfDraw){
