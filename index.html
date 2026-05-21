@@ -2217,17 +2217,18 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 
 /* ══ TENPAI PLAYER GLOW EFFECTS ════════════════════════════ */
+/* ── 聽牌視覺：紅色脈衝，絕對不與出牌金色光暈混淆 ───────── */
 @keyframes tenpaiBreath {
-  0%,100% { box-shadow: 0 0 12px rgba(255,215,0,.5), 0 0 24px rgba(255,215,0,.25), inset 0 0 8px rgba(255,215,0,.08); }
-  50%     { box-shadow: 0 0 22px rgba(255,215,0,.85), 0 0 44px rgba(255,215,0,.45), inset 0 0 14px rgba(255,215,0,.16); }
+  0%,100% { box-shadow: 0 0 8px rgba(200,40,40,.4), 0 0 18px rgba(200,40,40,.18); }
+  50%     { box-shadow: 0 0 18px rgba(220,60,60,.75), 0 0 36px rgba(200,40,40,.35); }
 }
 @keyframes tenpaiFloat {
   0%,100% { transform: translateY(0px); }
   50%     { transform: translateY(-3px); }
 }
-/* Glow applied to player area containers */
+/* 聽牌玩家區塊：紅色微光（不干擾出牌金光） */
 .tenpai-glow {
-  animation: tenpaiBreath 2s ease-in-out infinite;
+  animation: tenpaiBreath 2.4s ease-in-out infinite;
   border-radius: 8px;
   transition: box-shadow .3s;
 }
@@ -2235,23 +2236,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .tenpai-float-tiles .t {
   animation: tenpaiFloat 2.2s ease-in-out infinite;
 }
-/* Enhanced tpbadge when tenpai is active */
+/* 聽牌 SVG 圖標容器：無文字、無動畫、僅控制顯示 */
 .tpbadge {
   display: none;
-  font-size: .58rem;
-  font-weight: 900;
-  font-family: 'Noto Serif TC', serif;
-  color: #ffd700;
-  background: rgba(20,10,0,.82);
-  border: 1px solid rgba(255,215,0,.75);
-  border-radius: 4px;
-  padding: 1px 4px;
-  letter-spacing: .04em;
-  text-shadow: 0 0 8px rgba(255,215,0,.8);
-  box-shadow: 0 0 6px rgba(255,215,0,.45);
   vertical-align: middle;
   margin-left: 4px;
-  animation: tenpaiBreath 2s ease-in-out infinite;
+  flex-shrink: 0;
+  line-height: 0;
 }
 
 #hand-bar {
@@ -3276,7 +3267,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
           <span class="pnm" id="pn2">P3</span>
           <span class="pmoney" id="pm2">$10,000</span>
         </div>
-        <span class="tpbadge" id="tp2">聽</span>
+        <span class="tpbadge" id="tp2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
       </div>
       <div class="ma" id="ma2"></div>
       <div class="ht" id="ht2"></div>
@@ -3293,7 +3284,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
           <span class="pnm" id="pn3">P4</span>
           <span class="pmoney" id="pm3">$10,000</span>
         </div>
-        <span class="tpbadge" id="tp3">聽</span>
+        <span class="tpbadge" id="tp3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
       </div>
       <div class="ma" id="ma3"></div>
       <div class="ht" id="ht3"></div>
@@ -3310,7 +3301,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
           <span class="pnm" id="pn1">P2</span>
           <span class="pmoney" id="pm1">$10,000</span>
         </div>
-        <span class="tpbadge" id="tp1">聽</span>
+        <span class="tpbadge" id="tp1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
       </div>
       <div class="ma" id="ma1"></div>
       <div class="ht" id="ht1"></div>
@@ -3354,7 +3345,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
           <span class="pnm" id="pn0">我</span>
           <span class="pmoney" id="pm0">$10,000</span>
         </div>
-        <span class="tpbadge" id="tp0">聽</span>
+        <span class="tpbadge" id="tp0"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
         <span id="fld"></span>
       </div>
       <div class="tbar"><div class="tfill" id="tf0"></div></div>
@@ -5601,6 +5592,17 @@ const Game={
     }
     ov.classList.add('active');
 
+    // 【自動顯示牌組預覽】—— 讓玩家一眼看清點擊後會拿到什麼牌組
+    if(pongOpt){
+      this.showMeldPreview(sortH([...pongOpt.tiles,tile]),'碰 — 點擊手牌確認');
+    } else if(kongOpt){
+      this.showMeldPreview(sortH([...kongOpt.tiles,tile]),'槓 — 點擊手牌確認');
+    } else if(chiOpts.length===1){
+      this.showMeldPreview(sortH([...chiOpts[0].tiles,tile]),'吃 — 點擊手牌確認');
+    } else if(chiOpts.length>1){
+      this.showMeldPreview(sortH([...chiOpts[0].tiles,tile]),`吃 — ${chiOpts.length} 種組合，點手牌選擇`);
+    }
+
     // C4: 鳴牌倒數 — 固定 10 秒自動跳過（含視覺進度條）
     this._startMeldCountdown(10);
   },
@@ -6369,9 +6371,18 @@ const Game={
     // If hand is in drawn state (exp+1) or other size, do NOT clear tenpai — just skip recalc.
     // Tenpai status set after a discard remains valid until the next discard clears it.
     if(hand.length!==exp)return;
+    const wasTenpai=s.tenpai[p];
     const wt=tenpaiTiles(hand,s.melds[p]);
     s.tenpai[p]=wt.length>0;s.tenpaiT[p]=wt.length?wt:null;
     if(wt.length&&p===0)Snd.tenpai();
+    // 新聽牌時：全場語音廣播 + 連線封包
+    if(!wasTenpai&&s.tenpai[p]){
+      const name=s.names&&s.names[p]||`玩家${p}`;
+      this.speakTing(name);
+      if(this._online&&this._isHost&&typeof MahjongNetwork!=='undefined'){
+        MahjongNetwork.broadcast({type:'broadcast_ting',playerName:name,playerIdx:p});
+      }
+    }
   },
 
   // ── 防禦性手牌張數校驗 ─────────────────────────────────
