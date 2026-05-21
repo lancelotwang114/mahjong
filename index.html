@@ -3151,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.23</div>
+    <div class="lver">v1.6.25</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -3221,6 +3221,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
           <label class="fl">出牌限時</label>
           <select class="fi" id="stime">
             <option value="0">無限制</option>
+            <option value="5">5秒</option>
             <option value="8">8秒</option>
             <option value="12">12秒</option>
             <option value="15" selected>15秒</option>
@@ -3310,6 +3311,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
                 <label class="fl">出牌限時</label>
                 <select class="fi" id="stime-online">
                   <option value="0">無限制</option>
+                  <option value="5">5秒</option>
                   <option value="8">8秒</option>
                   <option value="12">12秒</option>
                   <option value="15" selected>15秒</option>
@@ -6341,9 +6343,10 @@ const Game={
     if(selfDraw){
       for(let i=0;i<4;i++) if(i!==p){s.money[i]-=total;s.money[p]+=total;}
     } else {
+      // 放槍：只由放槍者支付面額（不包賠）
       const payer=s.lastP;
-      s.money[payer]-=total*3;
-      s.money[p]+=total*3;
+      s.money[payer]-=total;
+      s.money[p]+=total;
     }
     // 本場加計：每本場 100 籌，各人額外支付
     const honba=s.honba||0;
@@ -6352,7 +6355,7 @@ const Game={
       if(selfDraw){
         for(let i=0;i<4;i++){if(i!==p){s.money[i]-=honbaPay;s.money[p]+=honbaPay;}}
       } else {
-        s.money[s.lastP]-=honbaPay*3;s.money[p]+=honbaPay*3;
+        s.money[s.lastP]-=honbaPay;s.money[p]+=honbaPay;
       }
       bon.push(`本場 ${honba}本 ×100`);
     }
@@ -7268,12 +7271,10 @@ const Game={
     const payerName=wd.loserName||(wd.payer>=0?s.names[wd.payer]||'?':'');
     const isMe=wd.p===0;
     document.getElementById('wtit').textContent=isMe?'🎉 你胡了！':`${pn} 胡牌！`;
-    // v1.6.20: 放槍時顯示實際扣款 = total×3，自摸顯示每家付額
-    const actualPayment = wd.selfDraw ? wd.total : wd.total * 3;
-    const payTxt=wd.selfDraw?`自摸（各家付 $${wd.total.toLocaleString()}）`:`${payerName} 放槍（×3）`;
+    const payTxt=wd.selfDraw?`自摸（各家付 $${wd.total.toLocaleString()}）`:`${payerName} 放槍`;
     const mainBon=wd.bon.filter(b=>!b.startsWith('底'));
     const handDesc=mainBon.length?` ✦ ${mainBon.join(' · ')}`:'';
-    document.getElementById('wtai').textContent=`${wd.tai}台 × $${wd.perTai}${wd.selfDraw?'':' ×3'} = $${actualPayment.toLocaleString()}（${payTxt}）${handDesc}`;
+    document.getElementById('wtai').textContent=`${wd.tai}台 × $${wd.perTai} = $${wd.total.toLocaleString()}（${payTxt}）${handDesc}`;
     document.getElementById('wbon').innerHTML=wd.bon.map(b=>`<span class="wchip">${b}</span>`).join('');
     document.getElementById('wmon').innerHTML=s.names.map((n,i)=>{const m=s.money[i];return`<span style="margin:0 6px;color:${m<0?'#e74c3c':'#2ecc71'}">${n}: $${m.toLocaleString()}</span>`;}).join('');
     // Show all hands with set highlighting for winner
