@@ -4694,33 +4694,22 @@ const Game={
   },
 
 
-  // Generate SVG dice face — gold-frame style
+  // Generate SVG dice face — dark-blue casino style
   _diceSVG(n, size=90){
-    const dotPos={
-      1:[[50,50,13,'#dd0000']],
-      2:[[32,36,8,'#0044cc'],[68,64,8,'#0044cc']],
-      3:[[28,28,7,'#0044cc'],[50,50,7,'#0044cc'],[72,72,7,'#0044cc']],
-      4:[[30,30,8,'#0044cc'],[70,30,8,'#0044cc'],[30,70,8,'#0044cc'],[70,70,8,'#0044cc']],
-      5:[[30,30,7,'#0044cc'],[70,30,7,'#0044cc'],[50,50,7,'#dd0000'],[30,70,7,'#0044cc'],[70,70,7,'#0044cc']],
-      6:[[30,22,7,'#0044cc'],[70,22,7,'#0044cc'],[30,50,7,'#0044cc'],[70,50,7,'#0044cc'],[30,78,7,'#0044cc'],[70,78,7,'#0044cc']]
+    const D={
+      1:[[50,50,13,'#e03030']],
+      2:[[28,28,7.5,'#f0f0f0'],[72,72,7.5,'#f0f0f0']],
+      3:[[28,28,7,'#f0f0f0'],[50,50,7,'#f0f0f0'],[72,72,7,'#f0f0f0']],
+      4:[[28,28,7,'#f0f0f0'],[72,28,7,'#f0f0f0'],[28,72,7,'#f0f0f0'],[72,72,7,'#f0f0f0']],
+      5:[[28,28,6.5,'#f0f0f0'],[72,28,6.5,'#f0f0f0'],[50,50,6.5,'#e03030'],[28,72,6.5,'#f0f0f0'],[72,72,6.5,'#f0f0f0']],
+      6:[[28,22,6.5,'#f0f0f0'],[72,22,6.5,'#f0f0f0'],[28,50,6.5,'#f0f0f0'],[72,50,6.5,'#f0f0f0'],[28,78,6.5,'#f0f0f0'],[72,78,6.5,'#f0f0f0']],
     };
-    const pts=dotPos[n]||dotPos[1];
-    const uid='dg'+Math.random().toString(36).slice(2,5);
-    const circles=pts.map(([cx,cy,r,fill])=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`).join('');
-    return`<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="overflow:visible">
-      <defs>
-        <linearGradient id="${uid}" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#fff3c4"/>
-          <stop offset="45%" stop-color="#f7d15d"/>
-          <stop offset="100%" stop-color="#b88216"/>
-        </linearGradient>
-      </defs>
-      <rect x="4" y="4" width="92" height="92" rx="18" fill="#fffdf6" stroke="url(#${uid})" stroke-width="5" filter="drop-shadow(2px 4px 6px rgba(0,0,0,.45))"/>
-      ${circles}
-    </svg>`;
+    const dots=(D[n]||D[1]).map(([cx,cy,r,f])=>`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${f}"/>`).join('');
+    const u='dg'+Math.random().toString(36).slice(2,7);
+    return `<svg width="${size}" height="${size}" viewBox="0 0 100 100" style="overflow:visible;display:block"><defs><linearGradient id="face_${u}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a2e5a"/><stop offset="50%" stop-color="#0d1c3a"/><stop offset="100%" stop-color="#061025"/></linearGradient><linearGradient id="brd_${u}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffe066"/><stop offset="30%" stop-color="#c8960a"/><stop offset="70%" stop-color="#ffd700"/><stop offset="100%" stop-color="#a07010"/></linearGradient><linearGradient id="bvl_${u}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,255,255,.18)"/><stop offset="100%" stop-color="rgba(255,255,255,0)"/></linearGradient></defs><rect x="1" y="1" width="98" height="98" rx="20" fill="none" stroke="rgba(200,158,40,.25)" stroke-width="2"/><rect x="4" y="4" width="92" height="92" rx="17" fill="url(#face_${u})" stroke="url(#brd_${u})" stroke-width="2.5"/><rect x="7" y="7" width="86" height="42" rx="13" fill="url(#bvl_${u})"/><rect x="6" y="6" width="88" height="88" rx="16" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1"/>${dots}</svg>`;
   },
   showDice(){
-    // Quick start: skip dice animation
+    // ── quickStart bypass ─────────────────────────────────
     if(this.settings&&this.settings.quickStart){
       const [d1,d2]=this._hostDice||[1+~~(Math.random()*6),1+~~(Math.random()*6)];
       this._hostDice=null;
@@ -4738,131 +4727,108 @@ const Game={
     const [d1,d2]=this._hostDice||[1+~~(Math.random()*6),1+~~(Math.random()*6)];
     this._hostDice=null;
     this.st.dice=[d1,d2];
-
-    const mkDiceEl=()=>{const d=document.createElement('div');d.className='dice-el';d.style.position='relative';return d;};
-    const e1=mkDiceEl(), e2=mkDiceEl();
     dov.style.display='flex';
-    dbig.innerHTML=''; dbig.appendChild(e1); dbig.appendChild(e2);
-    e1.innerHTML=this._diceSVG(1,90); e2.innerHTML=this._diceSVG(1,90);
-    dtxt.textContent='擲骰中...'; dok.style.display='none';
+    dbig.innerHTML='';
+    dbig.style.cssText='position:relative;width:100%;min-height:230px;display:flex;align-items:center;justify-content:center;overflow:visible;';
+    dtxt.textContent='擲骰中...';dtxt.style.animation='';
+    dok.style.display='none';
 
-    // ── 骰盅搖動 phase ────────────────────────────────
-    // Hide dice during shake, show bowl over them
-    e1.style.opacity='0'; e2.style.opacity='0';
-    const bowl=document.createElement('div');
-    bowl.className='dice-bowl shaking';
-    bowl.innerHTML='<div class="bowl-rim"></div><div class="bowl-glyph">骰</div>';
-    bowl.style.cssText+=';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);';
-    dbig.style.position='relative';
-    dbig.appendChild(bowl);
-    dtxt.textContent='搖骰中...';
-    // Shake sounds
-    const shakeBeat=()=>{ Snd.play(180+Math.random()*80,.04,'square',.06); };
-    const shakeT1=setInterval(shakeBeat,90);
-    setTimeout(()=>{
-      clearInterval(shakeT1);
-      // Lift bowl
-      bowl.classList.remove('shaking');
-      bowl.classList.add('lifting');
-      // Puff dust
-      const puff=document.createElement('div');
-      puff.className='bowl-puff';
-      dbig.appendChild(puff);
-      setTimeout(()=>puff.remove(),600);
-      Snd.play(420,.18,'sine',.18);
-      setTimeout(()=>{
-        bowl.remove();
-        dbig.style.position='';
-        e1.style.opacity=''; e2.style.opacity='';
-        dtxt.textContent='擲骰中...';
-        // 3D spinning during roll
-        e1.classList.remove('spinning');
-        e2.classList.remove('spinning');
-        e1.classList.add('gold-roll-left');
-        e2.classList.add('gold-roll-right');
-        Snd.dice();
-        startRoll();
-      },380);
-    },950);
+    // ── Inject CSS keyframes once ─────────────────────────
+    if(!document.getElementById('_mjDiceCss')){
+      const s=document.createElement('style');s.id='_mjDiceCss';
+      s.textContent=`
+@keyframes _mjTrayIn{0%{opacity:0;transform:scale(.7) translateY(30px)}60%{opacity:1;transform:scale(1.04) translateY(-4px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes _mjTrayPulse{0%,100%{box-shadow:0 0 30px 4px rgba(200,158,40,.35),0 0 80px 10px rgba(200,158,40,.12),inset 0 0 40px rgba(200,158,40,.06)}50%{box-shadow:0 0 50px 10px rgba(220,178,60,.55),0 0 120px 20px rgba(200,158,40,.22),inset 0 0 60px rgba(200,158,40,.12)}}
+@keyframes _mjD1Arc{0%{transform:translate(0,0) rotate(0deg);opacity:1}8%{transform:translate(-18px,-55px) rotate(-324deg)}20%{transform:translate(-55px,-95px) rotate(-864deg)}32%{transform:translate(-90px,-60px) rotate(-1458deg)}40%{transform:translate(-105px,0px) rotate(-1836deg)}42%{transform:translate(-108px,6px) rotate(-1917deg) scaleY(.82)}48%{transform:translate(-98px,-32px) rotate(-2106deg)}58%{transform:translate(-88px,0px) rotate(-2349deg)}60%{transform:translate(-89px,4px) rotate(-2376deg) scaleY(.88)}72%{transform:translate(-82px,-18px) rotate(-2538deg)}82%{transform:translate(-76px,0px) rotate(-2646deg)}84%{transform:translate(-76px,3px) rotate(-2657deg) scaleY(.93)}93%{transform:translate(-74px,-6px) rotate(-2700deg)}100%{transform:translate(-72px,0px) rotate(-2754deg);opacity:1}}
+@keyframes _mjD2Arc{0%{transform:translate(0,0) rotate(0deg);opacity:1}10%{transform:translate(22px,-60px) rotate(410deg)}22%{transform:translate(60px,-100px) rotate(1055deg)}30%{transform:translate(95px,-55px) rotate(1524deg)}38%{transform:translate(110px,0px) rotate(1934deg)}40%{transform:translate(113px,7px) rotate(1992deg) scaleY(.8)}47%{transform:translate(100px,-28px) rotate(2168deg)}56%{transform:translate(90px,0px) rotate(2403deg)}58%{transform:translate(91px,5px) rotate(2426deg) scaleY(.87)}70%{transform:translate(84px,-14px) rotate(2564deg)}80%{transform:translate(78px,0px) rotate(2666deg)}82%{transform:translate(78px,3px) rotate(2678deg) scaleY(.93)}91%{transform:translate(76px,-5px) rotate(2719deg)}100%{transform:translate(74px,0px) rotate(2756deg);opacity:1}}
+@keyframes _mjRollGlow{0%,100%{filter:drop-shadow(0 0 8px rgba(200,158,40,.6)) drop-shadow(0 8px 12px rgba(0,0,0,.8))}50%{filter:drop-shadow(0 0 18px rgba(220,178,60,.9)) drop-shadow(0 10px 16px rgba(0,0,0,.9))}}
+@keyframes _mjSettleGlow{0%{filter:drop-shadow(0 0 20px rgba(220,178,60,1)) drop-shadow(0 12px 20px rgba(0,0,0,.9))}100%{filter:drop-shadow(0 0 10px rgba(200,158,40,.5)) drop-shadow(0 6px 10px rgba(0,0,0,.7))}}
+@keyframes _mjSh1{0%{transform:translate(-50%,0) scaleX(.15);opacity:.1}40%{transform:translate(-50%,0) scaleX(1);opacity:.55}42%{transform:translate(-50%,0) scaleX(.7);opacity:.35}58%{transform:translate(-50%,0) scaleX(.9);opacity:.5}60%{transform:translate(-50%,0) scaleX(.72);opacity:.38}82%{transform:translate(-50%,0) scaleX(.88);opacity:.48}100%{transform:translate(-50%,0) scaleX(.85);opacity:.42}}
+@keyframes _mjSh2{0%{transform:translate(-50%,0) scaleX(.15);opacity:.1}42%{transform:translate(-50%,0) scaleX(1);opacity:.55}44%{transform:translate(-50%,0) scaleX(.68);opacity:.32}60%{transform:translate(-50%,0) scaleX(.92);opacity:.5}62%{transform:translate(-50%,0) scaleX(.70);opacity:.36}83%{transform:translate(-50%,0) scaleX(.87);opacity:.46}100%{transform:translate(-50%,0) scaleX(.84);opacity:.40}}
+@keyframes _mjPtcl{0%{opacity:1;transform:translate(var(--px),var(--py)) scale(1)}100%{opacity:0;transform:translate(calc(var(--px) + var(--dx)),calc(var(--py) - var(--dy))) scale(0)}}
+@keyframes _mjReveal{0%{opacity:0;transform:scale(.88)}60%{opacity:1;transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}`;
+      document.head.appendChild(s);
+    }
 
-    // Deceleration schedule (ms per frame): fast → slow → slam
-    const frames=[75,75,80,85,95,110,130,160,200,260];
-    let step=0;
+    // ── Build tray ────────────────────────────────────────
+    const tray=document.createElement('div');
+    tray.style.cssText='width:360px;height:220px;border-radius:32px;background:radial-gradient(ellipse at 50% 30%,#0a2018 0%,#051210 60%,#020c09 100%);border:2.5px solid rgba(200,158,40,.6);position:relative;overflow:hidden;flex-shrink:0;animation:_mjTrayIn .5s cubic-bezier(.2,.8,.2,1) both,_mjTrayPulse 2.8s ease-in-out .5s infinite;';
+    for(let i=0;i<10;i++){const l=document.createElement('div');l.style.cssText=`position:absolute;left:0;right:0;top:${i*10}%;height:1px;background:rgba(255,255,255,.02);transform:rotate(${i%2?1:-1}deg);`;tray.appendChild(l);}
+    const orn=document.createElement('div');orn.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70px;height:70px;border-radius:50%;border:1px solid rgba(200,158,40,.18);';tray.appendChild(orn);
+    dbig.appendChild(tray);
 
-    const doRoll=()=>{
-      const r1=1+~~(Math.random()*6), r2=1+~~(Math.random()*6);
-      e1.innerHTML=this._diceSVG(r1,86);
-      const lag=Math.floor(frames[step]*0.45);
-      setTimeout(()=>{ e2.innerHTML=this._diceSVG(r2,86); },lag);
-      // Higher-pitched ping after each face change
-      Snd.play(1200+step*40,.03,'sine',.05);
-      step++;
-      if(step<frames.length){
-        setTimeout(doRoll, frames[step-1]);
-      } else {
-        // — Final reveal —
-        setTimeout(()=>{
-          // Remove spinning, show final values with landing animation
-          e1.className='dice-el gold-idle'; e1.style.position='relative';
-          e1.innerHTML=this._diceSVG(d1,100);
-          void e1.offsetWidth;
-          e1.classList.add('landing');
-          Snd.play(500,.12,'square',.08);
-          // Add ring + sparks to e1
-          this._addDiceFx(e1);
-          setTimeout(()=>{
-            e2.className='dice-el gold-idle'; e2.style.position='relative';
-            e2.innerHTML=this._diceSVG(d2,100);
-            void e2.offsetWidth;
-            e2.classList.add('landing');
-            Snd.play(660,.18,'sine',.22);
-            this._addDiceFx(e2);
-          },110);
-          // Gold glow + sum typewriter reveal
-          setTimeout(()=>{
-            e1.classList.add('glow');
-            e2.classList.add('glow');
-            Snd.play(880,.22,'sine',.2);
-            setTimeout(()=>Snd.play(1100,.15,'sine',.15),120);
-            const sum=d1+d2;
-            const dealer=this.st.names[this.st.dealer??0];
-            const fullText=`骰子 ${d1}＋${d2}＝${sum}　莊家：${dealer}`;
-            dtxt.innerHTML='';
-            let ci=0;
-            const typeNext=()=>{
-              if(ci<fullText.length){
-                dtxt.textContent=fullText.slice(0,++ci);
-                setTimeout(typeNext,28);
-              }
-            };
-            typeNext();
-            this.st.phase='playing';
-            this.render();
-            setTimeout(()=>dok.style.display='inline-block',340);
-          },320);
-        },200);
-      }
+    // ── Floor shadows ─────────────────────────────────────
+    [[37,'_mjSh1'],[63,'_mjSh2']].forEach(([lp,an])=>{
+      const sh=document.createElement('div');
+      sh.style.cssText=`position:absolute;left:${lp}%;bottom:26px;width:82px;height:14px;border-radius:50%;background:rgba(0,0,0,.65);filter:blur(5px);animation:${an} 2.0s cubic-bezier(.2,.8,.2,1) .2s both;`;
+      tray.appendChild(sh);
+    });
+
+    // ── Dice stage (centered inside tray) ─────────────────
+    const stage=document.createElement('div');
+    stage.style.cssText='position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);';
+    tray.appendChild(stage);
+
+    const mkDie=(arcAnim)=>{
+      const wrap=document.createElement('div');
+      wrap.style.cssText=`position:absolute;top:-41px;left:-5px;animation:${arcAnim} 2.0s cubic-bezier(.1,.8,.2,1) .2s both;transform-origin:45px 45px;`;
+      const glow=document.createElement('div');
+      glow.style.animation='_mjRollGlow .3s ease-in-out infinite';
+      wrap.appendChild(glow);
+      glow.innerHTML=this._diceSVG(1+~~(Math.random()*6),82);
+      stage.appendChild(wrap);
+      return {wrap,glow};
     };
-    const startRoll=doRoll;
+    const die1=mkDie('_mjD1Arc');
+    const die2=mkDie('_mjD2Arc');
+    Snd.dice();
+
+    // ── Settle: freeze arc, show correct faces ────────────
+    setTimeout(()=>{
+      die1.wrap.style.animationPlayState='paused';
+      die2.wrap.style.animationPlayState='paused';
+      die1.glow.innerHTML=this._diceSVG(d1,82);
+      die1.glow.style.animation='_mjSettleGlow .4s ease-out forwards';
+      die2.glow.innerHTML=this._diceSVG(d2,82);
+      die2.glow.style.animation='_mjSettleGlow .4s ease-out forwards';
+      // cx/cy = center of each die in tray-local coords (tray 360×220, stage at 180,110)
+      this._addDiceFx(tray,144,110);
+      this._addDiceFx(tray,290,110);
+      Snd.play(500,.12,'square',.08);
+      setTimeout(()=>Snd.play(660,.18,'sine',.22),110);
+    },2200);
+
+    // ── Result text ───────────────────────────────────────
+    setTimeout(()=>{
+      const sum=d1+d2;
+      const dealer=this.st.names[this.st.dealer??0];
+      dtxt.textContent=`骰子 ${d1}＋${d2}＝${sum}　莊家：${dealer}`;
+      dtxt.style.animation='_mjReveal .4s cubic-bezier(.2,.8,.2,1) both';
+      this.st.phase='playing';
+      this.render();
+      Snd.play(880,.22,'sine',.2);
+      setTimeout(()=>Snd.play(1100,.15,'sine',.15),120);
+    },2400);
+
+    // ── Confirm button ────────────────────────────────────
+    setTimeout(()=>{ dok.style.display='inline-block'; },2600);
   },
 
-  _addDiceFx(diceEl){
-    // Ring
-    const ring=document.createElement('div');
-    ring.className='dice-ring';
-    diceEl.appendChild(ring);
-    setTimeout(()=>ring.remove(),700);
-    // Sparks
-    const dirs=[{dx:'40px',dy:'-30px'},{dx:'-40px',dy:'-30px'},{dx:'35px',dy:'35px'},
-                {dx:'-35px',dy:'35px'},{dx:'50px',dy:'5px'},{dx:'-50px',dy:'5px'}];
-    dirs.forEach(({dx,dy})=>{
+  _addDiceFx(parentEl, cx, cy){
+    // Gold particle burst at (cx,cy) in parentEl coordinate space
+    for(let i=0;i<16;i++){
+      const angle=(Math.PI*2*i/16)+(Math.random()*.5-.25);
+      const dist=25+Math.random()*50;
+      const delay=Math.random()*.12;
+      const dur=0.45+Math.random()*.45;
+      const px=Math.cos(angle)*8,py=Math.sin(angle)*8;
+      const dx=Math.cos(angle)*dist,dy=Math.abs(Math.sin(angle)*dist)+18;
+      const sz=2+Math.random()*4;
       const sp=document.createElement('div');
-      sp.className='dice-spark';
-      sp.style.setProperty('--dx',dx);
-      sp.style.setProperty('--dy',dy);
-      diceEl.appendChild(sp);
-      setTimeout(()=>sp.remove(),600);
-    });
+      sp.style.cssText=`position:absolute;left:${cx}px;top:${cy}px;width:${sz}px;height:${sz}px;border-radius:50%;background:radial-gradient(circle,#ffe566,#c8a000);box-shadow:0 0 ${sz*2}px rgba(200,158,40,.8);--px:${px}px;--py:${py}px;--dx:${dx}px;--dy:${dy}px;animation:_mjPtcl ${dur}s ease-out ${delay}s forwards;opacity:0;pointer-events:none;transform:translate(${px}px,${py}px);`;
+      parentEl.appendChild(sp);
+      setTimeout(()=>sp.remove(),800);
+    }
   },
 
   // Flower replacement: plays out on the board, each player in turn order
