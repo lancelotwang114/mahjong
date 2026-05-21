@@ -2648,6 +2648,15 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   padding:3px 8px; flex-shrink:0;
 }
 #chat-send:hover { background:rgba(93,173,226,.32); }
+#chat-voice-btn { background:none;border:none;color:rgba(255,255,255,.55);font-size:.9rem;padding:3px 5px;cursor:pointer;border-radius:4px;transition:color .15s; }
+#chat-voice-btn:hover { color:rgba(93,173,226,.9); }
+#chat-voice-row { display:none;gap:4px;padding:6px 8px;border-top:1px solid rgba(255,255,255,.08);align-items:center; }
+#chat-voice-row input { flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(93,173,226,.4);border-radius:5px;color:#f5ecd7;font-size:.75rem;padding:5px 8px;outline:none; }
+#chat-voice-row button { background:none;border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);font-size:.8rem;padding:4px 8px;border-radius:4px;cursor:pointer; }
+#chat-voice-row button:hover { border-color:rgba(93,173,226,.6);color:rgba(93,173,226,.9); }
+.chat-msg.cm-peer .cm-from { color:rgba(80,220,130,.9); }
+.chat-msg.cm-voice .cm-from { color:rgba(212,168,67,.95); }
+.chat-msg.cm-voice .cm-txt { color:rgba(93,173,226,.85); }
 .assist-row {
   display:flex; align-items:center; justify-content:space-between;
   font-size:.7rem; color:rgba(245,236,215,.8);
@@ -3142,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.17</div>
+    <div class="lver">v1.6.18</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -3264,22 +3273,68 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
           <button class="online-mode-btn" onclick="Online.showJoin()">🚪 加入房間</button>
         </div>
         <div id="ol-room-section">
-          <div id="ol-create-view" style="display:none;text-align:center">
-            <div style="font-size:.68rem;color:rgba(255,255,255,.35);margin-bottom:4px">點擊複製代碼</div>
-            <div class="ol-room-code" id="ol-room-code" onclick="Online.copyCode()">------</div>
-            <div id="ol-player-list" style="margin-top:10px"></div>
-            <div style="display:flex;gap:8px;margin:8px 0;align-items:center;justify-content:center">
-              <label style="font-size:.72rem;color:rgba(255,255,255,.5)">出牌限時</label>
-              <select class="fi" id="stime-online" style="width:auto;font-size:.72rem;padding:4px 8px">
-                <option value="0">無限制</option>
-                <option value="8">8秒</option>
-                <option value="12">12秒</option>
-                <option value="15" selected>15秒</option>
-                <option value="20">20秒</option>
-                <option value="30">30秒</option>
-              </select>
+          <div id="ol-create-view" style="display:none;text-align:left">
+            <div style="font-size:.68rem;color:rgba(255,255,255,.35);margin-bottom:4px;text-align:center">點擊複製代碼</div>
+            <div class="ol-room-code" id="ol-room-code" onclick="Online.copyCode()" style="text-align:center">------</div>
+            <div id="ol-player-list" style="margin-top:10px;text-align:center"></div>
+            <div class="sec-title" style="margin-top:10px">💰 籌碼設定</div>
+            <div class="sgrid" style="grid-template-columns:1fr 1fr 1fr 1fr">
+              <div class="fg" style="margin:0">
+                <label class="fl">底</label>
+                <select class="fi" id="sbase-online">
+                  <option value="1">1台底</option>
+                  <option value="2">2台底</option>
+                  <option value="3">3台底</option>
+                </select>
+              </div>
+              <div class="fg" style="margin:0">
+                <label class="fl">每台</label>
+                <select class="fi" id="stai-online">
+                  <option value="50">$50/台</option>
+                  <option value="100" selected>$100/台</option>
+                  <option value="200">$200/台</option>
+                  <option value="500">$500/台</option>
+                </select>
+              </div>
+              <div class="fg" style="margin:0">
+                <label class="fl">起始籌碼</label>
+                <select class="fi" id="smoney-online">
+                  <option value="5000">$5,000</option>
+                  <option value="10000" selected>$10,000</option>
+                  <option value="20000">$20,000</option>
+                  <option value="50000">$50,000</option>
+                </select>
+              </div>
+              <div class="fg" style="margin:0">
+                <label class="fl">出牌限時</label>
+                <select class="fi" id="stime-online">
+                  <option value="0">無限制</option>
+                  <option value="8">8秒</option>
+                  <option value="12">12秒</option>
+                  <option value="15" selected>15秒</option>
+                  <option value="20">20秒</option>
+                  <option value="30">30秒</option>
+                </select>
+              </div>
             </div>
-            <button class="lbtn" id="ol-start-btn" onclick="Online.startGame()" style="margin-top:8px;opacity:.45" disabled>▶ 開始遊戲 (1/4)</button>
+            <div class="sec-title">⚙️ 遊戲設定</div>
+            <div class="sgrid" style="grid-template-columns:1fr 1fr">
+              <div class="fg" style="margin:0">
+                <label class="fl">開局動畫</label>
+                <select class="fi" id="squickstart-online">
+                  <option value="0" selected>完整動畫</option>
+                  <option value="1">快速開局</option>
+                </select>
+              </div>
+              <div class="fg" style="margin:0">
+                <label class="fl">局數</label>
+                <select class="fi" id="srounds-online">
+                  <option value="4" selected>東風局 (4局)</option>
+                  <option value="8">南風局 (8局)</option>
+                </select>
+              </div>
+            </div>
+            <button class="lbtn" id="ol-start-btn" onclick="Online.startGame()" style="margin-top:8px;opacity:.45;display:block;width:100%;text-align:center" disabled>▶ 開始遊戲 (1/4)</button>
             <button class="lbtn" onclick="Online.leave()" style="margin-top:4px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.6);border-color:rgba(255,255,255,.15)">離開</button>
           </div>
           <div id="ol-join-view" style="display:none">
@@ -3557,7 +3612,14 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div id="chat-input-row">
       <input id="chat-input" placeholder="說點什麼…" maxlength="60"
         onkeydown="if(event.key==='Enter')Game.sendChat()">
+      <button id="chat-voice-btn" onclick="Game.toggleVoiceInput()" title="語音訊息（最多3字）">🔊</button>
       <button id="chat-send" onclick="Game.sendChat()">送出</button>
+    </div>
+    <div id="chat-voice-row">
+      <input id="chat-voice-input" maxlength="3" placeholder="最多3字"
+        onkeydown="if(event.key==='Enter')Game.sendVoiceChat();else if(event.key==='Escape')Game.toggleVoiceInput()">
+      <button onclick="Game.sendVoiceChat()" title="語音送出">🔊</button>
+      <button onclick="Game.toggleVoiceInput()" title="取消">✕</button>
     </div>
   </div>
   <div id="assist-panel">
@@ -3886,10 +3948,8 @@ const Snd={
     if(!window.speechSynthesis)return;
     const voicePref=Game?.settings?.voice||'auto';
     if(voicePref==='off')return;
-    speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(tileName);
     u.lang='zh-TW';
-    // Fast mode: speak quicker so it doesn't lag behind
     const spd=Game?.aiSpeed||'normal';
     const baseRate=Game?.settings?.rate||1.05;
     const rateMap={slow:0.82,normal:1.0,fast:1.4,turbo:2.0};
@@ -3898,7 +3958,9 @@ const Snd={
     u.volume=1.0;
     const v=this._pickVoice(voicePref);
     if(v)u.voice=v;
-    speechSynthesis.speak(u);
+    // v1.6.18: 覆蓋式播放 — cancel 後等一幀確實停止，避免下一句被瀏覽器略過
+    speechSynthesis.cancel();
+    setTimeout(()=>speechSynthesis.speak(u),55);
   }
 };
 
@@ -6576,17 +6638,17 @@ const Game={
   // ── 麻將語音廣播共用工具 ─────────────────────────────────
   _speakMj(text){
     if(!window.speechSynthesis)return;
-    speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text);
     u.lang='zh-TW';u.rate=1.05;u.pitch=1.0;u.volume=0.5;
     const voices=speechSynthesis.getVoices();
-    // 優先尋找真人感較強的台灣/香港中文語音（Google、Yating、Hanhan、Natural 等）
     u.voice=voices.find(v=>(v.lang==='zh-TW'||v.lang==='zh-HK')&&
       (v.name.includes('Google')||v.name.includes('Yating')||v.name.includes('Hanhan')||v.name.includes('Natural')))
       ||voices.find(v=>v.lang==='zh-TW')
       ||voices.find(v=>v.lang.startsWith('zh'))
       ||null;
-    speechSynthesis.speak(u);
+    // v1.6.18: 覆蓋式播放
+    speechSynthesis.cancel();
+    setTimeout(()=>speechSynthesis.speak(u),55);
   },
   speakTing(playerName){
     this._speakMj(`${playerName}聽牌`);
@@ -7635,16 +7697,65 @@ const Game={
     const s=this.st;
     const myName=s?.names?.[0]||'玩家';
     this._addChatMsg('self',myName,txt);
-    // Online: broadcast to peers
     if(this._online&&typeof MahjongNetwork!=='undefined'){
       MahjongNetwork.broadcast({type:'chat',from:myName,text:txt});
     } else {
-      // Solo: random AI NPC response after short delay
       const respondP=1+Math.floor(Math.random()*3);
       const aiName=s?.names?.[respondP]||`電腦${respondP}`;
       const line=this._chatAILines[Math.floor(Math.random()*this._chatAILines.length)];
       setTimeout(()=>this._addChatMsg('ai',aiName,line),600+Math.random()*800);
     }
+  },
+  // v1.6.18: 語音聊天 ──────────────────────────────
+  toggleVoiceInput(){
+    const vrow=document.getElementById('chat-voice-row');
+    const mrow=document.getElementById('chat-input-row');
+    if(!vrow||!mrow)return;
+    const opening=vrow.style.display==='none'||vrow.style.display==='';
+    vrow.style.display=opening?'flex':'none';
+    mrow.style.display=opening?'none':'flex';
+    if(opening) setTimeout(()=>document.getElementById('chat-voice-input')?.focus(),80);
+  },
+  sendVoiceChat(){
+    const inp=document.getElementById('chat-voice-input');
+    if(!inp)return;
+    const txt=[...inp.value.trim()].slice(0,3).join(''); // 嚴格取前3字
+    if(!txt)return;
+    inp.value='';
+    this.toggleVoiceInput();
+    const s=this.st;
+    const myName=s?.names?.[0]||'玩家';
+    this._addChatMsg('voice',myName,`🔊 ${txt}`);
+    this._sayChatTTS(txt);
+    if(this._online&&typeof MahjongNetwork!=='undefined'){
+      MahjongNetwork.broadcast({type:'voice_chat',from:myName,text:txt});
+    }
+  },
+  _sayChatTTS(text){
+    if(!window.speechSynthesis)return;
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang='zh-TW';
+    u.rate=0.85;  // 稍慢，聊天語音清晰
+    u.pitch=1.4;  // 偏高音調，明顯區別遊戲語音
+    u.volume=1.0;
+    // 使用與遊戲語音相反性別（讓兩者聲音不同）
+    const voicePref=Game?.settings?.voice||'auto';
+    const chatGender=voicePref==='male'?'female':'male';
+    // 獨立快取，不干擾遊戲語音選擇
+    if(!this._chatVoice){
+      const voices=speechSynthesis.getVoices();
+      const zh=voices.filter(v=>v.lang==='zh-TW'||v.lang==='zh-HK'||v.lang.startsWith('zh'));
+      if(chatGender==='female'){
+        const femHints=/mei|meijia|美佳|tingting|曉雨|yating|雅婷|sin-ji|美嘉|Kyoko|Google 國語|Google 中文|female/i;
+        this._chatVoice=zh.find(v=>femHints.test(v.name))||zh[0]||null;
+      } else {
+        const malHints=/male|雄|kun|zhang|wei|guangliang|慶龍|zhiyu|男|man/i;
+        this._chatVoice=zh.find(v=>malHints.test(v.name))||zh[1]||zh[0]||null;
+      }
+    }
+    if(this._chatVoice) u.voice=this._chatVoice;
+    speechSynthesis.cancel();
+    setTimeout(()=>speechSynthesis.speak(u),55);
   },
   _addChatMsg(type,from,text){
     const msgs=document.getElementById('chat-msgs');
@@ -8365,18 +8476,33 @@ const Online = {
     });
     // Generate dice once so all players see the same result
     const diceVals=[1+~~(Math.random()*6),1+~~(Math.random()*6)];
-    // v1.6.17: 讀取出牌限時設定並廣播給所有非房主玩家
-    const timeLimit=+(document.getElementById('stime-online')?.value??15);
+    // v1.6.18: 讀取房間設定並廣播給所有非房主玩家
+    const _ol=id=>+(document.getElementById(id)?.value??0)||0;
+    const timeLimit=_ol('stime-online')||15;
+    const base=_ol('sbase-online')||1;
+    const tai=_ol('stai-online')||100;
+    const money=_ol('smoney-online')||10000;
+    const quickStart=!!(+(document.getElementById('squickstart-online')?.value||0));
+    const maxRounds=_ol('srounds-online')||4;
+    const roomSettings={timeLimit,base,tai,money,quickStart,maxRounds};
     Game._hostDice=diceVals;
     this.peers.forEach((p,i)=>{
       if(i===0||!p.id) return;
-      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals,timeLimit});
+      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals,...roomSettings});
     });
     Game._online=true; Game._isHost=true; Game._myIndex=0;
     Game._peers=this.peers;
     document.getElementById('pname').value=names[0]||'玩家';
     Game.start('east');
-    if(Game.settings) Game.settings.time=timeLimit; // v1.6.17: 房主套用自己設定的限時
+    // 房主套用自己設定的房間參數（start() 後才覆蓋，確保覆蓋 solo 預設值）
+    if(Game.settings){
+      Game.settings.time=timeLimit;
+      Game.settings.base=base;
+      Game.settings.tai=tai;
+      Game.settings.money=money;
+      Game.settings.quickStart=quickStart;
+      Game.settings.maxRounds=maxRounds;
+    }
     const aiIndices=Array.from({length:4},(_,i)=>i).filter(i=>!this.peers[i]);
     if(Game.settings) Game.settings.aiStyle=Array.from({length:4},(_,i)=>aiIndices.includes(i)?'balanced':null);
     if(Game.st){ Game.st.ai=aiIndices; Game.st.names=names; }
@@ -8412,7 +8538,15 @@ const Online = {
         document.getElementById('pname').value=data.names[data.playerIndex]||'玩家';
         if(data.dice) Game._hostDice=data.dice; // use host's dice so all players see same result
         Game.start('east');
-        if(data.timeLimit!==undefined&&Game.settings) Game.settings.time=data.timeLimit; // v1.6.17: 套用房主設定的出牌限時
+        // v1.6.18: 套用房主廣播的所有房間設定
+        if(Game.settings){
+          if(data.timeLimit!==undefined) Game.settings.time=data.timeLimit;
+          if(data.base!==undefined) Game.settings.base=data.base;
+          if(data.tai!==undefined) Game.settings.tai=data.tai;
+          if(data.money!==undefined) Game.settings.money=data.money;
+          if(data.quickStart!==undefined) Game.settings.quickStart=!!data.quickStart;
+          if(data.maxRounds!==undefined) Game.settings.maxRounds=data.maxRounds;
+        }
         if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
         if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
         Game._applyOnlineRole(); // hide speed/pause for guests
@@ -8520,8 +8654,14 @@ const Online = {
         }
         break;
       case 'chat':
-        // 顯示其他玩家的聊天訊息
-        if(data.from&&data.text) Game._addChatMsg('ai',data.from,data.text);
+        if(data.from&&data.text) Game._addChatMsg('peer',data.from,data.text);
+        break;
+      case 'voice_chat':
+        // v1.6.18: 收到語音聊天 — 顯示訊息並播放 TTS
+        if(data.from&&data.text){
+          Game._addChatMsg('voice',data.from,`🔊 ${data.text}`);
+          Game._sayChatTTS(data.text);
+        }
         break;
     }
   },
