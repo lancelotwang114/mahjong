@@ -2593,6 +2593,61 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   pointer-events:auto;
 }
 #assist-panel.open { display:flex; }
+/* Chat panel */
+#chat-btn {
+  position:absolute; left:52px; bottom:218px;
+  width:30px; height:30px; border-radius:50%;
+  background:rgba(93,173,226,.18); border:1px solid rgba(93,173,226,.45);
+  color:rgba(93,173,226,.9); font-size:16px; cursor:pointer;
+  display:none; align-items:center; justify-content:center;
+  z-index:210; pointer-events:auto; transition:background .2s;
+}
+#chat-btn:hover { background:rgba(93,173,226,.32); }
+#chat-panel {
+  position:absolute; left:205px; bottom:185px;
+  width:215px; height:268px;
+  background:rgba(6,16,10,.93); border:1.5px solid rgba(93,173,226,.3);
+  border-radius:10px; display:none; flex-direction:column; z-index:300;
+  pointer-events:auto; overflow:hidden;
+  box-shadow:0 4px 24px rgba(0,0,0,.6);
+}
+#chat-panel.open { display:flex; }
+#chat-header {
+  padding:5px 10px; font-size:.72rem; font-weight:700;
+  color:rgba(93,173,226,.9); border-bottom:1px solid rgba(93,173,226,.18);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+#chat-header .chat-close {
+  background:none; border:none; color:rgba(255,255,255,.35); cursor:pointer;
+  font-size:.85rem; line-height:1; padding:0;
+}
+#chat-msgs {
+  flex:1; overflow-y:auto; padding:5px 8px; display:flex; flex-direction:column; gap:3px;
+}
+#chat-msgs::-webkit-scrollbar { width:4px; }
+#chat-msgs::-webkit-scrollbar-thumb { background:rgba(93,173,226,.25); border-radius:2px; }
+.chat-msg { font-size:.67rem; line-height:1.4; word-break:break-all; }
+.chat-msg .cm-from { font-weight:700; margin-right:3px; }
+.chat-msg.cm-self .cm-from { color:rgba(212,168,67,.95); }
+.chat-msg.cm-ai   .cm-from { color:rgba(93,173,226,.85); }
+.chat-msg.cm-sys  { color:rgba(255,255,255,.3); font-style:italic; font-size:.63rem; }
+.chat-msg .cm-txt { color:rgba(245,236,215,.85); }
+#chat-input-row {
+  padding:5px 6px; display:flex; gap:4px;
+  border-top:1px solid rgba(93,173,226,.12); flex-shrink:0;
+}
+#chat-input {
+  flex:1; background:rgba(255,255,255,.07); border:1px solid rgba(93,173,226,.3);
+  border-radius:5px; color:#f5ecd7; font-size:.67rem; padding:3px 6px; outline:none;
+  min-width:0;
+}
+#chat-input:focus { border-color:rgba(93,173,226,.6); }
+#chat-send {
+  background:rgba(93,173,226,.18); border:1px solid rgba(93,173,226,.4);
+  color:rgba(93,173,226,.9); border-radius:5px; font-size:.65rem; cursor:pointer;
+  padding:3px 8px; flex-shrink:0;
+}
+#chat-send:hover { background:rgba(93,173,226,.32); }
 .assist-row {
   display:flex; align-items:center; justify-content:space-between;
   font-size:.7rem; color:rgba(245,236,215,.8);
@@ -3087,7 +3142,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.14</div>
+    <div class="lver">v1.6.15</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -3161,6 +3216,25 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
             <option value="12">12秒</option>
             <option value="15" selected>15秒</option>
             <option value="20">20秒</option>
+          </select>
+        </div>
+      </div>
+      <div class="sec-title">⚙️ 遊戲設定</div>
+      <div class="sgrid" style="grid-template-columns:1fr 1fr">
+        <div class="fg" style="margin:0">
+          <label class="fl">AI 速度</label>
+          <select class="fi" id="sspeed">
+            <option value="slow">慢速</option>
+            <option value="normal" selected>正常</option>
+            <option value="fast">快速</option>
+            <option value="turbo">極快</option>
+          </select>
+        </div>
+        <div class="fg" style="margin:0">
+          <label class="fl">開局動畫</label>
+          <select class="fi" id="squickstart">
+            <option value="0" selected>完整動畫</option>
+            <option value="1">快速開局</option>
           </select>
         </div>
       </div>
@@ -3461,6 +3535,20 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <!-- v1.5 assist panel -->
   <button id="hint-btn" onclick="Game.showHint()" title="💡 打牌建議（H鍵）" style="position:absolute;left:12px;bottom:218px;z-index:210;background:rgba(8,20,14,.88);border:1.5px solid rgba(93,173,226,.5);border-radius:50%;width:34px;height:34px;font-size:1rem;cursor:pointer;color:rgba(93,173,226,.9);display:none;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)">💡</button>
   <button id="assist-toggle" onclick="Game.toggleAssistPanel()" title="分析面板（向聽數／危險牌／牌追蹤）">📊</button>
+  <!-- Chat button & panel -->
+  <button id="chat-btn" onclick="Game.toggleChat()" title="聊天 (C)">💬</button>
+  <div id="chat-panel">
+    <div id="chat-header">
+      <span>💬 聊天</span>
+      <button class="chat-close" onclick="Game.toggleChat()">✕</button>
+    </div>
+    <div id="chat-msgs"></div>
+    <div id="chat-input-row">
+      <input id="chat-input" placeholder="說點什麼…" maxlength="60"
+        onkeydown="if(event.key==='Enter')Game.sendChat()">
+      <button id="chat-send" onclick="Game.sendChat()">送出</button>
+    </div>
+  </div>
   <div id="assist-panel">
     <div class="assist-row">
       <span>向聽數顯示</span>
@@ -3620,6 +3708,24 @@ function isShiSanYaoHand(tiles){
   ];
   if(!req.every(r=>tiles.some(t=>t.s===r.s&&t.v===r.v)))return false;
   return tiles.every(t=>t.s==='honor'||(t.v===1||t.v===9));
+}
+// 聽牌可以槓：槓後手牌是否仍維持聽牌狀態
+function selfKongPreservesTenpai(hand, melds, sk){
+  const addPongIdx=melds.findIndex(m=>m.type==='pong'&&m.tiles[0].s===sk[0].s&&m.tiles[0].v===sk[0].v);
+  let newHand, newMelds;
+  if(addPongIdx>=0){
+    // 加槓：從手牌移除那1張
+    const addT=sk.find(t=>!melds[addPongIdx].tiles.some(mt=>mt.id===t.id));
+    if(!addT)return false;
+    newHand=hand.filter(t=>t.id!==addT.id);
+    newMelds=melds.map((m,i)=>i===addPongIdx?{...m,type:'kong',tiles:[...m.tiles,addT]}:m);
+  } else {
+    // 暗槓：從手牌移除4張
+    const skIds=new Set(sk.map(t=>t.id));
+    newHand=hand.filter(t=>!skIds.has(t.id));
+    newMelds=[...melds,{type:'kong',tiles:[...sk],dark:true}];
+  }
+  return tenpaiTiles(newHand.filter(x=>!x.fl),newMelds).length>0;
 }
 // canWin: Taiwan 16-tile — must have exactly 1 pair (眼) + melds
 // valid tile counts after flowers removed: 2, 5, 8, 11, 14, 17 (= n*3+2)
@@ -4568,10 +4674,13 @@ const Game={
       time:+(document.getElementById('stime')?.value||15),
       voice:'auto',
       rate:1.05,
-      quickStart:false,
+      quickStart:!!(+(document.getElementById('squickstart')?.value||0)),
       maxRounds,
       aiStyle:[null,'balanced','balanced','balanced'],
     };
+    // Apply AI speed from lobby setting
+    const lobbySpd=document.getElementById('sspeed')?.value||'normal';
+    this.setSpeed(lobbySpd);
     Snd._bestVoice=null;
     this.winStats=[0,0,0,0];this.rounds=0;
     this.riichiMode=false;this.riichiTile=null;
@@ -4592,6 +4701,7 @@ const Game={
     document.getElementById('autoplay-btn').style.display='block';
     document.getElementById('audio-btn').style.display='block';
     document.getElementById('speed-panel').style.display='flex';
+    const chatBtnEl=document.getElementById('chat-btn');if(chatBtnEl)chatBtnEl.style.display='flex';
     this._initDustParticles();
     this._syncAudioPanel();
     if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
@@ -5016,11 +5126,22 @@ const Game={
       const isTianhu=winNow&&p===s.dealer&&s.firstRound&&s.discards.every(d=>d.length===0);
       if(winNow)extraBtns.push({type:'win',label:isTianhu?'🌟 天胡！':'🀄 自摸！',cls:'aw'});
       const sk=AI.selfKong(s.hands[p],s.melds[p]);
-      if(sk)extraBtns.push({type:'sk',label:'暗槓',cls:'ako',tiles:sk});
+      if(sk){
+        const _isAddK=s.melds[p].some(m=>m.type==='pong'&&m.tiles[0].s===sk[0].s&&m.tiles[0].v===sk[0].v);
+        extraBtns.push({type:'sk',label:_isAddK?'加槓':'暗槓',cls:'ako',tiles:sk});
+      }
       // Riichi mode: auto-handle turn — smart discard: prefer drawn tile if it keeps tenpai
       if(this.riichiMode){
         this.stopTimer(); // v1.6.14：清除殘留計時圓圈（鳴牌後可能遺留）
         if(winNow){this.doWin(0,true);return;}
+        // v1.6.15：聽牌可以槓 — 槓後仍有等牌才顯示槓按鈕
+        if(sk&&selfKongPreservesTenpai(s.hands[0].filter(x=>!x.fl),s.melds[0],sk)){
+          const _isAddK2=s.melds[0].some(m=>m.type==='pong'&&m.tiles[0].s===sk[0].s&&m.tiles[0].v===sk[0].v);
+          this.showBtns([{type:'sk',label:_isAddK2?'加槓':'暗槓',cls:'ako',tiles:sk},{type:'stop-riichi',label:'停止聽牌',cls:'stop-riichi'}]);
+          document.getElementById('action-overlay')?.classList.add('active');
+          this.startTimer(p); // 顯示計時讓玩家決定要不要槓
+          return;
+        }
         const drawn=s.drawnId?s.hands[0].find(t=>t.id===s.drawnId):null;
         // Find all tiles whose discard maintains tenpai
         const validDiscards=this.findRiichiDiscards(s.hands[0].filter(x=>!x.fl),s.melds[0]);
@@ -6355,7 +6476,10 @@ const Game={
     const extraBtns=[];
     if(winNow) extraBtns.push({type:'win',label:'🀄 自摸！',cls:'aw'});
     const sk=AI.selfKong(s.hands[0],s.melds[0]);
-    if(sk) extraBtns.push({type:'sk',label:'暗槓',cls:'ako',tiles:sk});
+    if(sk){
+      const _isAddK=s.melds[0].some(m=>m.type==='pong'&&m.tiles[0].s===sk[0].s&&m.tiles[0].v===sk[0].v);
+      extraBtns.push({type:'sk',label:_isAddK?'加槓':'暗槓',cls:'ako',tiles:sk});
+    }
     // 【BUG 修復】摸牌後與鳴牌後都必須檢查聽牌候選，原本只在 isAfterMeld 才查是 Bug 根源
     const riichiCands=this.findRiichiDiscards(s.hands[0],s.melds[0]);
     if(riichiCands.length>0) extraBtns.push({type:'riichi',label:'聽牌',cls:'riichi'});
@@ -7468,6 +7592,67 @@ const Game={
     this.startTimer(0);
   },
 
+  // ── 聊天功能 ─────────────────────────────────────────────
+  _chatAILines:[
+    '再想想吧！','哼，有意思。','這牌出得妙！','哦？要這樣嗎！','別想太久了！',
+    '加油喔～','我已經快聽了。','出錯牌了喔！','有眼光！','小心點！',
+    '你真的要這樣打？','我有好牌了！','哈，差點就胡了！','嗯，不錯。','你打這張？！',
+    '我看你是沒辦法了！','再一張！','要賭一把嗎？','好牌好牌！','嗯……',
+  ],
+  toggleChat(){
+    const panel=document.getElementById('chat-panel');
+    if(!panel)return;
+    const isOpen=panel.classList.toggle('open');
+    if(isOpen){
+      const msgs=document.getElementById('chat-msgs');
+      if(msgs&&!msgs.children.length){
+        this._addChatMsg('sys',null,'（遊戲聊天室，對話只對本局可見）');
+      }
+      setTimeout(()=>document.getElementById('chat-input')?.focus(),80);
+    }
+  },
+  sendChat(){
+    const inp=document.getElementById('chat-input');
+    if(!inp)return;
+    const txt=inp.value.trim();
+    if(!txt)return;
+    inp.value='';
+    const s=this.st;
+    const myName=s?.names?.[0]||'玩家';
+    this._addChatMsg('self',myName,txt);
+    // Online: broadcast to peers
+    if(this._online&&typeof MahjongNetwork!=='undefined'){
+      MahjongNetwork.broadcast({type:'chat',from:myName,text:txt});
+    } else {
+      // Solo: random AI NPC response after short delay
+      const respondP=1+Math.floor(Math.random()*3);
+      const aiName=s?.names?.[respondP]||`電腦${respondP}`;
+      const line=this._chatAILines[Math.floor(Math.random()*this._chatAILines.length)];
+      setTimeout(()=>this._addChatMsg('ai',aiName,line),600+Math.random()*800);
+    }
+  },
+  _addChatMsg(type,from,text){
+    const msgs=document.getElementById('chat-msgs');
+    if(!msgs)return;
+    const el=document.createElement('div');
+    el.className='chat-msg cm-'+type;
+    if(type==='sys'){
+      el.textContent=text;
+    } else {
+      el.innerHTML=`<span class="cm-from">${from}：</span><span class="cm-txt">${text}</span>`;
+    }
+    msgs.appendChild(el);
+    msgs.scrollTop=msgs.scrollHeight;
+    // Badge on closed panel
+    const btn=document.getElementById('chat-btn');
+    const panel=document.getElementById('chat-panel');
+    if(btn&&panel&&!panel.classList.contains('open')&&type!=='sys'){
+      btn.style.borderColor='rgba(212,168,67,.9)';
+      btn.style.color='rgba(212,168,67,.95)';
+      setTimeout(()=>{btn.style.borderColor='';btn.style.color='';},2000);
+    }
+  },
+
   // Update hand bar: show timer + tenpai tiles above my hand
   _updateHandBar(){
     const bar=document.getElementById('hand-bar');
@@ -8290,6 +8475,10 @@ const Online = {
           Game.speakTing(data.playerName||`玩家${data.playerIdx}`);
         }
         break;
+      case 'chat':
+        // 顯示其他玩家的聊天訊息
+        if(data.from&&data.text) Game._addChatMsg('ai',data.from,data.text);
+        break;
     }
   },
 
@@ -8482,6 +8671,16 @@ document.addEventListener('keydown',e=>{
     if(Game._assist&&Game._assist.sort&&Game.st&&Game.st.turn===0){
       Game.sortHand();
     }
+  }
+});
+
+// ── C → toggle chat panel ─────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if((e.key==='c'||e.key==='C')&&!e.ctrlKey&&!e.metaKey&&
+     document.activeElement?.id!=='chat-input'&&
+     document.activeElement?.tagName!=='INPUT'&&
+     document.activeElement?.tagName!=='TEXTAREA'){
+    if(Game.st) Game.toggleChat();
   }
 });
 
