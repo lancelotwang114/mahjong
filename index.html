@@ -3142,6 +3142,143 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .ab.stop-riichi:hover { background: #e74c3c; color: #fff; }
 
 </style>
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.29 · VISUAL OVERHAUL — append-only overrides
+   DOM structure untouched; all changes via new selectors / !important.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. #tbl: richer felt texture & wood frame ────────────── */
+#tbl {
+  background:
+    radial-gradient(ellipse 88% 82% at 50% 50%,
+      #174060 0%, #0e2540 42%, #081828 78%, #020a14 100%) !important;
+}
+/* Felt weave pattern (very subtle grid) */
+#tbl::before {
+  content: '' !important;
+  position: absolute !important; inset: 0 !important;
+  pointer-events: none !important; z-index: 0 !important;
+  border-radius: 0 !important; border: none !important;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0, transparent 47px,
+      rgba(255,255,255,.017) 47px, rgba(255,255,255,.017) 48px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0, transparent 47px,
+      rgba(255,255,255,.013) 47px, rgba(255,255,255,.013) 48px
+    ) !important;
+}
+/* Wood frame: layered inset shadows simulate warm border */
+#tbl::after {
+  box-shadow:
+    inset 0 0 0 14px rgba(6,3,1,.96),
+    inset 0 0 8px 10px rgba(45,22,5,.85),
+    inset 0 0 6px 7px rgba(80,42,10,.55),
+    inset 2px 2px 8px 4px rgba(130,68,18,.22),
+    inset 0 0 90px rgba(0,0,0,.45) !important;
+  border-radius: 6px !important;
+}
+
+/* ── 2. Back tiles (opponent hand walls): 3D stacking depth ── */
+#ht1 .t.back, #ht2 .t.back, #ht3 .t.back {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.12) inset,
+    0 -3px 0 rgba(0,0,0,.52) inset,
+    2px 3px 0 rgba(7,32,16,.82),
+    4px 6px 0 rgba(5,22,12,.62),
+    5px 8px 7px rgba(0,0,0,.46) !important;
+}
+
+/* ── 3a. Disable old full-area tenpai glow & float ─────────── */
+.tenpai-glow   { animation: none !important; box-shadow: none !important; }
+.tenpai-float-tiles .t { animation: none !important; }
+
+/* ── 3b. Neon border pulse on pbar when opponent is tenpai ── */
+@keyframes tenpaiNeonPulse {
+  0%,100% {
+    border-color: rgba(255,55,75,.78);
+    box-shadow:
+      0 0 0 2px rgba(255,23,68,.62),
+      0 0 10px rgba(255,23,68,.38),
+      0 2px 7px rgba(0,0,0,.4),
+      inset 0 1px 0 rgba(255,200,100,.09);
+  }
+  50% {
+    border-color: rgba(255,90,108,.98);
+    box-shadow:
+      0 0 0 2px rgba(255,60,85,.92),
+      0 0 18px rgba(255,23,68,.70),
+      0 0 32px rgba(255,23,68,.22),
+      0 2px 7px rgba(0,0,0,.4),
+      inset 0 1px 0 rgba(255,200,100,.09);
+  }
+}
+.pbar.tenpai-neon { animation: tenpaiNeonPulse 2s ease-in-out infinite; }
+
+/* ── 3c. Remove analysis panel, danger dots, tenpai popups ── */
+#assist-toggle,
+#assist-panel,
+#shanten-label,
+#tile-tracker   { display: none !important; }
+.danger-dot     { display: none !important; }
+.danger-low, .danger-mid, .danger-high { outline: none !important; }
+#tenpai-banner  { display: none !important; }
+#ann.tp         { display: none !important; }
+
+/* ── 3d. Tenpai hover tooltip ───────────────────────────────── */
+#tenpai-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 9999;
+  background: linear-gradient(145deg, rgba(10,18,34,.97), rgba(16,28,52,.96));
+  border: 1.5px solid rgba(255,50,75,.52);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-family: 'Noto Serif TC','Noto Sans TC',sans-serif;
+  font-size: .75rem;
+  color: #f5ecd7;
+  opacity: 0;
+  transition: opacity .18s ease;
+  max-width: 280px;
+  min-width: 110px;
+  box-shadow: 0 4px 20px rgba(0,0,0,.65), 0 0 14px rgba(255,23,68,.20);
+  white-space: nowrap;
+}
+#tenpai-tooltip.show { opacity: 1; }
+#tenpai-tooltip .tt-title {
+  color: rgba(255,82,96,.94);
+  font-weight: 700;
+  font-size: .78rem;
+  margin-bottom: 6px;
+  letter-spacing: .05em;
+}
+#tenpai-tooltip .tt-tiles {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: flex-end;
+}
+#tenpai-tooltip .tt-tile-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+#tenpai-tooltip .tt-rem { font-size: .6rem; font-family: 'Noto Sans TC',sans-serif; }
+
+/* ── 4. Dealer streak: black-gold label ─────────────────────── */
+@keyframes streakFlicker {
+  0%,100% { box-shadow: 0 0 4px rgba(212,168,67,.4); }
+  50%      { box-shadow: 0 0 12px rgba(212,168,67,.9), 0 0 24px rgba(212,168,67,.34); }
+}
+.dealer-badge.dealer-streak-gold {
+  background: linear-gradient(135deg, #100d00, #1c1800) !important;
+  color: var(--gold2) !important;
+  border: 1px solid rgba(212,168,67,.72) !important;
+  text-shadow: 0 0 7px rgba(212,168,67,.65) !important;
+  animation: streakFlicker 1.8s ease-in-out infinite;
+  padding: 1px 6px !important;
+  letter-spacing: .04em !important;
+}
+</style>
 </head>
 <body>
 
@@ -3151,7 +3288,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.28</div>
+    <div class="lver">v1.6.29</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6874,8 +7011,17 @@ const Game={
       if(s.phase==='playing'&&s.turn===i)area.classList.add('active-turn');
       else area.classList.remove('active-turn');
       // Dealer badge + wind badge (update each render so they rotate with dealer)
+      // v1.6.29: Show 莊連N when honba>0, gold styling
       const db=document.getElementById(`db${i}`);
-      if(db) db.style.display=(i===(s.dealer??0)?'inline':'none');
+      if(db){
+        const isDealer=i===(s.dealer??0);
+        db.style.display=isDealer?'inline':'none';
+        if(isDealer){
+          const honba=s.honba||0;
+          db.textContent=honba>0?`莊連${honba}`:'莊';
+          db.classList.toggle('dealer-streak-gold',honba>0);
+        }
+      }
       const wb=document.getElementById(`wb${i}`);
       if(wb) wb.textContent=['東','南','西','北'][(i-(s.dealer??0)+4)%4];
       // Player name (keep DOM in sync with st.names, important for online mode)
@@ -6889,13 +7035,16 @@ const Game={
       // Tenpai badge + visual glow on player area
       const tb=document.getElementById(`tp${i}`);
       if(tb)tb.style.display=s.tenpai[i]?'inline-block':'none';
-      // Apply tenpai glow to the player's area container + float to their hand tiles
+      // v1.6.29: Replace full-area glow/float with pbar neon border (opponents only)
       const areaIds=['p0-zone','pa1-area','pa2-area','pa3-area'];
       const htIds=['ht0','ht1','ht2','ht3'];
       const areaEl=document.getElementById(areaIds[i]);
       const htEl=document.getElementById(htIds[i]);
-      if(areaEl){areaEl.classList.toggle('tenpai-glow',!!s.tenpai[i]);}
-      if(htEl){htEl.classList.toggle('tenpai-float-tiles',!!s.tenpai[i]);}
+      if(areaEl){areaEl.classList.remove('tenpai-glow');}
+      if(htEl){htEl.classList.remove('tenpai-float-tiles');}
+      // Neon border on pbar for opponents (p1/p2/p3); p0 keeps tpanel for self-awareness
+      const pbarEl=document.getElementById(`pb${i}`);
+      if(pbarEl){pbarEl.classList.toggle('tenpai-neon',!!s.tenpai[i]&&i!==0);}
       // Melds + flowers (flowers shown like melds above hand)
       const ma=document.getElementById(`ma${i}`);ma.innerHTML='';
       // pa2 uses ti-size tiles to fit in the 115px top zone
@@ -8244,10 +8393,73 @@ const Game={
       tbl.appendChild(d);
     }
   },
+
+  // ── v1.6.29: Tenpai hover tooltip ─────────────────────────
+  _initTenpaiTooltip(){
+    if(this._tenpaiTooltipInited)return;
+    this._tenpaiTooltipInited=true;
+    const tbl=document.getElementById('tbl');
+    if(!tbl)return;
+    const tt=document.createElement('div');
+    tt.id='tenpai-tooltip';
+    tbl.appendChild(tt);
+    [1,2,3].forEach(pi=>{
+      const badge=document.getElementById(`tp${pi}`);
+      const pbar=document.getElementById(`pb${pi}`);
+      [badge,pbar].forEach(el=>{
+        if(!el)return;
+        el.addEventListener('mouseenter',()=>this._showTenpaiTooltip(pi));
+        el.addEventListener('mouseleave',()=>this._hideTenpaiTooltip());
+      });
+    });
+  },
+  _showTenpaiTooltip(pIdx){
+    const s=this.st;const tt=document.getElementById('tenpai-tooltip');
+    if(!tt||!s||!s.tenpai[pIdx])return;
+    tt.innerHTML=this._buildTenpaiTooltipContent(pIdx);
+    // Positions in 1280×720 coordinate space (inside #tbl)
+    const pos={1:{x:820,y:232},2:{x:470,y:92},3:{x:205,y:232}};
+    const p=pos[pIdx]||{x:500,y:300};
+    tt.style.left=p.x+'px';tt.style.top=p.y+'px';
+    tt.classList.add('show');
+  },
+  _hideTenpaiTooltip(){
+    const tt=document.getElementById('tenpai-tooltip');
+    if(tt)tt.classList.remove('show');
+  },
+  _buildTenpaiTooltipContent(pIdx){
+    const s=this.st;if(!s||!s.tenpai[pIdx])return'';
+    const name=(s.names&&s.names[pIdx])||`玩家${pIdx}`;
+    if(this._online){
+      const melds=s.melds[pIdx]&&s.melds[pIdx].length||0;
+      return`<div class="tt-title">⚠ ${name} 已聽牌</div>`
+        +`<div style="font-size:.7rem;color:rgba(245,236,215,.55);line-height:1.6">副露 ${melds} 組・等待牌型未公開</div>`;
+    }
+    const wt=s.tenpaiT&&s.tenpaiT[pIdx];
+    if(!wt||!wt.length)return`<div class="tt-title">⚠ ${name} 已聽牌</div>`;
+    const sn={man:'萬',pin:'餅',sou:'條'};
+    const hn=['東','南','西','北','中','白','發'];
+    const myHand=s.hands[0]?s.hands[0].filter(x=>!x.fl):[];
+    let tiles='<div class="tt-tiles">';
+    wt.forEach(wt2=>{
+      const rem=discRemaining(wt2,s.discards,s.melds,myHand);
+      const rc=rem===0?'#e74c3c':rem<=2?'#e67e22':'#2ecc71';
+      const lbl=wt2.s==='honor'?(hn[wt2.v]||wt2.v):`${wt2.v}${sn[wt2.s]||''}`;
+      tiles+=`<div class="tt-tile-wrap">`
+        +`<span style="font-size:.88rem;font-family:'Ma Shan Zheng',serif">${lbl}</span>`
+        +`<span class="tt-rem" style="color:${rc}">×${rem}</span></div>`;
+    });
+    tiles+='</div>';
+    const total=wt.reduce((a,w)=>a+discRemaining(w,s.discards,s.melds,myHand),0);
+    return`<div class="tt-title">🀇 ${name} 聽牌（共${total}張）</div>${tiles}`;
+  },
 };
 
 // Load persistent stats on startup
 Stats.load(); Stats.render(); Stats.renderHistory();
+
+// v1.6.29: Init tenpai tooltip once DOM is ready
+document.addEventListener('DOMContentLoaded',()=>Game._initTenpaiTooltip());
 
 // Restore saved theme
 (function(){
