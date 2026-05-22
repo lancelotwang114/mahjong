@@ -3463,12 +3463,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    原始 .cp z-index:5，與棄牌同層導致被蓋住。
    z-index:200 確保任何棄牌都從圓盤「滑入下方」。
    dc2/dc0 再往外推 15px（84px→109px）保持安全距離。           */
-.cp#col-table {
-  z-index: 200 !important;
-  position: absolute !important;
-}
-#pool #dc2 { top:    109px !important; }
-#pool #dc0 { bottom: 109px !important; }
+/* dc2/dc0 position 已在 v1.6.36 Fix1 覆蓋，此處保留歷史紀錄 */
+/* .cp#col-table z-index 亦已在 v1.6.36 Fix1 提升至 999 */
 
 /* ── 4. 左家 p3：ht3 手牌壓外側（左），ma3 副露靠內側（右）────
    重置 v1.6.34 grid layout；改用 position:relative + 子 absolute
@@ -3579,16 +3575,19 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    3. p1/p3 副露軌道再往中央推 15px
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── Fix 1 · 對家（上）與自己（下）棄牌往外再拉 20px ──────────
-   確保所有棄牌從中心圓盤「滑入下方」，圓盤永遠可見。
-   同時給 #pool 加 isolation:isolate 防止 stacking context 干擾。 */
+/* ── Fix 1 · dc2/dc0 回歸貼牆位置，圓盤靠 z-index 浮出 ─────────
+   先前 top:109/129px 把棄牌區往中央壓，方向錯誤。
+   正確做法：dc2 貼近上牆（top:5px），dc0 貼近下牆（bottom:5px），
+   遠離中心；中央圓圈以 z-index:999 永遠壓在所有棄牌之上。
+   同時縮小圓圈至 80%（scale(0.8)）減少視覺遮擋。               */
 #pool { isolation: isolate !important; }
-#pool #dc2 { top:    129px !important; }
-#pool #dc0 { bottom: 129px !important; }
+#pool #dc2 { top:    5px !important; }
+#pool #dc0 { bottom: 5px !important; }
 .cp#col-table {
   z-index: 999 !important;
   position: absolute !important;
   isolation: isolate !important;
+  transform: translate(-50%, -50%) scale(0.8) !important;
 }
 
 /* ── Fix 2 · p0 副露水平列：flex row + 鎖定在手牌上沿 10px 處 ──
@@ -3641,7 +3640,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.36</div>
+    <div class="lver">v1.6.37</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
