@@ -3151,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.26</div>
+    <div class="lver">v1.6.27</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6052,7 +6052,13 @@ const Game={
     const disc=s.last;
     tiles.forEach(t=>{const i=s.hands[p].findIndex(h=>h.id===t.id);if(i>=0)s.hands[p].splice(i,1)});
     const pile=s.discards[s.lastP];const di=pile.findIndex(t=>t.id===disc.id);if(di>=0)pile.splice(di,1);
-    s.melds[p].push({type,tiles:sortH([...tiles,disc])});
+    if(type==='chi'){
+      // v1.6.27：吃牌被吃的牌（disc）置中顯示，兩張手牌按數值排序夾在兩側
+      const hTiles=sortH(tiles);
+      s.melds[p].push({type,tiles:[hTiles[0],disc,hTiles[1]]});
+    }else{
+      s.melds[p].push({type,tiles:sortH([...tiles,disc])});
+    }
     s.hands[p]=sortH(s.hands[p]);s.turn=p;s.drawnId=null;
     this.validateHandSize(p,'drawn'); // 【防相公】副露後應有17張待出牌
     const lbl={pong:'碰',chi:'吃',kong:'槓'}[type]||type;
@@ -6222,13 +6228,11 @@ const Game={
     if([0,1,2,3].every(v=>flowerVals.has(v))) add(2,'四君子 花槓 +2台');
     if([4,5,6,7].every(v=>flowerVals.has(v))) add(2,'四季 花槓 +2台');
 
-    // ② 天胡+16 / 人胡+16 / 地胡+16 / 自摸+1
+    // ② 天胡+16 / 人胡+16 / 自摸+1（v1.6.27：移除地胡判定，精簡規則）
     const isTianhu=selfDraw && s.discards.every(d=>d.length===0) && p===s.dealer;
     const isRenhu =!selfDraw && !!s._renhu;
-    const isDihu  =selfDraw && p!==s.dealer && s.discards.every((d,i)=>i===s.dealer?(d.length===1):(d.length===0));
     if(isTianhu)      add(16,'天胡 +16台');
     else if(isRenhu)  add(16,'人胡 +16台');
-    else if(isDihu)   add(16,'地胡 +16台');
     else if(selfDraw) add(1,'自摸 +1台');
 
     // ③ 門清 +1（暗槓不算副露）
@@ -6689,6 +6693,11 @@ const Game={
           this._isDiscarding=false;
           // v1.6.8【防禦】wait-dots 仍顯示代表 doTurn(0) 尚未正確清除 Loading 狀態，拒絕代打
           if(document.getElementById('wait-dots')?.classList.contains('show'))return;
+          // v1.6.27【防聽牌競爭條件】計時器代打前強制關閉聽牌選牌面板並重設聽牌旗標，
+          // 避免玩家點了「聽牌」但計時器先到，面板消失後 riichiMode 仍殘留 true 導致下回合卡死
+          const _rsp=document.getElementById('riichi-select-panel');if(_rsp)_rsp.remove();
+          this.riichiMode=false;
+          this._pendingDeclareRiichi=false;
           const hand=s.myHand||s.hands[0]||[];
           if(hand.length){
             // 自摸優先：若手牌已可胡，計時器到時自動宣胡而非打牌
@@ -7626,6 +7635,9 @@ const Game={
 
   confirmRiichi(tile){
     if(!tile)return;
+    // v1.6.27【防競爭條件】計時器代打已啟動時，忽略玩家對聽牌選牌面板的點擊，
+    // 避免 riichiMode=true 被設定後卻沒有真正出牌，導致下回合卡在聽牌模式
+    if(this._isDiscarding)return;
     // Remove riichi select panel
     const p=document.getElementById('riichi-select-panel');if(p)p.remove();
     const s=this.st;
@@ -8752,6 +8764,12 @@ const Online = {
           setTimeout(()=>Online.broadcastState(),50);
           return;
         }
+        // v1.6.27【出牌 tileId 驗證】確認被打出的牌真的在手牌裡，防客戶端偽造 tileId
+        if(Game.st&&!Game.st.hands[peerIdx].some(t=>t.id===data.tileId)){
+          console.warn(`[discard] tileId ${data.tileId} not in p${peerIdx} hand, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          return;
+        }
         // 【宣告聽牌】非主機宣告 riichi，主機同步記錄並廣播給其他客戶端
         if(data.declareRiichi&&Game.st){
           if(!Game.st.riichiPlayers) Game.st.riichiPlayers=[false,false,false,false];
@@ -8763,9 +8781,45 @@ const Online = {
         }
         Game.doDiscard(peerIdx,data.tileId);
         break;
-      case 'meld': Game.doMeld(peerIdx,data.meldType,resolveTiles(data.tiles)); break;
+      case 'meld': {
+        // v1.6.27【鳴牌合法性驗證】以主機端當前牌局狀態重新計算可鳴選項，核實請求型別合法
+        const _mt=data.meldType, _rt=resolveTiles(data.tiles);
+        const _ms=Game.st;
+        if(_ms){
+          const _disc=_ms.last, _mHand=_ms.hands[peerIdx].filter(x=>!x.fl);
+          const _legal=meldOpts(_mHand,_disc,peerIdx,_ms.lastP,_ms.melds[peerIdx]);
+          if(!_legal.some(o=>o.type===_mt)){
+            console.warn(`[meld] illegal ${_mt} from p${peerIdx}, rejecting`);
+            setTimeout(()=>Online.broadcastState(),50);
+            break;
+          }
+          // 進一步驗證：claimed hand tiles 必須都在主機端手牌中
+          const _hIds=new Set(_ms.hands[peerIdx].map(t=>t.id));
+          if(_rt.some(t=>t.id!==_disc?.id&&!_hIds.has(t.id))){
+            console.warn(`[meld] tile not in hand for p${peerIdx}, rejecting`);
+            setTimeout(()=>Online.broadcastState(),50);
+            break;
+          }
+        }
+        Game.doMeld(peerIdx,_mt,_rt);
+        break;
+      }
       case 'selfkong': Game.doSelfKong(peerIdx,resolveTiles(data.tiles)); break;
-      case 'win': Game.doWin(peerIdx,data.selfDraw); break;
+      case 'win': {
+        // v1.6.27【胡牌驗證】以主機端手牌狀態呼叫 canWin() 核實胡牌合法性
+        const _ws=Game.st;
+        if(_ws){
+          const _wHand=_ws.hands[peerIdx].filter(x=>!x.fl);
+          const _wDisc=data.selfDraw?null:_ws.last;
+          if(!canWin(_wHand,_wDisc,_ws.melds[peerIdx].length)){
+            console.warn(`[win] invalid win claim from p${peerIdx}, rejecting`);
+            setTimeout(()=>Online.broadcastState(),50);
+            break;
+          }
+        }
+        Game.doWin(peerIdx,data.selfDraw);
+        break;
+      }
       case 'skip': Game.nextTurn(); break;
       case 'request_sync':
         // 非主機請求重新同步（手牌張數異常時發送）
