@@ -3438,102 +3438,139 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   v1.6.34 · BUG FIXES — append-only overrides
+   v1.6.35 · 排版大手術 — 徹底修正遮擋與截斷漏洞
+   ── 所有規則均為 append-only；不觸碰原始 JS 邏輯 ──────────────
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── Bug1: 左右牌牆不溢出 pool 框 ──────────────────────────────
-   pool 改 overflow:visible（已在上方改）；牌牆自行限高並內移。
-   原定位 left/right: 4px 改為 16px 留出邊框空間。
-   max-height 限制在 pool 內（pool 高 430px，340/2=170，中心±170 從 45px 到 385px）。 */
-#wall-left {
-  left:    16px !important;
-  max-height: 340px !important;
-  overflow: hidden !important;
-}
-#wall-right {
-  right:   16px !important;
-  max-height: 340px !important;
-  overflow: hidden !important;
-}
-/* 上下牌牆也稍微內縮，避免接觸 pool 左右邊框 */
-#wall-top  { max-width: 560px !important; }
-#wall-bot  { max-width: 560px !important; }
+/* ── 1. 暫時隱藏四邊牌牆（視覺校正期，排除干擾）─────────────── */
+.tile-wall { display: none !important; }
 
-/* ── Bug3-p2: 對家（上方）副露區移至手牌下方（靠近中央）────────
-   原: pbar → melds → hand；改: pbar → hand → melds             */
-#ht2 { order: 1 !important; }
-#ma2 { order: 2 !important; }
+/* ── 2. 雙重 overflow:hidden 截斷根治 ─────────────────────────
+   #pool { overflow:hidden } + dc 容器 { overflow:hidden!important }
+   → 左右棄牌最右欄／最後一張被「隱形牆」切掉。
+   解法：pool 及 dc 容器全部改 overflow:visible；背景透明。      */
+#pool {
+  z-index: 5 !important;
+  overflow: visible !important;
+}
+#pool #dc0, #pool #dc1, #pool #dc2, #pool #dc3 {
+  overflow: visible !important;
+  background: transparent !important;
+  border: none !important;
+}
 
-/* ── Bug3-p3: 左家 — 手牌外側（左），副露區內側（右）──────────
-   CSS Grid 重排：pbar 佔完整寬度（第一行），
-   hand（ht3）在左（screen-edge side），melds（ma3）在右（pool side）。 */
+/* ── 3. 中央風向圈永遠浮在棄牌上方 ─────────────────────────────
+   原始 .cp z-index:5，與棄牌同層導致被蓋住。
+   z-index:200 確保任何棄牌都從圓盤「滑入下方」。
+   dc2/dc0 再往外推 15px（84px→109px）保持安全距離。           */
+.cp#col-table {
+  z-index: 200 !important;
+  position: absolute !important;
+}
+#pool #dc2 { top:    109px !important; }
+#pool #dc0 { bottom: 109px !important; }
+
+/* ── 4. 左家 p3：ht3 手牌壓外側（左），ma3 副露靠內側（右）────
+   重置 v1.6.34 grid layout；改用 position:relative + 子 absolute
+   精確控制兩欄位置，不受 flex 排序衝突影響。                    */
 #pa3 {
-  display: grid !important;
-  grid-template-rows: auto 1fr !important;
-  grid-template-columns: 1fr auto !important;
-  grid-template-areas: "pbar pbar" "hand melds" !important;
-  align-items: start !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+  overflow: visible !important;
+  align-items: flex-start !important;
 }
-#pb3 { grid-area: pbar !important; }
+#pb3 {
+  position: relative !important;
+  z-index: 3 !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
+}
 #ht3 {
-  grid-area: hand !important;
+  position: absolute !important;
+  left: 2px !important;
+  top: 52px !important;
+  bottom: 4px !important;
+  width: 36px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: flex-start !important;
-  min-height: 0 !important;
+  gap: 1px !important;
   overflow: hidden !important;
-  height: 100% !important;
-  width: 36px !important;
+  z-index: 1 !important;
 }
 #ma3 {
-  grid-area: melds !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: flex-end !important;
-  gap: 3px !important;
-  padding: 4px 2px 4px 2px !important;
-}
-
-/* ── Bug3-p1: 右家 — 副露區內側（左），手牌外側（右）──────────
-   CSS Grid 重排：pbar 佔完整寬度（第一行），
-   melds（ma1）在左（pool side），hand（ht1）在右（screen-edge side）。 */
-#pa1 {
-  display: grid !important;
-  grid-template-rows: auto 1fr !important;
-  grid-template-columns: auto 1fr !important;
-  grid-template-areas: "pbar pbar" "melds hand" !important;
-  align-items: start !important;
-}
-#pb1 { grid-area: pbar !important; }
-#ma1 {
-  grid-area: melds !important;
+  position: absolute !important;
+  left: 40px !important;
+  top: 52px !important;
+  right: 2px !important;
+  bottom: 0 !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: flex-start !important;
   gap: 3px !important;
-  padding: 4px 2px 4px 2px !important;
+  overflow: visible !important;
+  z-index: 2 !important;
+  padding: 2px !important;
+}
+#pa3 .ma .mg { flex-direction: row !important; flex-wrap: nowrap !important; }
+#pa3 .ma .t  { width: 30px !important; height: 42px !important; }
+
+/* ── 5. 右家 p1：ma1 副露靠內側（左），ht1 手牌壓外側（右）────
+   p1 與 p3 鏡像，right 對應 left 互換。                         */
+#pa1 {
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
+  overflow: visible !important;
+  align-items: flex-end !important;
+}
+#pb1 {
+  position: relative !important;
+  z-index: 3 !important;
+  flex-shrink: 0 !important;
+  width: 100% !important;
 }
 #ht1 {
-  grid-area: hand !important;
+  position: absolute !important;
+  right: 2px !important;
+  top: 52px !important;
+  bottom: 4px !important;
+  width: 36px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: flex-start !important;
-  min-height: 0 !important;
+  gap: 1px !important;
   overflow: hidden !important;
-  height: 100% !important;
-  width: 36px !important;
+  z-index: 1 !important;
 }
+#ma1 {
+  position: absolute !important;
+  right: 40px !important;
+  top: 52px !important;
+  left: 2px !important;
+  bottom: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 3px !important;
+  overflow: visible !important;
+  z-index: 2 !important;
+  padding: 2px !important;
+}
+#pa1 .ma .mg { flex-direction: row !important; flex-wrap: nowrap !important; }
+#pa1 .ma .t  { width: 30px !important; height: 42px !important; }
 
-/* ── Bug4: 中央風圈牌 z-index 升到棄牌之上 ───────────────────── */
-.cp#col-table {
-  z-index: 99 !important;
-  position: absolute !important;  /* already absolute but re-assert for stacking */
-}
-/* 棄牌區額外往中央縮進 10px（上下各從 84px → 94px）防止壓到中圈 */
-#pool #dc2 { top:    94px !important; }
-#pool #dc0 { bottom: 94px !important; }
+/* ── 6. 對家 p2：副露在手牌下方（靠近中央桌面）─────────────── */
+#ht2 { order: 1 !important; }
+#ma2 { order: 2 !important; }
+
+/* ── 7. 自己 p0：副露已由 HTML 結構（pa0-meld-row→pa0-hand-row）
+   正確置於手牌上方，無需額外 CSS。以下為防禦性確認。           */
+#pa0-meld-row { order: 0 !important; }
+#pa0-hand-row { order: 1 !important; }
 </style>
 </head>
 <body>
@@ -3544,7 +3581,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.34</div>
+    <div class="lver">v1.6.35</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
