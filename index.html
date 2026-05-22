@@ -3618,18 +3618,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   gap:            1px !important;
 }
 
-/* ── Fix 3 · p3/p1 副露軌道：再往中央推 15px（40px→55px）──────
-   ma3 left:55px（往右壓向棄牌河）；
-   ma1 right:55px（往左壓向棄牌河）。
-   gap 從 3px 改為 6px 讓副露組間距更清晰。                       */
-#ma3 {
-  left: 55px !important;
-  gap:  6px  !important;
-}
-#ma1 {
-  right: 55px !important;
-  gap:   6px  !important;
-}
+/* ── Fix 3 · p3/p1 副露軌道間距 ─────────────────────────────*/
+#ma3 { gap: 6px !important; }
+#ma1 { gap: 6px !important; }
 
 /* ═══════════════════════════════════════════════════════════════
    v1.6.38 · 三項位置修正
@@ -3646,28 +3637,51 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   overflow: visible !important;
 }
 
-/* ── Fix 2 · p1/p3 副露嚴格不侵入手牌欄 ─────────────────────
-   ht1/ht3 提升 z-index 至 4（> ma z-index:2），手牌永遠壓在副露上方。
-   ma1/ma3 加 overflow:hidden 截斷任何超寬副露溢出。
-   同時收窄 gap 確保副露不橫跨入手牌欄：ma3 left:45px, ma1 right:45px。 */
+/* ── Fix 2 · p1/p3 副露不侵入手牌欄 ─────────────────────────
+   ht1/ht3 提升 z-index 至 4，手牌永遠壓在副露之上。
+   ma1/ma3 加 overflow:hidden 截斷超寬溢出。                    */
 #ht1 { z-index: 4 !important; }
 #ht3 { z-index: 4 !important; }
 #ma1 {
   overflow: hidden !important;
-  right:    45px !important;    /* 縮回 45px，手牌欄更安全 */
+  right:    45px !important;
 }
 #ma3 {
   overflow: hidden !important;
   left:     45px !important;
 }
 
-/* ── Fix 3 · p0 資訊列移至手牌正下方 ────────────────────────
-   dc0 棄牌往上溢入 p0-zone 頂部約 30px，pbar 原本在那個碰撞區。
-   解法：pa0 改 flex-start，pbar 以 margin-top:auto 自然沉底，
-   排列變成 [副露列] → [手牌列] → [timer bar] → [資訊列]。       */
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.39 · 四項定位修正
+   1. p1/p3 副露對齊方向：往 pool 方向推（遠離外側手牌欄）
+   2. p0 資訊列不被截斷：margin-top fixed 6px
+   3. p2 副露 nowrap：不換行不溢入 pool 深處
+   4. dc0/dc2 貼緊各家：top/bottom 0px
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Fix 1 · p1/p3 副露推向 pool 方向 ───────────────────────
+   p1（右家）ma1: align-items:flex-start → 副露靠 LEFT（朝 pool）
+   p3（左家）ma3: align-items:flex-end   → 副露靠 RIGHT（朝 pool）
+   並確保 pa1/pa3 填滿父容器尺寸。                               */
+#pa1 { width: 100% !important; height: 100% !important; }
+#pa3 { width: 100% !important; height: 100% !important; }
+#ma1 { align-items: flex-start !important; }
+#ma3 { align-items: flex-end   !important; }
+
+/* ── Fix 3 (p2) · 副露 nowrap，不換行不溢入 pool ────────────*/
+#ma2 { flex-wrap: nowrap !important; overflow: visible !important; }
+
+/* ── Fix 4 · dc2/dc0 貼緊各家（0px）─────────────────────────*/
+#pool #dc2 { top:    0px !important; }
+#pool #dc0 { bottom: 0px !important; }
+
+/* ── Fix 2 · p0 資訊列不被截斷 ──────────────────────────────
+   pa0 改 flex-start，排列：[副露] → [手牌] → [tbar] → [資訊]。
+   不用 margin-top:auto 避免 pbar 沉到視窗底端被截斷；
+   改用固定 margin-top:6px 讓資訊緊接 tbar 下方。               */
 #pa0 {
   justify-content: flex-start !important;
-  padding-top:     32px !important;   /* 跳過 dc0 溢出的 ~30px 碰撞區 */
+  padding-top:     32px !important;   /* 跳過 dc0 碰撞區 ~30px */
 }
 #pa0-meld-row {
   order:       1 !important;
@@ -3682,11 +3696,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   flex-shrink: 0 !important;
 }
 #pb0 {
-  order:          4 !important;
-  margin-top:     auto !important;   /* 推到 p0-zone 底端 */
-  flex-shrink:    0 !important;
-  padding-bottom: 4px !important;
-  align-self:     center !important;
+  order:       4 !important;
+  margin-top:  6px !important;    /* 固定間距，不沉底不被截 */
+  flex-shrink: 0 !important;
+  align-self:  center !important;
+  padding-bottom: 0 !important;
 }
 </style>
 </head>
@@ -3698,7 +3712,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.38</div>
+    <div class="lver">v1.6.39</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
