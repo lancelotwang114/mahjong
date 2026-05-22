@@ -3693,11 +3693,22 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ht2 { order: 2 !important; }
 
 /* ── C. p1/p3（左右家）副露靠近各自 pbar ─────────────────────
-   目前 ma1/ma3 top:52px，距 pbar 底端約 10px 無縫但視覺遠。
-   縮減至 top:36px，讓副露欄頂端貼近 pbar，感覺副露「屬於」該玩家。
-   pb1/pb3 有 z-index:3 > ma z-index:2，即使稍微重疊 pbar 仍在最上層。 */
-#ma1 { top: 36px !important; }
-#ma3 { top: 36px !important; }
+   縮減 top:36px 讓副露欄頂端貼近 pbar。
+   加 justify-content:flex-start 確保第一組副露永遠從欄頂開始，
+   不因鳴牌張數少而沉底（之前缺少此設定）。                    */
+#ma1 { top: 36px !important; justify-content: flex-start !important; }
+#ma3 { top: 36px !important; justify-content: flex-start !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.41 · 左右家手牌縮小至可計全數
+   原 sm=32×44px，16 張 = 704px >> ht 欄高 364px → 看不完。
+   縮至 24×18px：16×18 + 15gap = 303px < 364px，全部可見。
+   back tile 背面不走 sprite，安全縮放。欄寬縮至 28px 騰出副露空間。
+═══════════════════════════════════════════════════════════════ */
+#ht1 .t { width: 24px !important; height: 18px !important; }
+#ht3 .t { width: 24px !important; height: 18px !important; }
+#ht1 { width: 28px !important; }
+#ht3 { width: 28px !important; }
 
 /* ── Fix 2 · p0 資訊列不被截斷 ──────────────────────────────
    pa0 改 flex-start，排列：[副露] → [手牌] → [tbar] → [資訊]。
@@ -3736,7 +3747,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.40</div>
+    <div class="lver">v1.6.41</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
