@@ -3148,19 +3148,25 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    DOM structure untouched; all changes via new selectors / !important.
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── 1. #tbl: felt texture + VISIBLE wood frame ──────────── */
+/* ── 1. #tbl: 絨布質感桌布 + 木頭邊框 ─────────────────── */
 #tbl {
-  background:
-    radial-gradient(circle, #1a365d 0%, #0f172a 100%) !important;
-  /* External box-shadow = visible wood border OUTSIDE the 1280×720 area.
-     Does NOT affect inner layout. Renders in #game's background area. */
+  /* 絨布底色 + 外部紋理 URL。background-blend-mode:multiply 讓
+     gradient 壓在紋理上，保留顏色的同時透出布料凹凸感。         */
+  background-color: #0f172a !important;
+  background-image:
+    radial-gradient(circle, #1a365d 0%, rgba(15,23,42,0.92) 100%),
+    url('https://www.freecreatives.com/wp-content/uploads/2016/06/Velvet-Texture.jpeg') !important;
+  background-blend-mode: multiply !important;
+  background-size: cover, 420px 420px !important;
+  background-repeat: no-repeat, repeat !important;
+  /* 外陰影 = 木頭邊框，渲染在 1280×720 canvas 以外，不影響內部 layout */
   box-shadow:
-    0 0 0 16px #2d1a10,
-    0 0 0 20px rgba(74,44,22,.55),
-    0 20px 60px rgba(0,0,0,.65) !important;
-  border-radius: 6px !important;
+    0 0 0 18px #2d1a10,
+    0 0 0 22px rgba(74,44,22,.6),
+    0 25px 60px rgba(0,0,0,.7) !important;
+  border-radius: 8px !important;
 }
-/* Felt weave pattern */
+/* 細格紋疊層（絨布紋理備援：若 URL 無法載入仍有視覺質感） */
 #tbl::before {
   content: '' !important;
   position: absolute !important; inset: 0 !important;
@@ -3170,29 +3176,30 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     repeating-linear-gradient(
       0deg,
       transparent 0, transparent 47px,
-      rgba(255,255,255,.018) 47px, rgba(255,255,255,.018) 48px
+      rgba(255,255,255,.022) 47px, rgba(255,255,255,.022) 48px
     ),
     repeating-linear-gradient(
       90deg,
       transparent 0, transparent 47px,
-      rgba(255,255,255,.014) 47px, rgba(255,255,255,.014) 48px
+      rgba(255,255,255,.016) 47px, rgba(255,255,255,.016) 48px
     ) !important;
 }
-/* Inner vignette only — wood frame is now done via #tbl box-shadow */
+/* 內陰影：桌面邊緣暗角 */
 #tbl::after {
-  box-shadow: inset 0 0 80px rgba(0,0,0,.4) !important;
-  border-radius: 6px !important;
+  box-shadow: inset 0 0 90px rgba(0,0,0,.5) !important;
+  border-radius: 8px !important;
 }
 
-/* ── 2. .t.back: 3D stacking depth (ALL back tiles) ─────── */
+/* ── 2. .t.back: 3D 立體牌牆堆疊感 ─────────────────────── */
+/* 牌身銀白側面 = 模擬牌的厚度；cast shadow = 落地立體感        */
 .t.back {
   position: relative !important;
   box-shadow:
-    -1px 1px 0 #b0bec5,   /* tile side: light silver */
-    -2px 2px 0 #90a4ae,   /* second layer */
-    -3px 3px 5px rgba(0,0,0,.5) !important; /* cast shadow */
+    -1px 1px 0 #b0bec5,
+    -2px 2px 0 #90a4ae,
+    -3px 3px 6px rgba(0,0,0,.6) !important;
 }
-/* Pseudo-element = ghosted second tile layer below */
+/* ::after = 向左下錯位的鬼影牌，模擬「下方疊了第二排」視覺 */
 .t.back::after {
   content: '' !important;
   position: absolute !important;
@@ -3202,10 +3209,15 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   height: 100% !important;
   background: inherit !important;
   border-radius: inherit !important;
+  box-shadow: inherit !important;
   z-index: -1 !important;
-  opacity: 0.7 !important;
+  opacity: 0.8 !important;
   pointer-events: none !important;
 }
+/* #ht1/#ht3 overflow:hidden 會裁切 ::after，強制 visible */
+#ht1, #ht3 { overflow: visible !important; }
+/* pa1/pa3 同理 */
+#pa1, #pa3 { overflow: visible !important; }
 
 /* ── 2b. Fix dark-kong back tiles — don't show light silver edge ── */
 .mg.dark-kong .t.back {
@@ -3216,12 +3228,23 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 .mg.dark-kong .t.back::after { display: none !important; }
 
-/* ── 3. #pa1-area/#pa3-area: prevent meld overlap ────────── */
-#pa1-area, #pa3-area {
+/* ── 3. #pa1-area/#pa3-area: 向外緣推移 10px，防遮擋 ─────── */
+/* 外推 10px 讓側邊面板遠離棄牌區，消除副露牌與 pool 的碰撞    */
+#pa3-area {
+  left: -10px !important;         /* 向左外緣推移 10px */
   z-index: 10 !important;
-  background: rgba(12,6,2,.45) !important;
-  border: 1.5px solid rgba(92,64,51,.55) !important;
+  background: rgba(12,6,2,.50) !important;
+  border: 1.5px solid rgba(92,64,51,.60) !important;
   border-radius: 6px !important;
+  overflow: visible !important;
+}
+#pa1-area {
+  right: -10px !important;        /* 向右外緣推移 10px */
+  z-index: 10 !important;
+  background: rgba(12,6,2,.50) !important;
+  border: 1.5px solid rgba(92,64,51,.60) !important;
+  border-radius: 6px !important;
+  overflow: visible !important;
 }
 /* Pbar inside side panels: ensure above meld tiles */
 #pb1, #pb3 {
@@ -3230,11 +3253,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 /* Meld containers: constrain width, prevent pool intrusion */
 #ma1 {
-  max-width: 176px !important;
+  max-width: 178px !important;
   align-items: flex-start !important;
 }
 #ma3 {
-  max-width: 176px !important;
+  max-width: 178px !important;
   align-items: flex-end !important;
 }
 
@@ -3309,16 +3332,17 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 #tenpai-tooltip .tt-rem { font-size: .6rem; font-family: 'Noto Sans TC',sans-serif; }
 
-/* ── 4. Dealer streak: black-gold label ─────────────────────── */
+/* ── 4. Dealer streak: 黑金連莊標籤 ─────────────────────────── */
 @keyframes streakFlicker {
-  0%,100% { box-shadow: 0 0 4px rgba(212,168,67,.4); }
-  50%      { box-shadow: 0 0 12px rgba(212,168,67,.9), 0 0 24px rgba(212,168,67,.34); }
+  0%,100% { box-shadow: 0 0 10px #d4af37; }
+  50%      { box-shadow: 0 0 18px #d4af37, 0 0 32px rgba(212,175,55,.5); }
 }
 .dealer-badge.dealer-streak-gold {
-  background: linear-gradient(135deg, #100d00, #1c1800) !important;
-  color: var(--gold2) !important;
-  border: 1px solid rgba(212,168,67,.72) !important;
-  text-shadow: 0 0 7px rgba(212,168,67,.65) !important;
+  background: #000000 !important;    /* 黑底 */
+  color: #d4af37 !important;         /* 金字 */
+  border: 2px solid #d4af37 !important; /* 金框 */
+  box-shadow: 0 0 10px #d4af37 !important;
+  text-shadow: 0 0 6px rgba(212,175,55,.8) !important;
   animation: streakFlicker 1.8s ease-in-out infinite;
   padding: 1px 6px !important;
   letter-spacing: .04em !important;
@@ -3333,7 +3357,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.30</div>
+    <div class="lver">v1.6.31</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
