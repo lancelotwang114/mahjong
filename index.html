@@ -3332,6 +3332,82 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 #tenpai-tooltip .tt-rem { font-size: .6rem; font-family: 'Noto Sans TC',sans-serif; }
 
+/* ── 3e. 棄牌區往中央移，為四面牌牆讓出 84px ──────────────── */
+/* 原本貼邊 5px，現在退到 84px（4px edge + 76px wall + 4px gap）  */
+#pool #dc2 {
+  top:    84px !important;
+  height: 92px !important;
+  grid-auto-rows: 44px !important;
+}
+#pool #dc0 {
+  bottom: 84px !important;
+  height: 92px !important;
+  grid-auto-rows: 44px !important;
+}
+#pool #dc3 {
+  left: 84px !important;
+  width: 128px !important;
+  height: 210px !important;
+}
+#pool #dc1 {
+  right: 84px !important;
+  width: 128px !important;
+  height: 210px !important;
+}
+
+/* ── 3f. 牌牆容器定位 ────────────────────────────────────────── */
+.tile-wall {
+  position: absolute;
+  display: flex;
+  gap: 2px;
+  z-index: 4;
+  pointer-events: none;
+}
+.wall-h { flex-direction: row; align-items: flex-end; }
+.wall-v { flex-direction: column; align-items: flex-end; }
+
+#wall-top  { top:    4px; left: 50%; transform: translateX(-50%); }
+#wall-bot  { bottom: 4px; left: 50%; transform: translateX(-50%); }
+#wall-left { left:   4px; top:  50%; transform: translateY(-50%); }
+#wall-right{ right:  4px; top:  50%; transform: translateY(-50%); }
+
+/* ── 3g. 牌牆單疊（wstack）與單張牌（wt）─────────────────────── */
+.wstack {
+  display: flex;
+  flex-direction: column; /* top tile first = index 0 on top */
+  gap: 1px;
+  flex-shrink: 0;
+}
+.wall-v .wstack { flex-direction: row; } /* side walls: depth goes sideways */
+
+/* 象牙白正面牌 — 水平牆 */
+.wt {
+  width:  26px;
+  height: 38px;
+  background: linear-gradient(160deg, #f7ecd2 0%, #eedcaa 55%, #d9c07a 100%);
+  border: 1.5px solid #b89040;
+  border-radius: 3px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.55) inset,
+    0 -2px 0 rgba(0,0,0,.25) inset,
+    1px 3px 5px rgba(0,0,0,.45);
+  flex-shrink: 0;
+}
+/* 側牆牌：寬高互換（rotate 效果用 CSS 達成） */
+.wall-v .wt {
+  width:  38px;
+  height: 26px;
+}
+/* 空位（已被摸走的牌）：保留空間但不顯示 */
+.wt.wt-empty {
+  visibility: hidden;
+}
+/* 牌牆第二層（底層）：顏色稍暗、微偏移，強化立體感 */
+.wstack > .wt:last-child {
+  background: linear-gradient(160deg, #dccb9a 0%, #c8ae72 55%, #b0924a 100%) !important;
+  box-shadow: 1px 4px 6px rgba(0,0,0,.55) !important;
+}
+
 /* ── 4. Dealer streak: 黑金連莊標籤 ─────────────────────────── */
 @keyframes streakFlicker {
   0%,100% { box-shadow: 0 0 10px #d4af37; }
@@ -3357,7 +3433,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.31</div>
+    <div class="lver">v1.6.32</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -3679,6 +3755,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <span id="dcnt" style="color:var(--gold);font-size:.75rem;font-weight:700">144</span>
       </div>
     </div>
+    <!-- ── Tile walls (4 sides, rendered by _renderWall) ── -->
+    <div id="wall-top"   class="tile-wall wall-h"></div>
+    <div id="wall-bot"   class="tile-wall wall-h"></div>
+    <div id="wall-left"  class="tile-wall wall-v"></div>
+    <div id="wall-right" class="tile-wall wall-v"></div>
     <!-- Four discard zones (keep z-*d class for sprite CSS) -->
     <div id="dc2" class="z-td"></div><!-- top (player 2) -->
     <div id="dc0" class="z-bd"></div><!-- bottom (player 0 / me) -->
@@ -5109,6 +5190,8 @@ const Game={
       _afterKong:false,_kongWin:false,_renhu:false,_robKong:false,
       honba:honba,       // 本場點：連莊累積
       turnSeq:0,         // 【防雙打】回合序號令牌，每次 doTurn 遞增
+      wallTailDrawn:0,   // 從牌牆尾端補花抽走的張數（視覺同步用）
+      wallBreak:0,       // 開門位置（0-21，showDice 後依骰子更新）
     };
   },
 
@@ -5132,7 +5215,7 @@ const Game={
     if(this.settings&&this.settings.quickStart){
       const [d1,d2]=this._hostDice||[1+~~(Math.random()*6),1+~~(Math.random()*6)];
       this._hostDice=null;
-      if(this.st)this.st.dice=[d1,d2];
+      if(this.st){this.st.dice=[d1,d2];this.st.wallBreak=((d1+d2)+(this.st.dealer||0)*18)%22;}
       const dov=document.getElementById('dov');if(dov)dov.style.display='none';
       if(this.st)this.st.phase='playing';
       this.render();
@@ -5146,6 +5229,7 @@ const Game={
     const [d1,d2]=this._hostDice||[1+~~(Math.random()*6),1+~~(Math.random()*6)];
     this._hostDice=null;
     this.st.dice=[d1,d2];
+    this.st.wallBreak=((d1+d2)+(this.st.dealer||0)*18)%22;
     dov.style.display='flex';
     dbig.innerHTML='';
     dbig.style.cssText='position:relative;width:100%;min-height:230px;display:flex;align-items:center;justify-content:center;overflow:visible;';
@@ -5264,13 +5348,13 @@ const Game={
       // Draw replacement tiles until no more flowers pending
       let safety=20; // prevent infinite loop
       while(s.pending[p]>0&&safety-->0){
-        let t=s.deck.shift();
-        // Chain flower: if drawn tile is also a flower, keep drawing
+        let t=s.deck.pop(); s.wallTailDrawn=(s.wallTailDrawn||0)+1; // 補花從尾端抽
+        // Chain flower: if drawn tile is also a flower, keep drawing from tail
         while(t&&t.fl){
           s.flowers[p].push(t);
           s.pending[p]++; // need another replacement
           this.log(`${s.names[p]} 連補花: ${t.n}`);
-          t=s.deck.shift();
+          t=s.deck.pop(); s.wallTailDrawn=(s.wallTailDrawn||0)+1;
         }
         if(t&&!t.fl) s.hands[p].push(t);
         s.pending[p]=Math.max(0,s.pending[p]-1);
@@ -5332,8 +5416,8 @@ const Game={
       s.hands[p]=[...s.hands[p].filter(x=>x.fl),...nonFlower.slice(0,expectedBeforeDraw)];
     }
     const preFlowerCount=s.flowers[p].length;
-    let t=s.deck.shift();
-    while(t){if(!t.fl)break;s.flowers[p].push(t);this.log(`${s.names[p]} 槓上補花: ${t.n}`);Snd.play(520,.12,'sine',.14);this.render();t=s.deck.shift();}
+    let t=s.deck.shift(); // 正常摸牌：從頭端
+    while(t){if(!t.fl)break;s.flowers[p].push(t);this.log(`${s.names[p]} 槓上補花: ${t.n}`);Snd.play(520,.12,'sine',.14);s.wallTailDrawn=(s.wallTailDrawn||0)+1;this.render();t=s.deck.pop();} // 槓上補花：從尾端
     if(!t){this.endDraw();return;}
     s.hands[p].push(t);s.drawnId=t.id;
 
@@ -7003,6 +7087,7 @@ const Game={
     const deckPct=Math.max(0,s.deck.length/144*100)+'%';
     document.getElementById('cbar').style.width=deckPct;
     document.getElementById('dcnt').textContent=s.deck.length;
+    this._renderWall();
     // Round progress dots
     const rpBar=document.getElementById('rp-bar');
     if(rpBar&&s.roundNum){
@@ -8464,6 +8549,80 @@ const Game={
   },
 
   // ── v1.6.29: Tenpai hover tooltip ─────────────────────────
+  // ── 牌牆渲染 ───────────────────────────────────────────────
+  // 72 疊，每疊 2 張：top=22疊, right=14疊, bot=22疊, left=14疊
+  // headPtr 從頭端遞增（正常摸牌），tailPtr 從尾端遞減（補花）
+  // wallBreak：底部牆的開門偏移（0-21），由骰子決定
+  _renderWall(){
+    const s=this.st;
+    if(!s)return;
+    const BOT=22,RIGHT=14,TOP=22,LEFT=14,TOTAL=72,INIT_DECK=80;
+    const deckLen=s.deck.length;
+    const tailDrwn=s.wallTailDrawn||0;
+    const brk=s.wallBreak||0; // 0-21, offset within bottom wall
+
+    // frontDrawn: 從頭端摸走的張數
+    const frontDrwn=Math.max(0,(INIT_DECK-deckLen)-tailDrwn);
+    const frontEmpty=Math.floor(frontDrwn/2);
+    const frontPartial=frontDrwn%2;
+    const tailEmpty=Math.floor(tailDrwn/2);
+    const tailPartial=tailDrwn%2;
+    const DECK_ST=40; // 初始牌堆疊數
+
+    // 每疊的牌張數（0/1/2）
+    // deckIdx: 0=第一個可用疊（next to draw), 39=尾端疊
+    function stackCnt(deckIdx){
+      if(deckIdx<0||deckIdx>=DECK_ST) return 0;
+      if(deckIdx<frontEmpty) return 0;
+      if(deckIdx===frontEmpty&&frontPartial) return 1;
+      const rev=DECK_ST-1-deckIdx;
+      if(rev<tailEmpty) return 0;
+      if(rev===tailEmpty&&tailPartial) return 1;
+      return 2;
+    }
+
+    // 物理疊編號 0-71 映射：bot=0-21, right=22-35, top=36-57, left=58-71
+    // 開門(headPhys)從 bottom wall 的 brk 偏移開始
+    // 發牌消耗了頭端 32 疊（物理偏移後的前 32 個位置）
+    const headPhys=(brk)%TOTAL; // 第一個「已發」疊的物理位置
+    function physToStackCnt(phys){
+      // linear: 相對於 headPhys 的順序（0=dealt start）
+      const linear=(phys-headPhys+TOTAL)%TOTAL;
+      if(linear<32) return 0;          // 已發牌的疊
+      return stackCnt(linear-32);      // 剩餘牌堆中的位置
+    }
+
+    // 渲染每一面牆
+    const walls=[
+      {id:'wall-bot',  physStart:0,  count:BOT},
+      {id:'wall-right',physStart:22, count:RIGHT},
+      {id:'wall-top',  physStart:36, count:TOP},
+      {id:'wall-left', physStart:58, count:LEFT},
+    ];
+    walls.forEach(def=>{
+      const el=document.getElementById(def.id);
+      if(!el)return;
+      // 只在疊數有變化時重繪（效能）
+      const sig=def.physStart+'_'+deckLen+'_'+tailDrwn+'_'+brk;
+      if(el.dataset.wallSig===sig) return;
+      el.dataset.wallSig=sig;
+      el.innerHTML='';
+      for(let i=0;i<def.count;i++){
+        const phys=def.physStart+i;
+        const cnt=physToStackCnt(phys);
+        const stack=document.createElement('div');
+        stack.className='wstack';
+        // 上層牌（視覺正面）先 append，下層牌在後
+        for(let layer=1;layer>=0;layer--){
+          const tile=document.createElement('div');
+          tile.className='wt'+(layer>=cnt?' wt-empty':'');
+          stack.appendChild(tile);
+        }
+        el.appendChild(stack);
+      }
+    });
+  },
+
   _initTenpaiTooltip(){
     if(this._tenpaiTooltipInited)return;
     this._tenpaiTooltipInited=true;
