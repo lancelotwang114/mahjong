@@ -3571,6 +3571,66 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    正確置於手牌上方，無需額外 CSS。以下為防禦性確認。           */
 #pa0-meld-row { order: 0 !important; }
 #pa0-hand-row { order: 1 !important; }
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.36 · 三項微創手術
+   1. 中央風向圈確保浮出 — dc2/dc0 再往外 +20px（109→129）
+   2. p0 副露水平列精準對齊
+   3. p1/p3 副露軌道再往中央推 15px
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Fix 1 · 對家（上）與自己（下）棄牌往外再拉 20px ──────────
+   確保所有棄牌從中心圓盤「滑入下方」，圓盤永遠可見。
+   同時給 #pool 加 isolation:isolate 防止 stacking context 干擾。 */
+#pool { isolation: isolate !important; }
+#pool #dc2 { top:    129px !important; }
+#pool #dc0 { bottom: 129px !important; }
+.cp#col-table {
+  z-index: 999 !important;
+  position: absolute !important;
+  isolation: isolate !important;
+}
+
+/* ── Fix 2 · p0 副露水平列：flex row + 鎖定在手牌上沿 10px 處 ──
+   #pa0-meld-row 為外框容器；#ma0 為實際副露片段容器。           */
+#pa0-meld-row {
+  display:         flex !important;
+  flex-direction:  row !important;
+  justify-content: center !important;
+  align-items:     flex-end !important;
+  gap:             8px !important;
+  padding:         0 4px !important;
+  margin-bottom:   10px !important;
+  flex-wrap:       nowrap !important;
+  min-height:      0 !important;
+  order: 0 !important;
+}
+#ma0 {
+  display:         flex !important;
+  flex-direction:  row !important;
+  justify-content: center !important;
+  align-items:     flex-end !important;
+  gap:             8px !important;
+  flex-wrap:       nowrap !important;
+}
+#ma0 .mg {
+  flex-direction: row !important;
+  flex-wrap:      nowrap !important;
+  gap:            1px !important;
+}
+
+/* ── Fix 3 · p3/p1 副露軌道：再往中央推 15px（40px→55px）──────
+   ma3 left:55px（往右壓向棄牌河）；
+   ma1 right:55px（往左壓向棄牌河）。
+   gap 從 3px 改為 6px 讓副露組間距更清晰。                       */
+#ma3 {
+  left: 55px !important;
+  gap:  6px  !important;
+}
+#ma1 {
+  right: 55px !important;
+  gap:   6px  !important;
+}
 </style>
 </head>
 <body>
@@ -3581,7 +3641,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.35</div>
+    <div class="lver">v1.6.36</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
