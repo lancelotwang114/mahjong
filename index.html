@@ -3151,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.27</div>
+    <div class="lver">v1.6.28</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -8729,8 +8729,10 @@ const Online = {
     if(!Game.st||Game.st.phase!=='playing'){
       if(data.action==='discard'||data.action==='meld'||data.action==='selfkong')return;
     }
+    // 【H1】記錄是否有合法的 legacy 鳴牌等待情境，供後面 skip 授權驗證使用（必須在清除前記錄）
+    const _wasLegacyWaiting=Game._waitingMeldFrom===peerIdx;
     // Clear pending non-host meld wait when peer responds (legacy single-wait path)
-    if(Game._waitingMeldFrom===peerIdx){
+    if(_wasLegacyWaiting){
       Game._waitingMeldFrom=null;
       clearTimeout(Game._nhMeldTimeout);
     }
@@ -8758,6 +8760,12 @@ const Online = {
           console.warn(`[turnSeq] discard rejected: got ${data.turnSeq}, current ${Game.st.turnSeq}`);
           break;
         }
+        // 【C1】回合歸屬驗證：確認現在是 peerIdx 的回合，防止越回合出牌污染狀態
+        if(Game.st&&Game.st.turn!==peerIdx){
+          console.warn(`[discard] out-of-turn from p${peerIdx}, turn=${Game.st.turn}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          return;
+        }
         // 【主機防相公】discard 前確認手牌應有17張（已摸牌待出）
         if(Game.st&&!Game.validateHandSize(peerIdx,'drawn')){
           // 張數異常：拒絕執行，強制同步正確狀態回客戶端
@@ -8770,57 +8778,109 @@ const Online = {
           setTimeout(()=>Online.broadcastState(),50);
           return;
         }
-        // 【宣告聽牌】非主機宣告 riichi，主機同步記錄並廣播給其他客戶端
+        // 【H4】宣告聽牌前先驗證：打出該牌後手牌真的能聽，防虛假宣告鎖定 riichiPlayers
         if(data.declareRiichi&&Game.st){
-          if(!Game.st.riichiPlayers) Game.st.riichiPlayers=[false,false,false,false];
-          Game.st.riichiPlayers[peerIdx]=true;
-          // 【BROADCAST_TING】主機廣播聽牌語音封包給所有人
-          const tingName=Game.st.names[peerIdx]||`玩家${peerIdx}`;
-          MahjongNetwork.broadcast({type:'broadcast_ting',playerName:tingName,playerIdx:peerIdx});
-          Game.speakTing(tingName); // 主機自己也播
+          const _rAfterHand=Game.st.hands[peerIdx].filter(x=>!x.fl&&x.id!==data.tileId);
+          const _rTing=tenpaiTiles(_rAfterHand,Game.st.melds[peerIdx]);
+          if(_rTing.length>0){
+            if(!Game.st.riichiPlayers) Game.st.riichiPlayers=[false,false,false,false];
+            Game.st.riichiPlayers[peerIdx]=true;
+            // 【BROADCAST_TING】主機廣播聽牌語音封包給所有人
+            const tingName=Game.st.names[peerIdx]||`玩家${peerIdx}`;
+            MahjongNetwork.broadcast({type:'broadcast_ting',playerName:tingName,playerIdx:peerIdx});
+            Game.speakTing(tingName); // 主機自己也播
+          } else {
+            console.warn(`[riichi] p${peerIdx} declared riichi but not tenpai after discard, ignoring`);
+          }
         }
         Game.doDiscard(peerIdx,data.tileId);
         break;
       case 'meld': {
-        // v1.6.27【鳴牌合法性驗證】以主機端當前牌局狀態重新計算可鳴選項，核實請求型別合法
+        // 【M1】null guard：Game.st 為 null 時直接拒絕，不呼叫 doMeld
+        if(!Game.st){ console.warn(`[meld] Game.st is null, rejecting`); break; }
         const _mt=data.meldType, _rt=resolveTiles(data.tiles);
         const _ms=Game.st;
-        if(_ms){
-          const _disc=_ms.last, _mHand=_ms.hands[peerIdx].filter(x=>!x.fl);
-          const _legal=meldOpts(_mHand,_disc,peerIdx,_ms.lastP,_ms.melds[peerIdx]);
-          if(!_legal.some(o=>o.type===_mt)){
-            console.warn(`[meld] illegal ${_mt} from p${peerIdx}, rejecting`);
-            setTimeout(()=>Online.broadcastState(),50);
-            break;
-          }
-          // 進一步驗證：claimed hand tiles 必須都在主機端手牌中
-          const _hIds=new Set(_ms.hands[peerIdx].map(t=>t.id));
-          if(_rt.some(t=>t.id!==_disc?.id&&!_hIds.has(t.id))){
-            console.warn(`[meld] tile not in hand for p${peerIdx}, rejecting`);
-            setTimeout(()=>Online.broadcastState(),50);
-            break;
-          }
+        const _disc=_ms.last, _mHand=_ms.hands[peerIdx].filter(x=>!x.fl);
+        // 【H2】已宣告聽牌的玩家不可鳴牌（只能胡牌），防止破壞聽牌限制
+        if(_ms.riichiPlayers?.[peerIdx]){
+          console.warn(`[meld] p${peerIdx} is in riichi, meld rejected`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // v1.6.27【鳴牌合法性驗證】以主機端當前牌局狀態重新計算可鳴選項，核實請求型別合法
+        const _legal=meldOpts(_mHand,_disc,peerIdx,_ms.lastP,_ms.melds[peerIdx]);
+        if(!_legal.some(o=>o.type===_mt)){
+          console.warn(`[meld] illegal ${_mt} from p${peerIdx}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // 進一步驗證：claimed hand tiles 必須都在主機端手牌中
+        const _hIds=new Set(_ms.hands[peerIdx].map(t=>t.id));
+        if(_rt.some(t=>t.id!==_disc?.id&&!_hIds.has(t.id))){
+          console.warn(`[meld] tile not in hand for p${peerIdx}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
         }
         Game.doMeld(peerIdx,_mt,_rt);
         break;
       }
-      case 'selfkong': Game.doSelfKong(peerIdx,resolveTiles(data.tiles)); break;
+      case 'selfkong': {
+        // 【C2】selfkong 完整驗證：null guard + 回合驗證 + 槓牌合法性
+        if(!Game.st){ console.warn(`[selfkong] Game.st is null, rejecting`); break; }
+        const _sks=Game.st;
+        // 回合驗證：只有輪到自己才能宣告暗槓/加槓
+        if(_sks.turn!==peerIdx){
+          console.warn(`[selfkong] out-of-turn from p${peerIdx}, turn=${_sks.turn}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // 合法性驗證：用主機端 AI.selfKong 重新計算可槓的牌組（不信任客戶端回報的 tile IDs）
+        const _skHand=_sks.hands[peerIdx].filter(x=>!x.fl);
+        const _skValid=AI.selfKong(_skHand,_sks.melds[peerIdx]);
+        if(!_skValid){
+          console.warn(`[selfkong] no valid kong for p${peerIdx}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // 使用主機端計算的牌組執行，完全忽略客戶端回報的 tile IDs
+        Game.doSelfKong(peerIdx,_skValid);
+        break;
+      }
       case 'win': {
-        // v1.6.27【胡牌驗證】以主機端手牌狀態呼叫 canWin() 核實胡牌合法性
+        // 【M1】null guard
+        if(!Game.st){ console.warn(`[win] Game.st is null, rejecting`); break; }
         const _ws=Game.st;
-        if(_ws){
-          const _wHand=_ws.hands[peerIdx].filter(x=>!x.fl);
-          const _wDisc=data.selfDraw?null:_ws.last;
-          if(!canWin(_wHand,_wDisc,_ws.melds[peerIdx].length)){
-            console.warn(`[win] invalid win claim from p${peerIdx}, rejecting`);
-            setTimeout(()=>Online.broadcastState(),50);
-            break;
-          }
+        // 【H3a】main switch 路徑只處理自摸；榮和應透過鳴牌回應路徑（meld response）送達
+        if(!data.selfDraw){
+          console.warn(`[win] non-selfDraw win from p${peerIdx} outside meld response context, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // 【H3b】自摸必須是此玩家的回合
+        if(_ws.turn!==peerIdx){
+          console.warn(`[win] selfDraw win from p${peerIdx} but turn=${_ws.turn}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // v1.6.27【胡牌驗證】以主機端手牌狀態呼叫 canWin() 核實胡牌合法性
+        const _wHand=_ws.hands[peerIdx].filter(x=>!x.fl);
+        if(!canWin(_wHand,null,_ws.melds[peerIdx].length)){
+          console.warn(`[win] invalid win claim from p${peerIdx}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
         }
         Game.doWin(peerIdx,data.selfDraw);
         break;
       }
-      case 'skip': Game.nextTurn(); break;
+      case 'skip':
+        // 【H1】skip 只在有合法的 legacy 鳴牌等待情境時才允許，防止任意 spam 推進回合
+        if(_wasLegacyWaiting){
+          Game.nextTurn();
+        } else {
+          console.warn(`[skip] unauthorized skip from p${peerIdx}, ignoring`);
+          setTimeout(()=>Online.broadcastState(),50);
+        }
+        break;
       case 'request_sync':
         // 非主機請求重新同步（手牌張數異常時發送）
         setTimeout(()=>Online.broadcastState(),50);
