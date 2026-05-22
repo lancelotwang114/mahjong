@@ -3687,6 +3687,25 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pool #dc3 { left:193px !important; top:152px !important; align-content:start !important; }
 #pool #dc1 { left:507px !important; top:152px !important; align-content:start !important; }
 
+/* ═══ v1.6.44 · 鳴牌移四角 + 左右家手牌內靠 — QA 幾何 90 項 ALL PASSED ═══
+   四家鳴牌移至各自方位的角落（對家左上／下家右上／上家左下／自己右下）。
+   巢狀容器以絕對定位、父層 overflow:visible。#tbl 目標座標：
+   對家(216,110) 下家(1140,52) 自己(1140,470) 上家(44,460)。              */
+#pa2-area, #pa1-area, #pa3-area, #p0-zone, #pa1, #pa3 { overflow: visible !important; }
+#ma2, #ma1, #ma0, #ma3 {
+  position: absolute !important; transform: none !important;
+  display: flex !important; flex-direction: column !important; flex-wrap: nowrap !important;
+  align-items: flex-start !important; gap: 4px !important;
+  width: auto !important; height: auto !important;
+  max-width: none !important; max-height: none !important;
+}
+#ma2 { left:216px  !important; top:110px  !important; right:auto !important; bottom:auto !important; }
+#ma1 { right:44px  !important; top:-63px  !important; left:auto !important; bottom:auto !important; }
+#ma0 { right:44px  !important; bottom:30px !important; left:auto !important; top:auto !important; }
+#ma3 { left:44px   !important; top:345px  !important; right:auto !important; bottom:auto !important; }
+#ht3 { left: 142px !important; }
+#ht1 { right: 142px !important; }
+
 /* ── B. p2 對家副露靠近 p2 pbar（改 order 到手牌前面）─────────
    原本 ma2 order:2 在 ht2 之後，副露溢入 pool 深處。
    改 order:0 讓副露緊接在 pbar/tbar 之後，手牌推到最下方。    */
