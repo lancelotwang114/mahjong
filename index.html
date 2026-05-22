@@ -608,7 +608,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pool #dc0, #pool #dc1, #pool #dc2, #pool #dc3 {
   position: absolute !important;
   display: grid !important;
-  gap: 3px !important;
+  gap: 0 !important;
   padding: 5px !important;
   box-sizing: border-box !important;
   background: rgba(0,0,0,.15);
@@ -3674,10 +3674,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* ── A. 四家棄牌全部往中間推 ─────────────────────────────────
    pool 中心在 (440, 215)。往中移讓桌面不顯空曠。
    中央圓盤 z-index:999 確保任何重疊都在圓盤下方。             */
-#pool #dc2 { top:    50px !important; }   /* 往下 50px 朝中心 */
-#pool #dc0 { bottom: 50px !important; }   /* 往上 50px 朝中心 */
-#pool #dc3 { left:   25px !important; }   /* 往右 20px 朝中心 */
-#pool #dc1 { right:  25px !important; }   /* 往左 20px 朝中心 */
+#pool #dc2 { top:    8px !important; }    /* 內緣貼中央正方形上邊 */
+#pool #dc0 { bottom: 8px !important; }    /* 內緣貼中央正方形下邊 */
+#pool #dc3 { left:   255px !important; }  /* 內緣貼中央正方形左邊 */
+#pool #dc1 { right:  255px !important; }  /* 內緣貼中央正方形右邊 */
 
 /* ── B. p2 對家副露靠近 p2 pbar（改 order 到手牌前面）─────────
    原本 ma2 order:2 在 ht2 之後，副露溢入 pool 深處。

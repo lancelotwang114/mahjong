@@ -1,0 +1,51 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8">
+<title>四家棄牌排列預覽</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1118;color:#e8e2d4;font-family:"Noto Sans TC",system-ui,sans-serif;
+  padding:30px;display:flex;flex-direction:column;align-items:center}
+h1{font-size:19px;color:#e7c66a;margin-bottom:4px}
+.sub{color:#9aa3b0;font-size:13px;margin-bottom:18px}
+.pool{position:relative;width:720px;height:352px;
+  background:radial-gradient(ellipse at 50% 50%,#2a4a72,#16294a);
+  border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+.dc{position:absolute;display:grid;gap:0}
+.dc2{left:50%;bottom:229px;transform:translateX(-50%);grid-template-columns:repeat(6,25px);grid-auto-rows:34px}
+.dc0{left:50%;top:229px;transform:translateX(-50%);grid-template-columns:repeat(6,25px);grid-auto-rows:34px}
+.dc3{right:413px;top:50%;transform:translateY(-50%);grid-template-columns:repeat(4,25px);grid-auto-rows:34px}
+.dc1{left:413px;top:50%;transform:translateY(-50%);grid-template-columns:repeat(4,25px);grid-auto-rows:34px}
+.t{width:25px;height:34px;border-radius:3px;
+  background:linear-gradient(160deg,#fdfbf2,#e9e0c8);
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 -2px 0 rgba(150,120,70,.3) inset,1px 2px 3px rgba(0,0,0,.45);
+  border:.5px solid rgba(150,120,70,.45)}
+.sq{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:106px;height:106px;border:2px dashed #e7c66a;z-index:11}
+.cp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:98px;height:98px;border-radius:50%;background:radial-gradient(circle,#0a1830,#04101f);
+  border:2px solid #d4a843;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#e7c66a;font-weight:800;z-index:10}
+.cp .w{font-size:17px} .cp .n{font-size:10px;color:#9aa3b0;margin-top:2px}
+.note{font-size:13px;color:#c8cdd6;line-height:1.8;margin-top:18px;max-width:720px}
+.note b{color:#e7c66a}
+</style></head><body>
+<h1>四家棄牌排列預覽 — 貼齊中央正方形</h1>
+<div class="sub">金色虛線正方形＝以圓心畫的方框（邊長約 130px）· 四家棄牌各貼一邊、排滿無缺格</div>
+<div class="pool">
+  <div class="dc dc2" id="dc2"></div>
+  <div class="dc dc0" id="dc0"></div>
+  <div class="dc dc3" id="dc3"></div>
+  <div class="dc dc1" id="dc1"></div>
+  <div class="sq"></div>
+  <div class="cp"><span class="w">東風</span><span class="n">剩餘 58</span></div>
+</div>
+<div class="note">
+<b>做法：</b>以中央圓心畫一個正方形（邊長約 130px，比 120px 圓圈大一圈），四家棄牌的內緣各自貼齊正方形的一邊、往外排。<br>
+<b>對應數值（取代目前 78/78/25/25）：</b>對家 dc2 <b>top: 8px</b>、自己 dc0 <b>bottom: 8px</b>、左家 dc3 <b>left: 255px</b>、右家 dc1 <b>right: 255px</b>；四家 gap 維持 0。<br>
+此為示意圖、棄牌排滿展示；實際遊戲中棄牌逐張累積，最後一排會隨張數變化（這屬正常，非缺格）。
+</div>
+<script>
+function fill(id,n){const e=document.getElementById(id);
+  for(let i=0;i<n;i++){const t=document.createElement('div');t.className='t';e.appendChild(t);}}
+fill('dc2',12);fill('dc0',12);fill('dc3',12);fill('dc1',12);
+</script>
+</body></html>
