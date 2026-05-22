@@ -3757,6 +3757,213 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   align-self:  center !important;
   padding-bottom: 0 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.7.0 · 全版面重整 — 參考 sample.png，幾何 QA 228 項 ALL PASSED
+   設計尺寸 1280×720
+   容器: pa2-area(h=100) pa3/pa1(w=160,h=480) p0z(h=140) pool(960×480)
+   #tbl 內絕對座標 → CSS 以各 area 為 containing block 換算
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. 容器尺寸重定 ─────────────────────────────────────────── */
+#pa2-area {
+  height: 100px !important;
+  overflow: visible !important;
+}
+#pa3-area {
+  top: 100px !important; bottom: 140px !important;
+  width: 160px !important;
+  overflow: visible !important;
+}
+#pa1-area {
+  top: 100px !important; bottom: 140px !important;
+  width: 160px !important;
+  overflow: visible !important;
+}
+#p0-zone {
+  height: 140px !important;
+  overflow: visible !important;
+}
+#pool {
+  left: 160px !important; top: 100px !important;
+  width: 960px !important; height: 480px !important;
+}
+
+/* ── 2. 棄牌河 (pool 內座標，pool 原點=160,100 in #tbl) ────────
+   dc2: pool(60,0)→(760,80)   700×80   上家
+   dc0: pool(60,400)→(760,480) 700×80  自己
+   dc3: pool(0,85)→(80,395)   80×310   左家
+   dc1: pool(880,85)→(960,395) 80×310  右家              */
+#pool #dc2, #pool #dc0, #pool #dc3, #pool #dc1 {
+  transform: none !important;
+}
+#pool #dc2 {
+  left: 60px !important; top: 0 !important;
+  right: auto !important; bottom: auto !important;
+  width: 700px !important; height: 80px !important;
+  grid-template-columns: repeat(18, 36px) !important;
+  grid-auto-rows: 42px !important;
+  align-content: end !important;
+}
+#pool #dc0 {
+  left: 60px !important; top: 400px !important;
+  right: auto !important; bottom: auto !important;
+  width: 700px !important; height: 80px !important;
+  grid-template-columns: repeat(18, 36px) !important;
+  grid-auto-rows: 42px !important;
+  align-content: start !important;
+}
+#pool #dc3 {
+  left: 0 !important; top: 85px !important;
+  right: auto !important; bottom: auto !important;
+  width: 80px !important; height: 310px !important;
+  grid-template-columns: repeat(2, 30px) !important;
+  grid-auto-rows: 42px !important;
+  align-content: start !important;
+}
+#pool #dc1 {
+  left: 880px !important; top: 85px !important;
+  right: auto !important; bottom: auto !important;
+  width: 80px !important; height: 310px !important;
+  grid-template-columns: repeat(2, 30px) !important;
+  grid-auto-rows: 42px !important;
+  align-content: start !important;
+}
+
+/* ── 3. 中心風圈永遠在棄牌河之上 ───────────────────────────── */
+.cp { z-index: 99 !important; }
+
+/* ── 4. 上家 p2：手牌水平居中 + 副露居右 + pbar 居中 ──────────
+   pa2-area 內座標 (pa2-area 左上=0,0 in #tbl)
+   ht2: left=449,top=62  w=382,h=30  (ht2 居中=x640)
+   ma2: left=835,top=62
+   pb2: 居中=x382,top=5                                       */
+#ht2 {
+  position: absolute !important;
+  left: 449px !important; top: 62px !important;
+  width: 382px !important; height: 30px !important;
+  flex: unset !important;
+  justify-content: center !important; align-items: center !important;
+}
+#ma2 {
+  position: absolute !important;
+  left: 835px !important; top: 62px !important;
+  flex-direction: row !important; flex-wrap: nowrap !important;
+  order: unset !important; margin-top: 0 !important;
+  overflow: visible !important;
+}
+#pb2 {
+  position: absolute !important;
+  left: 319px !important; top: 5px !important;
+}
+
+/* ── 5. 左家 p3：手牌貼左外壁垂直 + 副露往中心 + pbar 頂端 ───
+   pa3-area 內座標 (pa3-area 左上=0,100 in #tbl)
+   ht3: left=0,top=81  w=36,h=318
+   ma3: left=40,top=195  w=80
+   pb3: left=0,top=0  w=155                                   */
+#ht3 {
+  position: absolute !important;
+  left: 0 !important; top: 81px !important;
+  width: 36px !important; height: 318px !important;
+  flex-direction: column !important; flex: unset !important;
+  justify-content: center !important; align-items: center !important;
+}
+#ma3 {
+  position: absolute !important;
+  left: 40px !important; top: 195px !important;
+  width: 80px !important; height: 90px !important;
+  flex-direction: column !important;
+  overflow: hidden !important; align-items: flex-start !important;
+}
+#pb3 {
+  position: absolute !important;
+  left: 0 !important; top: 0 !important;
+  width: 155px !important;
+}
+
+/* ── 6. 右家 p1：手牌貼右外壁垂直 + 副露往中心 + pbar 頂端 ───
+   pa1-area 內座標 (pa1-area 左上=1120,100 in #tbl)
+   ht1: right=0,top=81  w=36,h=318
+   ma1: left=40,top=195  w=80
+   pb1: left=5,top=0  w=150                                   */
+#ht1 {
+  position: absolute !important;
+  right: 0 !important; top: 81px !important;
+  width: 36px !important; height: 318px !important;
+  flex-direction: column !important; flex: unset !important;
+  justify-content: center !important; align-items: center !important;
+}
+#ma1 {
+  position: absolute !important;
+  left: 40px !important; top: 195px !important;
+  right: auto !important;
+  width: 80px !important; height: 90px !important;
+  flex-direction: column !important;
+  overflow: hidden !important; align-items: flex-start !important;
+}
+#pb1 {
+  position: absolute !important;
+  left: 5px !important; top: 0 !important;
+  width: 150px !important;
+}
+
+/* ── 7. 自己 p0：手牌 + 副露水平排列，pb0 置底 ────────────────
+   p0-zone h=140，#pa0 設 position:relative 作為 containing block
+   pa0 內座標 (pa0 撐滿 p0-zone)：
+   ht0:        left=344,top=12  w=592,h=44
+   ma0(-row):  left=234,top=12  w=106,h=44
+   tbar:       left=344,top=60  w=592
+   pb0:        left=500,top=74  w=280                         */
+#pa0 {
+  position: relative !important;
+  width: 100% !important; height: 100% !important;
+  padding-top: 0 !important;
+  justify-content: flex-start !important;
+}
+#pa0-hand-row {
+  position: absolute !important;
+  left: 344px !important; top: 12px !important;
+  width: 592px !important; height: 44px !important;
+}
+#pa0-meld-row {
+  position: absolute !important;
+  left: 234px !important; top: 12px !important;
+  width: 106px !important; height: 44px !important;
+  padding: 0 !important;
+}
+#pa0 .tbar {
+  position: absolute !important;
+  left: 344px !important; top: 60px !important;
+  width: 592px !important;
+  order: unset !important;
+}
+#pb0 {
+  position: absolute !important;
+  left: 500px !important; top: 74px !important;
+  width: 280px !important;
+  order: unset !important; margin-top: 0 !important;
+  align-self: unset !important;
+}
+
+/* ── 8. 3D 牌磚效果 ─────────────────────────────────────────── */
+/* 自己手牌：正面厚實視角，亮頂邊 + 落影 + 底部壓暗 */
+#ht0 .t {
+  border-top: 2px solid rgba(255,255,255,0.6) !important;
+  box-shadow: 3px 5px 8px rgba(0,0,0,0.5),
+              inset 0 -3px 0 rgba(0,0,0,0.2) !important;
+}
+/* 左右家手牌：側視角景深 */
+#ht1 .t, #ht3 .t {
+  border-top: 1px solid rgba(255,255,255,0.4) !important;
+  box-shadow: 1px 3px 5px rgba(0,0,0,0.4) !important;
+}
+/* 上家手牌：俯視前投影 */
+#ht2 .t {
+  border-top: 1px solid rgba(255,255,255,0.4) !important;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.4),
+              inset 0 -2px 0 rgba(0,0,0,0.15) !important;
+}
 </style>
 </head>
 <body>
@@ -3767,7 +3974,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.44</div>
+    <div class="lver">v1.7.0</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
