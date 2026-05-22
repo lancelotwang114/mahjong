@@ -3148,13 +3148,19 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    DOM structure untouched; all changes via new selectors / !important.
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── 1. #tbl: richer felt texture & wood frame ────────────── */
+/* ── 1. #tbl: felt texture + VISIBLE wood frame ──────────── */
 #tbl {
   background:
-    radial-gradient(ellipse 88% 82% at 50% 50%,
-      #174060 0%, #0e2540 42%, #081828 78%, #020a14 100%) !important;
+    radial-gradient(circle, #1a365d 0%, #0f172a 100%) !important;
+  /* External box-shadow = visible wood border OUTSIDE the 1280×720 area.
+     Does NOT affect inner layout. Renders in #game's background area. */
+  box-shadow:
+    0 0 0 16px #2d1a10,
+    0 0 0 20px rgba(74,44,22,.55),
+    0 20px 60px rgba(0,0,0,.65) !important;
+  border-radius: 6px !important;
 }
-/* Felt weave pattern (very subtle grid) */
+/* Felt weave pattern */
 #tbl::before {
   content: '' !important;
   position: absolute !important; inset: 0 !important;
@@ -3164,33 +3170,72 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     repeating-linear-gradient(
       0deg,
       transparent 0, transparent 47px,
-      rgba(255,255,255,.017) 47px, rgba(255,255,255,.017) 48px
+      rgba(255,255,255,.018) 47px, rgba(255,255,255,.018) 48px
     ),
     repeating-linear-gradient(
       90deg,
       transparent 0, transparent 47px,
-      rgba(255,255,255,.013) 47px, rgba(255,255,255,.013) 48px
+      rgba(255,255,255,.014) 47px, rgba(255,255,255,.014) 48px
     ) !important;
 }
-/* Wood frame: layered inset shadows simulate warm border */
+/* Inner vignette only — wood frame is now done via #tbl box-shadow */
 #tbl::after {
-  box-shadow:
-    inset 0 0 0 14px rgba(6,3,1,.96),
-    inset 0 0 8px 10px rgba(45,22,5,.85),
-    inset 0 0 6px 7px rgba(80,42,10,.55),
-    inset 2px 2px 8px 4px rgba(130,68,18,.22),
-    inset 0 0 90px rgba(0,0,0,.45) !important;
+  box-shadow: inset 0 0 80px rgba(0,0,0,.4) !important;
   border-radius: 6px !important;
 }
 
-/* ── 2. Back tiles (opponent hand walls): 3D stacking depth ── */
-#ht1 .t.back, #ht2 .t.back, #ht3 .t.back {
+/* ── 2. .t.back: 3D stacking depth (ALL back tiles) ─────── */
+.t.back {
+  position: relative !important;
   box-shadow:
-    0 1px 0 rgba(255,255,255,.12) inset,
-    0 -3px 0 rgba(0,0,0,.52) inset,
-    2px 3px 0 rgba(7,32,16,.82),
-    4px 6px 0 rgba(5,22,12,.62),
-    5px 8px 7px rgba(0,0,0,.46) !important;
+    -1px 1px 0 #b0bec5,   /* tile side: light silver */
+    -2px 2px 0 #90a4ae,   /* second layer */
+    -3px 3px 5px rgba(0,0,0,.5) !important; /* cast shadow */
+}
+/* Pseudo-element = ghosted second tile layer below */
+.t.back::after {
+  content: '' !important;
+  position: absolute !important;
+  left: -3px !important;
+  top: 3px !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: inherit !important;
+  border-radius: inherit !important;
+  z-index: -1 !important;
+  opacity: 0.7 !important;
+  pointer-events: none !important;
+}
+
+/* ── 2b. Fix dark-kong back tiles — don't show light silver edge ── */
+.mg.dark-kong .t.back {
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.08) inset,
+    0 -4px 0 rgba(0,0,0,.4) inset,
+    2px 5px 10px rgba(0,0,0,.5) !important;
+}
+.mg.dark-kong .t.back::after { display: none !important; }
+
+/* ── 3. #pa1-area/#pa3-area: prevent meld overlap ────────── */
+#pa1-area, #pa3-area {
+  z-index: 10 !important;
+  background: rgba(12,6,2,.45) !important;
+  border: 1.5px solid rgba(92,64,51,.55) !important;
+  border-radius: 6px !important;
+}
+/* Pbar inside side panels: ensure above meld tiles */
+#pb1, #pb3 {
+  position: relative !important;
+  z-index: 5 !important;
+}
+/* Meld containers: constrain width, prevent pool intrusion */
+#ma1 {
+  max-width: 176px !important;
+  align-items: flex-start !important;
+}
+#ma3 {
+  max-width: 176px !important;
+  align-items: flex-end !important;
 }
 
 /* ── 3a. Disable old full-area tenpai glow & float ─────────── */
@@ -3288,7 +3333,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.29</div>
+    <div class="lver">v1.6.30</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
