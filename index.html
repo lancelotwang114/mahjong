@@ -3672,8 +3672,32 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ma2 { flex-wrap: nowrap !important; overflow: visible !important; }
 
 /* ── Fix 4 · dc2/dc0 貼緊各家（0px）─────────────────────────*/
-#pool #dc2 { top:    0px !important; }
-#pool #dc0 { bottom: 0px !important; }
+/* dc2/dc0 now overridden in v1.6.40 block below */
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.40 · 棄牌靠中 + 各家副露靠近 pbar
+═══════════════════════════════════════════════════════════════ */
+
+/* ── A. 四家棄牌全部往中間推 ─────────────────────────────────
+   pool 中心在 (440, 215)。往中移讓桌面不顯空曠。
+   中央圓盤 z-index:999 確保任何重疊都在圓盤下方。             */
+#pool #dc2 { top:    50px !important; }   /* 往下 50px 朝中心 */
+#pool #dc0 { bottom: 50px !important; }   /* 往上 50px 朝中心 */
+#pool #dc3 { left:   25px !important; }   /* 往右 20px 朝中心 */
+#pool #dc1 { right:  25px !important; }   /* 往左 20px 朝中心 */
+
+/* ── B. p2 對家副露靠近 p2 pbar（改 order 到手牌前面）─────────
+   原本 ma2 order:2 在 ht2 之後，副露溢入 pool 深處。
+   改 order:0 讓副露緊接在 pbar/tbar 之後，手牌推到最下方。    */
+#ma2 { order: 0 !important; }
+#ht2 { order: 2 !important; }
+
+/* ── C. p1/p3（左右家）副露靠近各自 pbar ─────────────────────
+   目前 ma1/ma3 top:52px，距 pbar 底端約 10px 無縫但視覺遠。
+   縮減至 top:36px，讓副露欄頂端貼近 pbar，感覺副露「屬於」該玩家。
+   pb1/pb3 有 z-index:3 > ma z-index:2，即使稍微重疊 pbar 仍在最上層。 */
+#ma1 { top: 36px !important; }
+#ma3 { top: 36px !important; }
 
 /* ── Fix 2 · p0 資訊列不被截斷 ──────────────────────────────
    pa0 改 flex-start，排列：[副露] → [手牌] → [tbar] → [資訊]。
@@ -3712,7 +3736,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.39</div>
+    <div class="lver">v1.6.40</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
