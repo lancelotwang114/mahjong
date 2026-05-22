@@ -3151,7 +3151,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.25</div>
+    <div class="lver">v1.6.26</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6173,6 +6173,9 @@ const Game={
       s.turn=p;s.drawnId=null;
       this.log(`${s.names[p]} 暗槓`);this.ann('kong');this.render();
     }
+    // v1.6.26: 立即廣播槓牌狀態給所有非房主客戶端，避免客戶端看到「碰了又槓」的視覺錯位
+    // （原本只在後續 doDiscard 才廣播，客戶端會先看到碰的狀態，槓的操作被跳過）
+    if(this._online&&this._isHost) setTimeout(()=>Online.broadcastState(),80);
     s._afterKong=true;
     setTimeout(()=>this.doTurn(),this.spd('meld'));
   },
