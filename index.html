@@ -3630,6 +3630,64 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   right: 55px !important;
   gap:   6px  !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.38 · 三項位置修正
+   1. p2 對家副露浮出牌桌（pa2-area z-index 提升）
+   2. p1/p3 副露嚴格隔離不侵入手牌欄
+   3. p0 資訊列沉到手牌正下方，完全避開棄牌碰撞區
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Fix 1 · p2 對家副露浮出牌桌 ─────────────────────────────
+   原始 pa2-area z-index:3 < pool z-index:5，pool 背景色蓋住副露。
+   提升至 10 確保副露組永遠浮在 pool 深色背景之上。               */
+#pa2-area {
+  z-index: 10 !important;
+  overflow: visible !important;
+}
+
+/* ── Fix 2 · p1/p3 副露嚴格不侵入手牌欄 ─────────────────────
+   ht1/ht3 提升 z-index 至 4（> ma z-index:2），手牌永遠壓在副露上方。
+   ma1/ma3 加 overflow:hidden 截斷任何超寬副露溢出。
+   同時收窄 gap 確保副露不橫跨入手牌欄：ma3 left:45px, ma1 right:45px。 */
+#ht1 { z-index: 4 !important; }
+#ht3 { z-index: 4 !important; }
+#ma1 {
+  overflow: hidden !important;
+  right:    45px !important;    /* 縮回 45px，手牌欄更安全 */
+}
+#ma3 {
+  overflow: hidden !important;
+  left:     45px !important;
+}
+
+/* ── Fix 3 · p0 資訊列移至手牌正下方 ────────────────────────
+   dc0 棄牌往上溢入 p0-zone 頂部約 30px，pbar 原本在那個碰撞區。
+   解法：pa0 改 flex-start，pbar 以 margin-top:auto 自然沉底，
+   排列變成 [副露列] → [手牌列] → [timer bar] → [資訊列]。       */
+#pa0 {
+  justify-content: flex-start !important;
+  padding-top:     32px !important;   /* 跳過 dc0 溢出的 ~30px 碰撞區 */
+}
+#pa0-meld-row {
+  order:       1 !important;
+  flex-shrink: 0 !important;
+}
+#pa0-hand-row {
+  order:       2 !important;
+  flex-shrink: 0 !important;
+}
+#pa0 .tbar {
+  order:       3 !important;
+  flex-shrink: 0 !important;
+}
+#pb0 {
+  order:          4 !important;
+  margin-top:     auto !important;   /* 推到 p0-zone 底端 */
+  flex-shrink:    0 !important;
+  padding-bottom: 4px !important;
+  align-self:     center !important;
+}
 </style>
 </head>
 <body>
@@ -3640,7 +3698,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.37</div>
+    <div class="lver">v1.6.38</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
