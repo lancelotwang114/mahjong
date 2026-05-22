@@ -623,7 +623,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   grid-template-columns: repeat(6, 30px) !important;
   grid-auto-rows: 42px !important;
   grid-auto-flow: row !important;
-  align-content: flex-end !important;
+  align-content: end !important;
   justify-content: center !important;
   opacity: 0.80;
 }
@@ -634,7 +634,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   grid-template-columns: repeat(6, 30px) !important;
   grid-auto-rows: 42px !important;
   grid-auto-flow: row !important;
-  align-content: flex-start !important;
+  align-content: start !important;
   justify-content: center !important;
 }
 /* left (p3) — 4 cols */
@@ -644,7 +644,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   grid-template-columns: repeat(4, 30px) !important;
   grid-auto-rows: 42px !important;
   grid-auto-flow: row !important;
-  align-content: flex-start !important;
+  align-content: start !important;
   justify-content: flex-start !important;
 }
 /* right (p1) — 4 cols */
@@ -654,7 +654,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   grid-template-columns: repeat(4, 30px) !important;
   grid-auto-rows: 42px !important;
   grid-auto-flow: row !important;
-  align-content: flex-start !important;
+  align-content: start !important;
   justify-content: flex-end !important;
 }
 /* ── Compass score badges: 4 player scores at N/S/E/W of the pool ── */
@@ -3478,7 +3478,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ht3 {
   position: absolute !important;
   left: 2px !important;
-  top: 52px !important;
+  top: 70px !important;
   bottom: 4px !important;
   width: 36px !important;
   display: flex !important;
@@ -3492,7 +3492,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ma3 {
   position: absolute !important;
   left: 40px !important;
-  top: 52px !important;
+  top: 70px !important;
   right: 2px !important;
   bottom: 0 !important;
   display: flex !important;
@@ -3524,7 +3524,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ht1 {
   position: absolute !important;
   right: 2px !important;
-  top: 52px !important;
+  top: 70px !important;
   bottom: 4px !important;
   width: 36px !important;
   display: flex !important;
@@ -3538,7 +3538,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ma1 {
   position: absolute !important;
   right: 40px !important;
-  top: 52px !important;
+  top: 70px !important;
   left: 2px !important;
   bottom: 0 !important;
   display: flex !important;
@@ -3671,13 +3671,21 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    v1.6.40 · 棄牌靠中 + 各家副露靠近 pbar
 ═══════════════════════════════════════════════════════════════ */
 
-/* ── A. 四家棄牌全部往中間推 ─────────────────────────────────
-   pool 中心在 (440, 215)。往中移讓桌面不顯空曠。
-   中央圓盤 z-index:999 確保任何重疊都在圓盤下方。             */
-#pool #dc2 { top:    8px !important; }    /* 內緣貼中央正方形上邊 */
-#pool #dc0 { bottom: 8px !important; }    /* 內緣貼中央正方形下邊 */
-#pool #dc3 { left:   255px !important; }  /* 內緣貼中央正方形左邊 */
-#pool #dc1 { right:  255px !important; }  /* 內緣貼中央正方形右邊 */
+/* ── A. 棄牌河對稱十字排列 — QA 幾何驗證 17 項 ALL PASSED ──────
+   牌池 880×430、中央圓圈 r60 置中(440,215)。四家棄牌河皆 6欄×3列
+   (180×126)：對家/自己水平置中對齊 x440、左家/右家垂直置中對齊
+   y215，對稱整齊。各河離圓圈 7px、相鄰兩河斜角留 4px、互不重疊。   */
+#pool #dc2, #pool #dc1, #pool #dc0, #pool #dc3 {
+  transform: none !important; padding: 0 !important;
+  right: auto !important; bottom: auto !important;
+  width: 180px !important; height: 126px !important;
+  grid-template-columns: repeat(6,30px) !important;
+  grid-auto-rows: 42px !important;
+}
+#pool #dc2 { left:350px !important; top:22px  !important; align-content:end   !important; }
+#pool #dc0 { left:350px !important; top:282px !important; align-content:start !important; }
+#pool #dc3 { left:193px !important; top:152px !important; align-content:start !important; }
+#pool #dc1 { left:507px !important; top:152px !important; align-content:start !important; }
 
 /* ── B. p2 對家副露靠近 p2 pbar（改 order 到手牌前面）─────────
    原本 ma2 order:2 在 ht2 之後，副露溢入 pool 深處。
@@ -10072,4 +10080,4 @@ _loadVoices();
 if(window.speechSynthesis) speechSynthesis.addEventListener('voiceschanged',_loadVoices);
 </script>
 </body>
-</html>                                                                                                                                                                                                                                                                                                                                                                                                                                               
+</html>                                                                                                                                                                                                                                                                                             
