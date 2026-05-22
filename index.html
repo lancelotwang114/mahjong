@@ -3682,7 +3682,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* ── B. p2 對家副露靠近 p2 pbar（改 order 到手牌前面）─────────
    原本 ma2 order:2 在 ht2 之後，副露溢入 pool 深處。
    改 order:0 讓副露緊接在 pbar/tbar 之後，手牌推到最下方。    */
-#ma2 { order: 0 !important; }
+#ma2 { order: 0 !important; margin-top: 10px !important; }   /* 對家鳴牌往中心靠 */
 #ht2 { order: 2 !important; }
 
 /* ── C. p1/p3（左右家）副露靠近各自 pbar ─────────────────────
@@ -3709,7 +3709,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    改用固定 margin-top:6px 讓資訊緊接 tbar 下方。               */
 #pa0 {
   justify-content: flex-start !important;
-  padding-top:     32px !important;   /* 跳過 dc0 碰撞區 ~30px */
+  padding-top:     20px !important;   /* dc0 已移往中心，碰撞區縮小；p0 整體上移、鳴牌往中心靠 */
 }
 #pa0-meld-row {
   order:       1 !important;
