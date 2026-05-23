@@ -2952,6 +2952,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ht0 {
   transform: scale(1.1);
   transform-origin: bottom center;
+  will-change: transform; /* 穩定 GPU 合成層，防止子元素 box-shadow 動畫觸發父層重繪閃爍 */
 }
 /* 為手牌 .t 加入 filter 過渡，使 hover 金光平滑 */
 #ht0 .t {
