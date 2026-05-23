@@ -3843,7 +3843,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   white-space: nowrap !important;
 }
 
-/* 左右家改成兩條清楚軌道：外側暗牌、內側副露 */
+/* 左右家改成兩條清楚軌道：外側暗牌、內側副露；副露貼近毯面邊界 */
 #pb3 {
   margin-left: 52px !important;
   width: 132px !important;
@@ -3854,8 +3854,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   width: 28px !important;
 }
 #ma3 {
-  left: 82px !important;
-  right: 22px !important;
+  left: 132px !important;
+  right: -28px !important;
   top: 104px !important;
   bottom: 6px !important;
   align-items: flex-end !important;
@@ -3871,8 +3871,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   width: 28px !important;
 }
 #ma1 {
-  right: 82px !important;
-  left: 22px !important;
+  right: 132px !important;
+  left: -28px !important;
   top: 104px !important;
   bottom: 6px !important;
   align-items: flex-start !important;
@@ -3884,22 +3884,22 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   height: 39px !important;
 }
 
-/* 對家副露靠近自己的資訊列，不再往中央棄牌河漂 */
+/* 對家副露放在手牌下方，落在木框內的毯面上沿 */
 #ma2 {
-  order: 1 !important;
-  margin-top: 2px !important;
-  margin-bottom: 2px !important;
+  order: 3 !important;
+  margin-top: 6px !important;
+  margin-bottom: 0 !important;
 }
 #ht2 {
   order: 2 !important;
 }
 
-/* 自己的副露列保持在手牌上方，但留出一點空氣，和下方手牌更像同一玩家區 */
+/* 自己的副露列往桌心上移，停在木框內的毯面下沿 */
 #pa0 {
-  padding-top: 12px !important;
+  padding-top: 2px !important;
 }
 #pa0-meld-row {
-  margin-bottom: 8px !important;
+  margin-bottom: 12px !important;
 }
 </style>
 </head>
