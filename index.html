@@ -3791,6 +3791,116 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pa0 {
   padding-top: 6px !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.43 · 讀牌版格局調整
+   目標：副露回到玩家外圈、棄牌河集中但不貼中心圓、左右資訊卡降低壓迫。
+   只追加 CSS，不改 JS 與 DOM。
+═══════════════════════════════════════════════════════════════ */
+
+/* 中央區改成更明確的四方棄牌場，讓棄牌與副露的層級分開 */
+#pool #dc2, #pool #dc1, #pool #dc0, #pool #dc3 {
+  width: 180px !important;
+  height: 126px !important;
+  grid-template-columns: repeat(6,30px) !important;
+  grid-auto-rows: 42px !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  background:
+    linear-gradient(180deg, rgba(9,20,38,.18), rgba(9,20,38,.06)) !important;
+  border: 1px solid rgba(212,168,67,.10) !important;
+  border-radius: 6px !important;
+  box-shadow: inset 0 0 18px rgba(0,0,0,.16) !important;
+}
+#pool #dc2 { left: 350px !important; top: 12px !important; align-content: end !important; }
+#pool #dc0 { left: 350px !important; top: 292px !important; align-content: start !important; }
+#pool #dc3 { left: 128px !important; top: 152px !important; align-content: start !important; }
+#pool #dc1 { left: 572px !important; top: 152px !important; align-content: start !important; }
+
+/* 中心圓稍微收斂，避免壓住棄牌閱讀線 */
+.cp#col-table {
+  transform: translate(-50%, -50%) scale(0.72) !important;
+  box-shadow:
+    0 6px 18px rgba(0,0,0,.38),
+    0 0 0 1px rgba(212,168,67,.28),
+    inset 0 0 28px rgba(0,0,0,.42) !important;
+}
+
+/* 左右玩家資訊卡更窄，少搶牌面的注意力 */
+#pa1-area .pbar,
+#pa3-area .pbar {
+  max-width: 132px !important;
+  min-width: 0 !important;
+  padding: 7px 9px !important;
+  gap: 5px !important;
+  border-radius: 7px !important;
+}
+#pa1-area .pnm,
+#pa3-area .pnm {
+  max-width: 70px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* 左右家改成兩條清楚軌道：外側暗牌、內側副露 */
+#pb3 {
+  margin-left: 52px !important;
+  width: 132px !important;
+}
+#ht3 {
+  left: 46px !important;
+  top: 108px !important;
+  width: 28px !important;
+}
+#ma3 {
+  left: 82px !important;
+  right: 22px !important;
+  top: 104px !important;
+  bottom: 6px !important;
+  align-items: flex-end !important;
+  overflow: visible !important;
+}
+#pb1 {
+  margin-right: 52px !important;
+  width: 132px !important;
+}
+#ht1 {
+  right: 46px !important;
+  top: 108px !important;
+  width: 28px !important;
+}
+#ma1 {
+  right: 82px !important;
+  left: 22px !important;
+  top: 104px !important;
+  bottom: 6px !important;
+  align-items: flex-start !important;
+  overflow: visible !important;
+}
+#pa1 .ma .t,
+#pa3 .ma .t {
+  width: 28px !important;
+  height: 39px !important;
+}
+
+/* 對家副露靠近自己的資訊列，不再往中央棄牌河漂 */
+#ma2 {
+  order: 1 !important;
+  margin-top: 2px !important;
+  margin-bottom: 2px !important;
+}
+#ht2 {
+  order: 2 !important;
+}
+
+/* 自己的副露列保持在手牌上方，但留出一點空氣，和下方手牌更像同一玩家區 */
+#pa0 {
+  padding-top: 12px !important;
+}
+#pa0-meld-row {
+  margin-bottom: 8px !important;
+}
 </style>
 </head>
 <body>
@@ -3801,7 +3911,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.42</div>
+    <div class="lver">v1.6.43</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
