@@ -2962,16 +2962,25 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* ── 2. 非當前回合對手區域弱化 ──────────────────────────────────── */
 /* pa1/pa2/pa3 預設微暗，輪到誰時恢復全亮；p0 不受影響 */
-#pa1, #pa2, #pa3 {
+/* 暗效只套在手牌區，鳴牌/花牌/pbar 維持原色 */
+#pa1 .ht,
+#pa2 .ht,
+#pa3 .ht {
   transition: opacity .35s ease, filter .35s ease;
-  opacity: .82;
-  filter: saturate(76%) brightness(.93);
+  opacity: .78;
+  filter: saturate(72%) brightness(.88);
 }
-#pa1.active-turn,
-#pa2.active-turn,
-#pa3.active-turn {
+#pa1.active-turn .ht,
+#pa2.active-turn .ht,
+#pa3.active-turn .ht {
   opacity: 1;
   filter: saturate(100%) brightness(1);
+}
+/* pbar 永遠全亮，不受暗效影響 */
+#pa1 .pbar, #pa2 .pbar, #pa3 .pbar {
+  opacity: 1 !important;
+  filter: none !important;
+  transition: transform .3s ease, box-shadow .3s ease;
 }
 
 /* ── 3a. 所有牌面基礎立體感增強 ────────────────────────────────── */
@@ -4047,6 +4056,20 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ps-N { top: 69px !important; }
 #ps-S { bottom: 135px !important; }
 
+/* ── 輪到打牌：pbar 懸浮 + 光暈 ─────────────────────────────── */
+@keyframes pbarFloat {
+  0%,100% { transform: translateY(0px);
+             box-shadow: 0 0 18px rgba(212,168,67,.7), 0 0 36px rgba(212,168,67,.3), 0 4px 14px rgba(0,0,0,.5); }
+  50%      { transform: translateY(-5px);
+             box-shadow: 0 0 28px rgba(255,215,80,1),  0 0 56px rgba(212,168,67,.5), 0 8px 20px rgba(0,0,0,.4); }
+}
+#pa1.active-turn .pbar,
+#pa2.active-turn .pbar,
+#pa3.active-turn .pbar {
+  animation: pbarFloat 1.4s ease-in-out infinite !important;
+  border-color: rgba(255,215,80,.9) !important;
+}
+
 /* ── 左右家子元素：讓 v1.6.46 的 absolute 定位繼續生效 ──────────
    ht3/ma3/ht1/ma1 已由 v1.6.46 block 設為 position:absolute；
    pa3/pa1-area 寬 300px（vs 原 200px），ma 區自動獲得更大空間。
@@ -4080,13 +4103,14 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* 左右家花牌：獨立容器，定位於資訊欄下方角落 */
 #fl3, #fl1 {
   display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: wrap !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
   gap: 2px !important;
   flex-shrink: 0 !important;
 }
 #fl3 { justify-content: flex-end !important; transform: translateX(110px) !important; }
 #fl1 { justify-content: flex-start !important; transform: translateX(-110px) !important; }
+#fl3 .mg, #fl1 .mg { flex-direction: column !important; }
 
 /* p0/p2 花牌與鳴牌之間加明顯間距 */
 #ma0 .flower-group,
