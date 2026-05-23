@@ -4225,7 +4225,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.52</div>
+    <div class="lver">v1.6.53</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -7494,11 +7494,9 @@ const Game={
     if([0,1,2,3].every(v=>flowerVals.has(v))) add(2,'四君子 花槓 +2台');
     if([4,5,6,7].every(v=>flowerVals.has(v))) add(2,'四季 花槓 +2台');
 
-    // ② 天胡+16 / 人胡+16 / 自摸+1（v1.6.27：移除地胡判定，精簡規則）
+    // ② 天胡+16 / 自摸+1（v1.6.53：移除人胡台數，地胡於 v1.6.27 已移除）
     const isTianhu=selfDraw && s.discards.every(d=>d.length===0) && p===s.dealer;
-    const isRenhu =!selfDraw && !!s._renhu;
     if(isTianhu)      add(16,'天胡 +16台');
-    else if(isRenhu)  add(16,'人胡 +16台');
     else if(selfDraw) add(1,'自摸 +1台');
 
     // ③ 門清 +1（暗槓不算副露）
@@ -8803,8 +8801,33 @@ const Game={
     } else {
       btn.classList.remove('on');
       btn.textContent='🤖 自動';
-      this.toast('自動打牌已關閉',1500);
+      this.toast('自動打牌已關閉，人工接手',1800);
       this._afkStreak=0; // 玩家手動關閉代打，重設 AFK 計數
+      // 若目前輪到 p0，立刻恢復人工控制 UI
+      const s=this.st;
+      if(s&&s.phase==='playing'&&s.turn===0){
+        if(this._online&&!this._isHost){
+          // 非房主：重新建立出牌 UI
+          this._setupNonHostTurn();
+        } else {
+          // 房主/單機：直接恢復出牌按鈕
+          clearTimeout(this._riichiDiscardTimer);
+          document.getElementById('wait-dots')?.classList.remove('show');
+          const hd=s.hands[0].filter(x=>!x.fl);
+          const winNow=canWin(hd);
+          const extraBtns=[];
+          const isTianhu=winNow&&s.dealer===0&&s.firstRound&&s.discards.every(d=>d.length===0);
+          if(winNow)extraBtns.push({type:'win',label:isTianhu?'🌟 天胡！':'🀄 自摸！',cls:'aw'});
+          const sk=AI.selfKong(hd,s.melds[0]);
+          if(sk){
+            const _isAddK=s.melds[0].some(m=>m.type==='pong'&&m.tiles[0].s===sk[0].s&&m.tiles[0].v===sk[0].v);
+            extraBtns.push({type:'sk',label:_isAddK?'加槓':'暗槓',cls:'ako',tiles:sk});
+          }
+          document.getElementById('ht0')?.classList.add('my-turn');
+          this.showBtns(extraBtns);
+          this.startTimer(0);
+        }
+      }
     }
   },
 
