@@ -3774,6 +3774,23 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   margin-right: 80px !important;
   width: calc(100% - 80px) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.43-meld · 上下家副露往中間靠
+   上家 (p2)：ma2 order 0→3，排到 ht2 後面 → 貼近 pool 上沿
+   下家 (p0)：padding-top 20→6px → 副露上移 14px 貼近 pool 下沿
+═══════════════════════════════════════════════════════════════ */
+
+/* 上家副露：排在手牌之後（order:3 > ht2 order:2），貼近中央 pool */
+#ma2 {
+  order:      3 !important;
+  margin-top: 4px !important;
+}
+
+/* 下家副露：減少頂部空白，讓副露往 pool 方向上移 */
+#pa0 {
+  padding-top: 6px !important;
+}
 </style>
 </head>
 <body>
