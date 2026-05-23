@@ -4353,7 +4353,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.57</div>
+    <div class="lver">v1.6.58</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -10285,7 +10285,9 @@ const Online = {
           // 但不可覆蓋已由 game_over 封包正確設定好的本地狀態，否則會抹去正確的贏家資訊
           if(Game.st&&Game.st.phase==='ended') break;
           Game._isDiscarding=false; // 【Task1】主機已處理出牌，解除客戶端鎖
-          Game.clearBtns(); // Clear any leftover meld/discard UI before applying new state
+          // 【v1.6.58】若正在顯示鳴牌 offer（吃/碰/槓），跳過 clearBtns；
+          // 正確清除時機是 action_resolved，此處強清會導致 offer 瞬間消失
+          if(!(Game._candidateMap&&Game._candidateMap.size>0)) Game.clearBtns();
           Game.st=data.state;
           Game.render();
           // Set up interactive turn UI when it's our turn (tile already in hand)
