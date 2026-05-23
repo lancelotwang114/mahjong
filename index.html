@@ -563,8 +563,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 #tbl {
   /* Fixed design size; JS applies transform:scale() */
-  width: 1280px;
-  height: 720px;
+  width: 1920px;
+  height: 1080px;
   position: relative;
   transform-origin: top left;
   background: radial-gradient(ellipse 95% 90% at 50% 50%,
@@ -3920,6 +3920,150 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   position: relative !important;
   z-index: 20 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.47 · 1920×1080 設計畫布
+   所有 layout 絕對定位值 ×1.5；tile sprite px 尺寸不變。
+   設計空間：1920×1080
+   #pool：300,173  1320×645
+   中央圓圈中心：pool(660,322) = tbl(960,495)
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 主要區域 ────────────────────────────────────────────────── */
+#pa2-area {
+  height: 173px !important;
+}
+#pa3-area {
+  top: 173px !important;
+  bottom: 278px !important;
+  width: 300px !important;
+}
+#pa1-area {
+  top: 173px !important;
+  bottom: 278px !important;
+  width: 300px !important;
+}
+#p0-zone {
+  height: 345px !important;
+}
+#pool {
+  left: 300px !important;
+  top: 173px !important;
+  width: 1320px !important;
+  height: 645px !important;
+}
+
+/* ── 棄牌區（pool 內座標）────────────────────────────────────── */
+/* 各區統一：6 cols × 30px = 180px，4 rows × 42px = 168px，支援 24 張 */
+#pool #dc2, #pool #dc1, #pool #dc0, #pool #dc3 {
+  width: 180px !important;
+  height: 168px !important;
+  grid-template-columns: repeat(6, 30px) !important;
+  grid-auto-rows: 42px !important;
+}
+/* top (p2)：水平居中，距上 15px */
+#pool #dc2 {
+  left: 570px !important;
+  top: 15px !important;
+  transform: none !important;
+  align-content: end !important;
+}
+/* bottom (p0)：水平居中，距下 18px → top = 645−18−168 = 459 */
+#pool #dc0 {
+  left: 570px !important;
+  top: 459px !important;
+  bottom: auto !important;
+  transform: none !important;
+  align-content: start !important;
+}
+/* left (p3)：垂直居中，距左 60px；改 4×6 = 24 張 */
+#pool #dc3 {
+  left: 60px !important;
+  top: 197px !important;
+  right: auto !important;
+  transform: none !important;
+  width: 120px !important;
+  height: 252px !important;
+  grid-template-columns: repeat(4, 30px) !important;
+  grid-auto-rows: 42px !important;
+  align-content: start !important;
+}
+/* right (p1)：垂直居中，距右 60px → left = 1320−60−120 = 1140 */
+#pool #dc1 {
+  left: 1140px !important;
+  top: 197px !important;
+  right: auto !important;
+  transform: none !important;
+  width: 120px !important;
+  height: 252px !important;
+  grid-template-columns: repeat(4, 30px) !important;
+  grid-auto-rows: 42px !important;
+  align-content: start !important;
+}
+
+/* ── 操作面板、橫幅、吃法選擇器 ─────────────────────────────── */
+#action-overlay {
+  right: 378px !important;
+  bottom: 303px !important;
+}
+#tenpai-banner {
+  bottom: 372px !important;
+}
+#chi-picker {
+  right: 90px !important;
+  bottom: 465px !important;
+}
+
+/* ── Pool 積分徽章 ───────────────────────────────────────────── */
+#ps-N { top: 69px !important; }
+#ps-S { bottom: 135px !important; }
+
+/* ── 左右家子元素位置（pa3-area/pa1-area 現寬 300px）──────────── */
+#pb3 {
+  margin-left: 78px !important;
+  width: 198px !important;
+}
+#ht3 {
+  left: 69px !important;
+  top: 162px !important;
+  width: 28px !important;
+}
+#ma3 {
+  left: 156px !important;
+  right: 6px !important;
+  top: 198px !important;
+  bottom: 9px !important;
+  align-items: flex-end !important;
+  overflow: visible !important;
+}
+#pb1 {
+  margin-right: 78px !important;
+  width: 198px !important;
+}
+#ht1 {
+  right: 69px !important;
+  top: 162px !important;
+  width: 28px !important;
+}
+#ma1 {
+  right: 156px !important;
+  left: 6px !important;
+  top: 198px !important;
+  bottom: 9px !important;
+  align-items: flex-start !important;
+  overflow: visible !important;
+}
+
+/* ── 自家底部佈局微調（對應新 p0-zone 高度）─────────────────── */
+#pa0 {
+  padding-top: 6px !important;
+}
+#pa0-meld-row {
+  margin-bottom: 12px !important;
+}
+#pb0 {
+  transform: translateY(-15px) !important;
+}
 </style>
 </head>
 <body>
@@ -3930,7 +4074,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.46</div>
+    <div class="lver">v1.6.47</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -10329,21 +10473,21 @@ document.addEventListener('keydown',e=>{
 // init sound + preload TTS voices on first interaction
 document.addEventListener('click',()=>{ Snd.init(); },{once:true});
 
-// Scale #tbl to fit viewport while maintaining 1280×720 design.
+// Scale #tbl to fit viewport while maintaining 1920×1080 design.
 // 10px margin ensures hand tiles never get cut by browser chrome / scrollbars.
 function updateTblVars(){
   const tbl=document.getElementById('tbl');
   if(!tbl)return;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const scaleX = (vw - 10) / 1280;
-  const scaleY = (vh - 10) / 720;
+  const scaleX = (vw - 10) / 1920;
+  const scaleY = (vh - 10) / 1080;
   const scale  = Math.min(scaleX, scaleY);
   tbl.style.transformOrigin = 'top left';
   tbl.style.transform = `scale(${scale})`;
   // Center in viewport
-  const offsetX = (vw - 1280 * scale) / 2;
-  const offsetY = (vh - 720  * scale) / 2;
+  const offsetX = (vw - 1920 * scale) / 2;
+  const offsetY = (vh - 1080  * scale) / 2;
   tbl.style.position = 'absolute';
   tbl.style.left = offsetX + 'px';
   tbl.style.top  = Math.max(0, offsetY) + 'px';
