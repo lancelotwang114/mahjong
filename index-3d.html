@@ -4354,7 +4354,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.54</div>
+    <div class="lver">v1.6.56</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -9385,6 +9385,8 @@ const Game={
 
   // 儲存牌局並離開（AI 代打模式）→ 下次可「繼續上局」
   leaveAndSave(){
+    const _msg=this._online?'確定要返回大廳嗎？\n（你的席位將繼續由 AI 接管）':'確定要返回大廳嗎？\n（目前進度將存檔，下次可繼續）';
+    if(!confirm(_msg)) return;
     if(!this.st||this.st.phase!=='playing'){this.returnLobby();return;}
     // 以 autoPlay=true 存檔，回復後 AI 會接手直到玩家手動關閉
     const prev=this.autoPlay;
@@ -9918,6 +9920,8 @@ const Online = {
       this._status('等待玩家加入…');
       this._submitting=false; // 成功後解鎖（房間建立完成，可正常操作）
       MahjongNetwork.onPlayerJoin=(peerId,peerName)=>{
+        // 遊戲進行中：不走大廳邏輯，等候對方的 reconnect_request 訊息
+        if(Game._online&&Game._isHost&&Game.st?.phase==='playing') return;
         if(this.peers.length>=4) return;
         // ── 後端唯一性防禦：同一 peerId 不可重複加入 ────────────
         if(this.peers.some(p=>p.id===peerId)) return;
@@ -9995,8 +9999,18 @@ const Online = {
       if(olhs) olhs.style.display='none';
       const olsb=document.getElementById('ol-start-btn');
       if(olsb) olsb.style.display='none';
-      this._status('等待房主開始…');
       this._submitting=false;
+      // ── 重連偵測：若 localStorage 有符合此房間的席位記錄，送出重連請求 ──
+      try {
+        const _rc=JSON.parse(localStorage.getItem('mj_reconnect_v1')||'{}');
+        const _age=Date.now()-(_rc.ts||0);
+        if(_rc.room===code&&_rc.host===hostId.trim()&&_rc.seat>0&&_age<6*3600*1000){
+          MahjongNetwork.broadcast({type:'reconnect_request',seat:_rc.seat,name:_rc.name});
+          this._status('重新連線中…');
+          return;
+        }
+      } catch(e){}
+      this._status('等待房主開始…');
     }).catch(()=>{
       this._status('加入失敗，請確認代碼');
       this._submitting=false;
@@ -10077,10 +10091,16 @@ const Online = {
     Game._hostDice=diceVals;
     this.peers.forEach((p,i)=>{
       if(i===0||!p.id) return;
-      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals,...roomSettings});
+      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals,hostId:MahjongNetwork.playerId,...roomSettings});
     });
     Game._online=true; Game._isHost=true; Game._myIndex=0;
     Game._peers=this.peers;
+    // 遊戲開始後：覆蓋 onPlayerLeave，保留席位供重連，不移除 _peers 陣列元素
+    MahjongNetwork.onPlayerLeave=(peerId)=>{
+      const lp=Game._peers.find(p=>p.id===peerId);
+      Game.toast(`${lp?.name||'玩家'} 離線中…`,2000);
+      DbgLog.log('LEAVE',`${lp?.name||'?'} (${peerId}) disconnected`);
+    };
     document.getElementById('pname').value=names[0]||'玩家';
     Game.start('east');
     // 房主套用自己設定的房間參數（start() 後才覆蓋，確保覆蓋 solo 預設值）
@@ -10099,6 +10119,7 @@ const Online = {
 
   leave(){
     MahjongNetwork.disconnect();
+    try { localStorage.removeItem('mj_reconnect_v1'); } catch(e){} // 離開房間時清除重連資訊
     this.peers=[]; this._aiCount=0;
     this._submitting=false; // 解除任何殘留鎖定
     document.getElementById('ol-create-view').style.display='none';
@@ -10139,6 +10160,42 @@ const Online = {
         if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
         if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
         Game._applyOnlineRole(); // hide speed/pause for guests
+        // 儲存重連資訊（房間 + 席位 + 房主 peer ID），供斷線後重連使用
+        try {
+          localStorage.setItem('mj_reconnect_v1',JSON.stringify({
+            room:MahjongNetwork.roomId,host:data.hostId||'',
+            seat:data.playerIndex,name:data.names[data.playerIndex]||'玩家',ts:Date.now()
+          }));
+        } catch(e){}
+        break;
+      case 'game_rejoin': // 斷線重連：不 reset 遊戲，直接顯示遊戲畫面等 game_state 填充
+        Game._online=true; Game._isHost=false; Game._myIndex=data.playerIndex;
+        document.getElementById('pname').value=data.names[data.playerIndex]||'玩家';
+        if(Game.settings){
+          if(data.timeLimit!==undefined) Game.settings.time=data.timeLimit;
+          if(data.base!==undefined) Game.settings.base=data.base;
+          if(data.tai!==undefined) Game.settings.tai=data.tai;
+          if(data.money!==undefined) Game.settings.money=data.money;
+          if(data.maxRounds!==undefined) Game.settings.maxRounds=data.maxRounds;
+        }
+        if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
+        // 顯示遊戲畫面（不呼叫 start()，不 reset 狀態）
+        document.getElementById('lobby').style.display='none';
+        document.getElementById('game')?.classList.add('show');
+        document.getElementById('game-topbar').style.display='flex';
+        document.getElementById('pause-btn').style.display='block';
+        document.getElementById('leave-btn').style.display='block';
+        document.getElementById('autoplay-btn').style.display='block';
+        document.getElementById('audio-btn').style.display='block';
+        Game._applyOnlineRole();
+        Game.toast('重新連線成功！',2500);
+        try {
+          localStorage.setItem('mj_reconnect_v1',JSON.stringify({
+            room:MahjongNetwork.roomId,host:data.hostId||'',
+            seat:data.playerIndex,name:data.names[data.playerIndex]||'玩家',ts:Date.now()
+          }));
+        } catch(e){}
+        DbgLog.log('REJOIN','game_rejoin ok, waiting for game_state');
         break;
       case 'host_speed':
         if(!Game._isHost) Game.setSpeed(data.speed);
@@ -10224,6 +10281,26 @@ const Online = {
           const elapsed=data.sentAt?Math.round((Date.now()-data.sentAt)/1000):0;
           Game._meldOfferElapsed=Math.max(0,Math.min(elapsed,9));
           Game.offerMeld(0,data.opts,data.tile);
+        }
+        break;
+      case 'reconnect_request': // 非房主重連時送來，房主驗證後回送 game_rejoin
+        if(Game._isHost&&Game.st?.phase==='playing'){
+          const {seat,name}=data;
+          if(seat>0&&seat<4&&Game._peers[seat]&&Game._peers[seat].name===name){
+            Game._peers[seat].id=peerId; // 更新席位的 peer ID
+            const _rs=Game.st;
+            MahjongNetwork.sendTo(peerId,{
+              type:'game_rejoin',playerIndex:seat,names:_rs.names,
+              hostId:MahjongNetwork.playerId,
+              timeLimit:Game.settings?.time,base:Game.settings?.base,
+              tai:Game.settings?.tai,money:Game.settings?.money,maxRounds:Game.settings?.maxRounds,
+            });
+            setTimeout(()=>Online.broadcastState(),300);
+            Game.toast(`${name} 重新連線`,2000);
+            DbgLog.log('REJOIN',`p${seat} ${name} reconnected peerId=${peerId}`);
+          } else {
+            DbgLog.log('REJOIN',`rejected seat=${seat} name=${name}`);
+          }
         }
         break;
       case 'action':

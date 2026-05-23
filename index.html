@@ -4225,7 +4225,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.55</div>
+    <div class="lver">v1.6.56</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -9260,6 +9260,8 @@ const Game={
 
   // 儲存牌局並離開（AI 代打模式）→ 下次可「繼續上局」
   leaveAndSave(){
+    const _msg=this._online?'確定要返回大廳嗎？\n（你的席位將繼續由 AI 接管）':'確定要返回大廳嗎？\n（目前進度將存檔，下次可繼續）';
+    if(!confirm(_msg)) return;
     if(!this.st||this.st.phase!=='playing'){this.returnLobby();return;}
     // 以 autoPlay=true 存檔，回復後 AI 會接手直到玩家手動關閉
     const prev=this.autoPlay;
