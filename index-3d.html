@@ -565,9 +565,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   /* Fixed design size; JS applies transform:scale() */
   width: 1920px;
   height: 1080px;
-  position: relative;
+  position: absolute;                            /* absolute: 不參與 document flow，避免手機 viewport 被撐到 1920px */
   transform-origin: top left;
-  will-change: transform;                        /* GPU compositing layer */
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;                   /* prevent subpixel blur on scale */
   background: radial-gradient(ellipse 95% 90% at 50% 50%,
@@ -4354,7 +4353,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.56</div>
+    <div class="lver">v1.6.57</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -7621,14 +7620,15 @@ const Game={
     if([0,1,2,3].every(v=>flowerVals.has(v))) add(2,'四君子 花槓 +2台');
     if([4,5,6,7].every(v=>flowerVals.has(v))) add(2,'四季 花槓 +2台');
 
-    // ② 天胡+16 / 自摸+1（v1.6.53：移除人胡台數，地胡於 v1.6.27 已移除）
-    const isTianhu=selfDraw && s.discards.every(d=>d.length===0) && p===s.dealer;
-    if(isTianhu)      add(16,'天胡 +16台');
-    else if(selfDraw) add(1,'自摸 +1台');
-
-    // ③ 門清 +1（暗槓不算副露）
+    // ② 門清/自摸相關台數（v1.6.57：門清一摸三含自摸+門清，不重複計算）
     const hasOpenMeld=melds.some(m=>!m.dark);
-    if(!hasOpenMeld) add(1,'門清 +1台');
+    const isTianhu=selfDraw && s.discards.every(d=>d.length===0) && p===s.dealer;
+    const isMenqingZimo=!hasOpenMeld && selfDraw && !isTianhu;
+    if(isTianhu)                       add(16,'天胡 +16台');
+    else if(!isMenqingZimo && selfDraw) add(1,'自摸 +1台');
+
+    // ③ 門清 +1（暗槓不算副露；門清一摸三時已含，跳過）
+    if(!hasOpenMeld && !isMenqingZimo) add(1,'門清 +1台');
 
     // ④ 獨聽 +1
     const waitTiles=s.tenpaiT&&s.tenpaiT[p];
@@ -7669,8 +7669,8 @@ const Game={
          &&!allTiles.some(t=>t.s==='honor')&&!isDokutan)
         add(2,'平胡 +2台');
 
-      // 門清一摸三 +3（門清 + 自摸）
-      if(!hasOpenMeld&&selfDraw) add(3,'門清一摸三 +3台');
+      // 門清一摸三 +3（含自摸+門清兩台，不與 ②③ 重複）
+      if(isMenqingZimo) add(3,'門清一摸三 +3台');
 
       // 字一色 +16
       if(allTiles.every(t=>t.s==='honor')) add(16,'字一色 +16台');
@@ -7754,7 +7754,9 @@ const Game={
       }
       bon.push(`本場 ${honba}本 ×100`);
     }
-    s.winData={p,selfDraw,tai,bon,perTai,total,payer:selfDraw?-1:s.lastP,honba};
+    const winTile=selfDraw?(s.hands[p].find(t=>t.id===s.drawnId)||null):(s.last||null);
+    const flowers=(s.flowers&&s.flowers[p])?[...s.flowers[p]]:[];
+    s.winData={p,selfDraw,tai,bon,perTai,total,payer:selfDraw?-1:s.lastP,honba,winTile,flowers};
     this.winStats[p]=(this.winStats[p]||0)+1;this.rounds++;
     this.log(`🎉 ${s.names[p]} 胡牌！${tai}台`);
     // 記錄統計
@@ -8745,12 +8747,38 @@ const Game={
         s.hands[pi].filter(x=>!x.fl).forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
       }
       sec.appendChild(row);
-      // Colour legend for winner
+      // Colour legend + winning tile + flowers for winner
       if(pi===wd.p){
+        // 胡牌張
+        if(wd.winTile){
+          const wtRow=document.createElement('div');
+          wtRow.style.cssText='display:flex;align-items:center;gap:8px;margin-top:7px;justify-content:center';
+          const wtLbl=document.createElement('span');
+          wtLbl.style.cssText='font-size:.72rem;color:var(--gold);flex-shrink:0';
+          wtLbl.textContent='胡牌張：';
+          const wtEl=mkTile(wd.winTile,'sm');
+          wtEl.style.cursor='default';
+          wtEl.style.outline='2.5px solid var(--gold)';
+          wtEl.style.boxShadow='0 0 10px rgba(212,168,67,.85)';
+          wtRow.appendChild(wtLbl);wtRow.appendChild(wtEl);
+          sec.appendChild(wtRow);
+        }
+        // 色彩圖例
         const leg=document.createElement('div');
         leg.style.cssText='display:flex;gap:10px;justify-content:center;margin-top:5px;font-size:.65rem;opacity:.7';
         leg.innerHTML='<span style="color:#2ecc71">■ 順子</span><span style="color:#9b59b6">■ 刻子/槓</span><span style="color:#e67e22">■ 雀頭</span><span style="color:#3498db">■ 副露</span>';
         sec.appendChild(leg);
+        // 花牌（有花台才顯示）
+        if(wd.flowers&&wd.flowers.length>0){
+          const flRow=document.createElement('div');
+          flRow.style.cssText='display:flex;align-items:center;gap:6px;margin-top:6px;justify-content:center;flex-wrap:wrap';
+          const flLbl=document.createElement('span');
+          flLbl.style.cssText='font-size:.72rem;color:rgba(212,168,67,.75);flex-shrink:0';
+          flLbl.textContent='花牌：';
+          flRow.appendChild(flLbl);
+          wd.flowers.forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';flRow.appendChild(e);});
+          sec.appendChild(flRow);
+        }
       }
       wh.appendChild(sec);
     });
@@ -10981,12 +11009,15 @@ function updateTblVars(){
   // Center in viewport
   const offsetX = (vw - 1920 * scale) / 2;
   const offsetY = (vh - 1080  * scale) / 2;
-  tbl.style.position = 'absolute';
   tbl.style.left = offsetX + 'px';
   tbl.style.top  = Math.max(0, offsetY) + 'px';
 }
 updateTblVars();
-window.addEventListener('resize', updateTblVars);
+let _tblResizeTimer=null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_tblResizeTimer);
+  _tblResizeTimer=setTimeout(updateTblVars, 80);
+});
 // Load voices — must reset cache when voices change (Chrome loads async)
 function _loadVoices(){
   if(!window.speechSynthesis)return;
