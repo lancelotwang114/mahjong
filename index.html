@@ -3938,7 +3938,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   v1.6.47 · 1920×1080 設計畫布
+   v1.6.48 · 1920×1080 設計畫布
    所有 layout 絕對定位值 ×1.5；tile sprite px 尺寸不變。
    設計空間：1920×1080
    #pool：300,173  1320×645
@@ -4096,9 +4096,42 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* 對家(p2)與自己(p0)資訊牌面放大 150% */
 #pb2 { zoom: 1.5 !important; }
 #pb0 { zoom: 1.5 !important; }
-/* 左右家鳴牌（不含花牌） */
-#ma3 { transform: translate(150px,  -30px) rotate(-13deg) !important; zoom: 1.2 !important; gap: 1px !important; }
-#ma1 { transform: translate(-100px, -30px) rotate(13deg)  !important; zoom: 1.2 !important; gap: 1px !important; }
+/* #ma3/#ma1 已移出 #pa3/#pa1，舊的 #pa3 .ma .mg 不再適用，需直接補 */
+#ma3 .mg, #ma1 .mg {
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+}
+
+/* 左右家鳴牌（不含花牌）：正常角度 + 絕對定位
+   #ma3/#ma1 已移出旋轉容器，需自補 flex-direction:column 與清除衝突規則 */
+#ma3 {
+  position: absolute !important;
+  bottom: 240px !important;
+  left: 195px !important;
+  top: auto !important;       /* 清除舊 top:36px 衝突 */
+  right: auto !important;
+  transform: none !important;
+  zoom: 1.2 !important;
+  gap: 2px !important;
+  overflow: visible !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  flex-wrap: nowrap !important;
+}
+#ma1 {
+  position: absolute !important;
+  top: -30px !important;
+  right: 300px !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  zoom: 1.2 !important;
+  gap: 2px !important;
+  overflow: visible !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  flex-wrap: nowrap !important;
+}
 
 /* 左右家花牌：獨立容器，定位於資訊欄下方角落 */
 #fl3, #fl1 {
@@ -4112,11 +4145,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #fl1 { justify-content: flex-start !important; transform: translateX(-110px) !important; }
 #fl3 .mg, #fl1 .mg { flex-direction: column !important; }
 
-/* p0/p2 花牌與鳴牌之間加明顯間距 */
-#ma0 .flower-group,
-#ma2 .flower-group {
-  margin-right: 12px !important;
-}
+/* p0/p2 花牌已移出 ma 容器，不再需要 inline margin */
 
 /* ── 自家底部佈局微調（1920×1080）────────────────────────────
    flex-end 讓手牌＋資訊整體沉底，靠近木框下緣；
@@ -4134,6 +4163,48 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   transform: none !important;
   margin-top: 8px !important;
 }
+
+/* ── 自己(p0) 花牌：副露列左側，與副露平行 ──────────────────────
+   #fl0 在 #pa0-meld-row（flex row）的第一個子元素；
+   有花時加 margin-right 把 #ma0 推右 ~200px；
+   無花時 width:0 不佔位。                                        */
+#fl0 {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 2px !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+#fl0:not(:empty) { margin-right: 200px !important; margin-left: 100px !important; }
+#fl0 .mg { flex-direction: row !important; gap: 1px !important; }
+#fl0 .t  { zoom: 1.2 !important; }
+
+/* ── 對家(p2) 花牌：副露列左側，與副露平行 ──────────────────────
+   新增 #pa2-meld-row wrapper（flex row）取代 #pa2 直接放 #ma2；
+   order:3 維持在 ht2 之後（靠近 pool）。                         */
+#pa2-meld-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: center !important;
+  order: 3 !important;
+  width: 100% !important;
+  flex-shrink: 0 !important;
+}
+#fl2 {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 2px !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+#fl2:not(:empty) { margin-right: 200px !important; margin-left: 100px !important; }
+#fl2 .mg { flex-direction: row !important; gap: 1px !important; }
+#fl2 .t  { zoom: 1.0 !important; }   /* ti size，不需額外放大 */
+/* ma2 order reset：現在在 pa2-meld-row 內，不在 pa2 直接子元素 */
+#ma2 { order: 0 !important; margin-top: 0 !important; transform: translateX(-50px) !important; }
+/* 自己(p0)副露左移 50px，組間距縮小 */
+#ma0 { transform: translateX(-50px) !important; gap: 3px !important; }
 </style>
 </head>
 <body>
@@ -4144,7 +4215,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.47</div>
+    <div class="lver">v1.6.48</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -4411,8 +4482,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         </div>
         <span class="tpbadge" id="tp2"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
       </div>
-      <div class="ma" id="ma2"></div>
       <div class="ht" id="ht2"></div>
+      <div id="pa2-meld-row">
+        <div id="fl2" class="fl"></div>
+        <div class="ma" id="ma2"></div>
+      </div>
     </div>
   </div>
 
@@ -4429,9 +4503,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <span class="tpbadge" id="tp3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
       </div>
       <div class="fl" id="fl3"></div>
-      <div class="ma" id="ma3"></div>
       <div class="ht" id="ht3"></div>
     </div>
+    <div class="ma" id="ma3"></div>
   </div>
 
   <!-- ═══ Player 1 (right opponent) ════════════════════════════ -->
@@ -4447,9 +4521,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <span class="tpbadge" id="tp1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
       </div>
       <div class="fl" id="fl1"></div>
-      <div class="ma" id="ma1"></div>
       <div class="ht" id="ht1"></div>
     </div>
+    <div class="ma" id="ma1"></div>
   </div>
 
   <!-- ═══ Central Discard Pool ══════════════════════════════════ -->
@@ -4499,6 +4573,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       </div>
       <div class="tbar"><div class="tfill" id="tf0"></div></div>
       <div id="pa0-meld-row">
+        <div id="fl0" class="fl"></div>
         <div class="ma" id="ma0"></div>
       </div>
       <div id="pa0-hand-row">
@@ -8014,27 +8089,16 @@ const Game={
       const ma=document.getElementById(`ma${i}`);ma.innerHTML='';
       // pa2 uses ti-size tiles to fit in the 115px top zone
       const meldSz=i===2?'ti':'sm';
-      // Flowers: p1/p3 → dedicated #fl container; p0/p2 → inline in #ma with margin
-      const isSidePlayer=i===1||i===3;
-      if(isSidePlayer){
-        const flEl=document.getElementById(`fl${i}`);
-        if(flEl){
-          flEl.innerHTML='';
-          if(s.flowers[i]&&s.flowers[i].length){
-            const fg=document.createElement('div');fg.className='mg flower-group';
-            s.flowers[i].forEach(t=>{
-              const e=mkTile(t,`${meldSz} flower`);e.style.cursor='default';fg.appendChild(e);
-            });
-            flEl.appendChild(fg);
-          }
-        }
-      } else {
+      // Flowers: all players → dedicated #fl container
+      const flEl=document.getElementById(`fl${i}`);
+      if(flEl){
+        flEl.innerHTML='';
         if(s.flowers[i]&&s.flowers[i].length){
           const fg=document.createElement('div');fg.className='mg flower-group';
           s.flowers[i].forEach(t=>{
             const e=mkTile(t,`${meldSz} flower`);e.style.cursor='default';fg.appendChild(e);
           });
-          ma.appendChild(fg);
+          flEl.appendChild(fg);
         }
       }
       // Melds
