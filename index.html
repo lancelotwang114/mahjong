@@ -3976,9 +3976,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   transform: none !important;
   align-content: start !important;
 }
-/* left (p3)：垂直居中，距左 60px；改 4×6 = 24 張 */
+/* left (p3)：往中心靠，left=350 (pool 座標) */
 #pool #dc3 {
-  left: 60px !important;
+  left: 350px !important;
   top: 197px !important;
   right: auto !important;
   transform: none !important;
@@ -3988,9 +3988,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   grid-auto-rows: 42px !important;
   align-content: start !important;
 }
-/* right (p1)：垂直居中，距右 60px → left = 1320−60−120 = 1140 */
+/* right (p1)：往中心靠，left=850 (pool 座標) → right edge=970 */
 #pool #dc1 {
-  left: 1140px !important;
+  left: 850px !important;
   top: 197px !important;
   right: auto !important;
   transform: none !important;
@@ -4054,15 +4054,21 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   overflow: visible !important;
 }
 
-/* ── 自家底部佈局微調（對應新 p0-zone 高度）─────────────────── */
+/* ── 自家底部佈局微調（1920×1080）────────────────────────────
+   flex-end 讓手牌＋資訊整體沉底，靠近木框下緣；
+   padding-bottom 留出木框視覺邊距。
+────────────────────────────────────────────────────────────── */
 #pa0 {
-  padding-top: 6px !important;
+  justify-content: flex-end !important;
+  padding-top:    0   !important;
+  padding-bottom: 22px !important;
 }
 #pa0-meld-row {
-  margin-bottom: 12px !important;
+  margin-bottom: 4px !important;
 }
 #pb0 {
-  transform: translateY(-15px) !important;
+  transform: none !important;
+  margin-top: 8px !important;
 }
 </style>
 </head>
