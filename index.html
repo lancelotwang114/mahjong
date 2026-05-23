@@ -5749,7 +5749,7 @@ const DbgLog=(()=>{
   }
   function copy(){
     const G=window.Game;
-    const role=G?.(G._online?(G._isHost?`房主(p0)`:`非房主(p${G._myIndex??'?'})`):'單機'):'?';
+    const role=G?(G._online?(G._isHost?`房主(p0)`:`非房主(p${G._myIndex??'?'})`):'單機'):'?';
     const ver=document.querySelector('.lver')?.textContent?.trim()||'?';
     const st=G?.st;
     const header=[
