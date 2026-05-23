@@ -3835,7 +3835,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 /* 中心圓稍微收斂，避免壓住棄牌閱讀線 */
 .cp#col-table {
-  transform: translate(-50%, -50%) scale(0.72) !important;
+  transform: translate(-50%, -50%) scale(1.152) !important;
   box-shadow:
     0 6px 18px rgba(0,0,0,.38),
     0 0 0 1px rgba(212,168,67,.28),
@@ -7395,11 +7395,10 @@ const Game={
     const bon=[`底 ${tai}台`];
     const add=(n,label)=>{tai+=n;bon.push(label);};
 
-    // ① 花牌：只計座位對應花（自風 v 和 v+4），最多2台；花槓+2
+    // ① 花牌：每朵 +1台；花槓（四君子/四季）+2台
     const seatWindV=(p-(s.dealer??0)+4)%4;
     const myFlowers=s.flowers[p];
-    const matchFc=myFlowers.filter(f=>f.v===seatWindV||f.v===seatWindV+4).length;
-    if(matchFc>0) add(Math.min(matchFc,2),`花牌 ${Math.min(matchFc,2)}台`);
+    if(myFlowers.length>0) add(myFlowers.length,`花牌 ${myFlowers.length}台`);
     const flowerVals=new Set(myFlowers.map(f=>f.v));
     if([0,1,2,3].every(v=>flowerVals.has(v))) add(2,'四君子 花槓 +2台');
     if([4,5,6,7].every(v=>flowerVals.has(v))) add(2,'四季 花槓 +2台');
@@ -7423,14 +7422,15 @@ const Game={
     // ⑤ 搶槓 +1
     if(s._robKong) add(1,'搶槓 +1台');
 
+    // ⑥ 莊家台 +1
+    if(p===s.dealer) add(1,'莊家台 +1台');
+
+    // ⑦ 連莊台（每本場 +1）
+    if(p===s.dealer&&(s.honba||0)>0) add(s.honba,`連莊台 +${s.honba}台`);
+
     // ── 手牌分析 ─────────────────────────────────────────────────────
     const nonFlower=hand;
-    const is7pHand=is7p(nonFlower);
-
-    if(is7pHand){
-      // 七對 / 八對子
-      add(3,nonFlower.length>=16?'八對子 +3台':'七對 +3台');
-    } else {
+    {
       const handGroups=this._analyseHandGroups(nonFlower);
       const pair=handGroups.pair;
       const handMelds=handGroups.melds;
@@ -7448,8 +7448,8 @@ const Game={
       // 碰碰胡 +4
       if(triplets.length===nGroups) add(4,'碰碰胡 +4台');
 
-      // 平胡 +2（全順子、門清、非自摸、無字牌、非獨聽）
-      if(seqs.length===nGroups&&!hasOpenMeld&&!selfDraw
+      // 平胡 +2（全順子、門清、無字牌、非獨聽）
+      if(seqs.length===nGroups&&!hasOpenMeld
          &&!allTiles.some(t=>t.s==='honor')&&!isDokutan)
         add(2,'平胡 +2台');
 
@@ -7468,7 +7468,7 @@ const Game={
       // 暗刻：五暗刻 +8 / 四暗刻 +5 / 三暗刻 +2（互斥，取最高）
       const concealedTrips=handMelds.filter(g=>g.type==='set'&&g.triple).length
                            +melds.filter(m=>m.dark).length;
-      if(triplets.length===nGroups&&!hasOpenMeld) add(8,'五暗刻 +8台');
+      if(triplets.length===nGroups&&!hasOpenMeld) add(16,'五暗刻 +16台');
       else if(concealedTrips>=4)                  add(5,'四暗刻 +5台');
       else if(concealedTrips>=3)                  add(2,'三暗刻 +2台');
 
@@ -7515,10 +7515,6 @@ const Game={
 
     // 槓上開花 +1
     if(selfDraw&&s._kongWin) add(1,'槓上開花 +1台');
-
-    // 十三么 +13
-    const isShiSanYao=!hasOpenMeld&&isShiSanYaoHand(allTiles);
-    if(isShiSanYao) add(13,'十三么 +13台');
 
     // ── Payment ──────────────────────────────────────────────
     const perTai=this.settings.tai||100;
