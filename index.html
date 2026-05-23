@@ -2595,13 +2595,18 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #assist-panel.open { display:flex; }
 /* Chat panel */
 #chat-btn {
-  position:absolute; left:52px; bottom:218px;
+  position:absolute; left:82px; bottom:118px;
   width:30px; height:30px; border-radius:50%;
   background:rgba(93,173,226,.18); border:1px solid rgba(93,173,226,.45);
   color:rgba(93,173,226,.9); font-size:16px; cursor:pointer;
   display:none; align-items:center; justify-content:center;
   z-index:210; pointer-events:auto; transition:background .2s;
 }
+#restart-round-btn {
+  color:rgba(255,150,110,.9); display:none;
+  border-color:rgba(220,80,40,.5);
+}
+#restart-round-btn:hover { background:rgba(180,60,30,.45); border-color:rgba(255,100,60,.75); color:#ffa080; }
 #chat-btn:hover { background:rgba(93,173,226,.32); }
 #chat-panel {
   position:absolute; left:205px; bottom:185px;
@@ -4215,7 +4220,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.50</div>
+    <div class="lver">v1.6.51</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -4589,6 +4594,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div id="topbar-left">
       <button id="pause-btn" class="tb-btn" onclick="Game.togglePause()">⏸ 暫停</button>
       <button id="leave-btn" class="tb-btn" onclick="Game.leaveAndSave()" title="儲存牌局並返回大廳（AI 代打）">🚪 離開</button>
+      <button id="restart-round-btn" class="tb-btn" onclick="Game.hostRestartRound()" title="重開此把（僅房主）">↺ 重開此把</button>
     </div>
     <!-- 右側：控制工具（房主開局、速度、自動、音效） -->
     <div id="topbar-right">
@@ -5772,6 +5778,9 @@ const Game={
     if(hcb)hcb.style.display=isHost?'flex':'none';
     const hcp=document.getElementById('host-ctrl-panel');
     if(hcp)hcp.style.display='none';
+    // Restart-round button: only host in online mode
+    const rrb=document.getElementById('restart-round-btn');
+    if(rrb)rrb.style.display=isHost?'flex':'none';
   },
   toggleHostPanel(){
     const p=document.getElementById('host-ctrl-panel');
@@ -5793,6 +5802,32 @@ const Game={
     if(p)p.style.display='none';
     if(typeof MahjongNetwork!=='undefined') MahjongNetwork.broadcast({type:'host_restart'});
     this.newRound();
+  },
+  hostRestartRound(){
+    if(!this._isHost||!this._online)return;
+    if(!confirm('確定要重開此把嗎？\n（本把積分不計算，莊家與本場點不變）'))return;
+    const s=this.st;
+    if(!s)return;
+    // Broadcast restart-round signal with current round parameters
+    if(typeof MahjongNetwork!=='undefined') MahjongNetwork.broadcast({
+      type:'host_restart_round',
+      dealer:s.dealer,roundNum:s.roundNum,roundWind:s.roundWind,honba:s.honba,
+      names:s.names,ai:s.ai
+    });
+    // Host side: reset UI and restart same round
+    this._killAllTimers();
+    this.clearBtns();
+    this.riichiMode=false; this.riichiTile=null;
+    this._isDiscarding=false;
+    clearTimeout(this._riichiDiscardTimer); this._riichiDiscardTimer=null;
+    this.hideTenpai();
+    document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+    document.getElementById('wov').style.display='none';
+    const _nb=document.getElementById('wov-next-btn');if(_nb)_nb.style.display='';
+    const _wb=document.getElementById('wov-wait-lbl');if(_wb)_wb.remove();
+    this.initRound(s.names,s.ai,null,s.dealer,s.roundNum,s.roundWind,s.honba);
+    updateTblVars();
+    setTimeout(()=>this.showDice(),200);
   },
   hostStartRound(){
     if(!this._isHost)return;
@@ -9906,6 +9941,30 @@ const Online = {
         break;
       case 'host_restart':
         if(!Game._isHost) Game.toast('房主重啟牌局中…',2000);
+        break;
+      case 'host_restart_round':
+        if(!Game._isHost){
+          // Non-host: reset UI state, re-init same round, wait for game_state
+          Game.riichiMode=false; Game.riichiTile=null; Game._isDiscarding=false;
+          clearTimeout(Game._riichiDiscardTimer); Game._riichiDiscardTimer=null;
+          Game._killAllTimers();
+          Game.clearBtns();
+          Game.hideTenpai();
+          document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+          document.getElementById('wov').style.display='none';
+          const _nb3=document.getElementById('wov-next-btn');if(_nb3)_nb3.style.display='';
+          const _wb3=document.getElementById('wov-wait-lbl');if(_wb3)_wb3.remove();
+          if(Game.st){
+            Game.st.phase='between_rounds'; // 解除 phase guard，允許接收新 game_state
+            const s=Game.st;
+            Game.initRound(
+              data.names||s.names, data.ai||s.ai, null,
+              data.dealer??s.dealer, data.roundNum??s.roundNum,
+              data.roundWind||s.roundWind, data.honba??s.honba
+            );
+          }
+          Game.toast('房主重開此把！',2000);
+        }
         break;
       case 'host_start_round':
         if(!Game._isHost){
