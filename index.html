@@ -567,6 +567,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   height: 1080px;
   position: relative;
   transform-origin: top left;
+  will-change: transform;                        /* GPU compositing layer */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;                   /* prevent subpixel blur on scale */
   background: radial-gradient(ellipse 95% 90% at 50% 50%,
     #1c3560 0%, #0f2040 45%, #060e1a 100%);
   border-radius:4px;
@@ -724,6 +727,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow: 0 -2px 0 #a87820 inset, 1px 2px 3px rgba(0,0,0,.5) !important;
   cursor: default !important;
   transform: none !important;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 #pool .t:hover { transform: none !important; }
 #pool .t::before { display: none !important; }
@@ -1009,6 +1014,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   font-size:1.45rem;font-weight:700;cursor:pointer;
   transition:transform .15s cubic-bezier(.34,1.5,.64,1),box-shadow .15s;
   position:relative;flex-shrink:0;user-select:none;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
   /* 3D depth: top highlight, side sheen, thick bottom edge, cast shadow */
   box-shadow:
     0 2px 0 #fff9ee inset,          /* top highlight */
@@ -3937,11 +3944,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   top: 173px !important;
   bottom: 278px !important;
   width: 300px !important;
+  z-index: 9 !important;
 }
 #pa1-area {
   top: 173px !important;
   bottom: 278px !important;
   width: 300px !important;
+  z-index: 9 !important;
 }
 #p0-zone {
   height: 345px !important;
@@ -3954,51 +3963,71 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 
 /* ── 棄牌區（pool 內座標）────────────────────────────────────── */
-/* 各區統一：6 cols × 30px = 180px，4 rows × 42px = 168px，支援 24 張 */
-#pool #dc2, #pool #dc1, #pool #dc0, #pool #dc3 {
-  width: 180px !important;
-  height: 168px !important;
-  grid-template-columns: repeat(6, 30px) !important;
-  grid-auto-rows: 42px !important;
+/* 牌張 zoom:1.2 → layout box 36×51px
+   dc0/dc2: 6col×36=216w, 4row×51=204h
+   dc3/dc1: 4col×36=144w, 6row×51=306h         幾何 QA: ALL PASSED */
+#pool .t {
+  zoom: 1.2 !important;
 }
-/* top (p2)：水平居中，距上 15px */
+#pool #dc2, #pool #dc0 {
+  width: 216px !important;
+  height: 204px !important;
+  grid-template-columns: repeat(6, 36px) !important;
+  grid-auto-rows: 51px !important;
+}
+#pool #dc3, #pool #dc1 {
+  width: 144px !important;
+  height: 306px !important;
+  grid-template-columns: repeat(4, 36px) !important;
+  grid-auto-rows: 51px !important;
+}
+/* top (p2)：水平居中 → left=(1320-216)/2=552, top=15 */
 #pool #dc2 {
-  left: 570px !important;
+  left: 552px !important;
   top: 15px !important;
   transform: none !important;
   align-content: end !important;
 }
-/* bottom (p0)：水平居中，距下 18px → top = 645−18−168 = 459 */
+/* bottom (p0)：水平居中，bottom margin 15 → top=645-15-204=426 */
 #pool #dc0 {
-  left: 570px !important;
-  top: 459px !important;
+  left: 552px !important;
+  top: 426px !important;
   bottom: auto !important;
   transform: none !important;
   align-content: start !important;
 }
-/* left (p3)：往中心靠，left=350 (pool 座標) */
+/* left (p3)：往中心靠，垂直居中 → top=(645-306)/2=170 */
 #pool #dc3 {
   left: 350px !important;
-  top: 197px !important;
+  top: 170px !important;
   right: auto !important;
   transform: none !important;
-  width: 120px !important;
-  height: 252px !important;
-  grid-template-columns: repeat(4, 30px) !important;
-  grid-auto-rows: 42px !important;
   align-content: start !important;
 }
-/* right (p1)：往中心靠，left=850 (pool 座標) → right edge=970 */
+/* right (p1)：往中心靠 → left=850, top=170 */
 #pool #dc1 {
   left: 850px !important;
-  top: 197px !important;
+  top: 170px !important;
   right: auto !important;
   transform: none !important;
-  width: 120px !important;
-  height: 252px !important;
-  grid-template-columns: repeat(4, 30px) !important;
-  grid-auto-rows: 42px !important;
   align-content: start !important;
+}
+
+/* ── 鳴牌區牌張放大 120% ─────────────────────────────────────
+   ma0 (自己) / ma2 (對家) 用 zoom，flex 容器會撐開。
+   ma1/ma3 (左右家) 改用 z-index 提升 + 保持原尺寸，
+   避免 absolute 定位下 zoom 跨越 pool 邊界被遮擋。             */
+#ma0 .t, #ma2 .t {
+  zoom: 1.2 !important;
+}
+
+/* ── 修正 p1/p3 副露牌 sprite 截斷 ──────────────────────────
+   v1.6.46 把側家副露牌縮至 28×39px，但 sm sprite 每格寬 36px
+   → container(28px) < sprite slot(36px) → background-clip 截右側。
+   恢復 sm 正規尺寸 32×44px 使 sprite 完整顯示。               */
+#pa1 .ma .t, #pa3 .ma .t {
+  width:  32px !important;
+  height: 44px !important;
 }
 
 /* ── 操作面板、橫幅、吃法選擇器 ─────────────────────────────── */
@@ -4018,40 +4047,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ps-N { top: 69px !important; }
 #ps-S { bottom: 135px !important; }
 
-/* ── 左右家子元素位置（pa3-area/pa1-area 現寬 300px）──────────── */
-#pb3 {
-  margin-left: 78px !important;
-  width: 198px !important;
-}
-#ht3 {
-  left: 69px !important;
-  top: 162px !important;
-  width: 28px !important;
-}
-#ma3 {
-  left: 156px !important;
-  right: 6px !important;
-  top: 198px !important;
-  bottom: 9px !important;
-  align-items: flex-end !important;
-  overflow: visible !important;
-}
-#pb1 {
-  margin-right: 78px !important;
-  width: 198px !important;
-}
-#ht1 {
-  right: 69px !important;
-  top: 162px !important;
-  width: 28px !important;
-}
-#ma1 {
-  right: 156px !important;
-  left: 6px !important;
-  top: 198px !important;
-  bottom: 9px !important;
-  align-items: flex-start !important;
-  overflow: visible !important;
+/* ── 左右家子元素：讓 v1.6.46 的 absolute 定位繼續生效 ──────────
+   ht3/ma3/ht1/ma1 已由 v1.6.46 block 設為 position:absolute；
+   pa3/pa1-area 寬 300px（vs 原 200px），ma 區自動獲得更大空間。
+   僅放寬名牌 max-width 配合較寬側欄。                          */
+#pa3-area .pbar,
+#pa1-area .pbar {
+  max-width: 220px !important;
 }
 
 /* ── 自家底部佈局微調（1920×1080）────────────────────────────
