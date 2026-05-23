@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>台灣麻將 單機版</title>
+<title>台灣麻將 單機版 - 3D版</title>
 <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
 <style id="tiles-sprite-inline">
@@ -4205,6 +4205,135 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ma2 { order: 0 !important; margin-top: 0 !important; transform: translateX(-50px) !important; }
 /* 自己(p0)副露左移 50px，組間距縮小 */
 #ma0 { transform: translateX(-50px) !important; gap: 3px !important; }
+
+/* ============================================================
+   index-3d.html  -  3D CSS overlay  v2  (dramatic tilt)
+   ============================================================ */
+
+/* (1) #game provides the 3D perspective container */
+#game.show {
+  perspective: 1000px !important;
+  perspective-origin: 50% -15% !important;
+  overflow: visible !important;
+}
+
+/* (2) Prevent #tbl from flattening its 3D children */
+#tbl {
+  transform-style: preserve-3d !important;
+}
+
+/* (3) All tiles: visible wooden thickness via layered box-shadow */
+#tbl .t {
+  box-shadow:
+    0px 2px 0 #fffdf5,
+    0px 4px 0 #f0e4c8,
+    0px 6px 0 #d8c090,
+    0px 8px 0 #bfa37a,
+    0px 10px 0 #8a6a30,
+    0 14px 28px rgba(0,0,0,0.75) !important;
+  border-radius: 3px !important;
+  transition: box-shadow 0.12s ease, transform 0.12s ease !important;
+}
+
+/* (4) Player's own hand: slight lift + glow on hover */
+#ht0 .t {
+  box-shadow:
+    0px 2px 0 #fffdf5,
+    0px 4px 0 #f0e4c8,
+    0px 6px 0 #d8c090,
+    0px 8px 0 #bfa37a,
+    0px 10px 0 #8a6a30,
+    0 14px 28px rgba(0,0,0,0.75) !important;
+}
+#ht0 .t:hover {
+  transform: translateY(-12px) !important;
+  box-shadow:
+    0px 2px 0 #fffdf5,
+    0px 4px 0 #f0e4c8,
+    0px 6px 0 #d8c090,
+    0px 8px 0 #bfa37a,
+    0px 10px 0 #8a6a30,
+    0 20px 36px rgba(0,0,0,0.85) !important;
+}
+
+/* (5) Opponent (far): scale down to reinforce distance */
+#pa2-area {
+  transform: scale(0.90) !important;
+  transform-origin: center bottom !important;
+}
+
+/* (6) Self (near): scale up slightly to reinforce closeness */
+#pa0 {
+  transform: scale(1.04) !important;
+  transform-origin: center top !important;
+}
+
+/* (7) Left side: angle to match left wood-frame slant */
+#pa3-area {
+  transform: rotateY(20deg) !important;
+  transform-origin: right center !important;
+  transform-style: preserve-3d !important;
+}
+
+/* (8) Right side: mirror of left */
+#pa1-area {
+  transform: rotateY(-20deg) !important;
+  transform-origin: left center !important;
+  transform-style: preserve-3d !important;
+}
+
+/* (9) Left/right tile shadows: side-facing */
+#pa3-area .t {
+  box-shadow:
+    3px 0 0 #fffdf5, 5px 0 0 #d8c090, 8px 0 0 #8a6a30,
+    0 8px 18px rgba(0,0,0,0.6) !important;
+}
+#pa1-area .t {
+  box-shadow:
+    -3px 0 0 #fffdf5, -5px 0 0 #d8c090, -8px 0 0 #8a6a30,
+    0 8px 18px rgba(0,0,0,0.6) !important;
+}
+
+/* (10) Pool / discard tiles: flat-lying shadow */
+#pool .t {
+  box-shadow:
+    0 2px 0 #c8a870,
+    0 4px 8px rgba(0,0,0,0.55) !important;
+}
+
+/* (11) Player info panels: frosted glass */
+.pbar {
+  background: rgba(0,0,0,0.55) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border: 1px solid rgba(212,168,67,0.25) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+}
+
+/* (12) Centre circle: compensate table tilt */
+.cp#col-table {
+  transform: translate(-50%, -50%) scale(1.152) rotateX(-16deg) !important;
+}
+
+/* (13) action-overlay stays flat above everything */
+#action-overlay {
+  z-index: 9999 !important;
+  transform: none !important;
+}
+
+/* (14) Self meld row: anchor bottom-right */
+#game.show #pa0-meld-row {
+  position: fixed !important;
+  bottom: 18px !important;
+  right: 18px !important;
+  z-index: 60 !important;
+  transform: none !important;
+  background: rgba(0,0,0,0.3) !important;
+  border-radius: 6px !important;
+  padding: 4px !important;
+}
+
 </style>
 </head>
 <body>
@@ -4215,7 +4344,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.50</div>
+    <div class="lver">v1.6.48</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -10176,18 +10305,8 @@ const Online = {
         // 【M1】null guard
         if(!Game.st){ console.warn(`[win] Game.st is null, rejecting`); break; }
         const _ws=Game.st;
-        // 【H3a】榮和處理：若來自 legacy _offerNonHostMeld 等待情境，直接執行胡牌
+        // 【H3a】main switch 路徑只處理自摸；榮和應透過鳴牌回應路徑（meld response）送達
         if(!data.selfDraw){
-          if(_wasLegacyWaiting){
-            const _wHand=_ws.hands[peerIdx].filter(x=>!x.fl);
-            if(!canWin(_wHand,_ws.last,_ws.melds[peerIdx].length)){
-              console.warn(`[win] invalid Ron claim from p${peerIdx}, rejecting`);
-              setTimeout(()=>Online.broadcastState(),50);
-              break;
-            }
-            Game.doWin(peerIdx,false);
-            break;
-          }
           console.warn(`[win] non-selfDraw win from p${peerIdx} outside meld response context, rejecting`);
           setTimeout(()=>Online.broadcastState(),50);
           break;
@@ -10640,7 +10759,8 @@ function updateTblVars(){
   const scaleY = (vh - 10) / 1080;
   const scale  = Math.min(scaleX, scaleY);
   tbl.style.transformOrigin = 'top left';
-  tbl.style.transform = `scale(${scale})`;
+  // 3D: add perspective + rotateX so the table tilts back
+  tbl.style.transform = `scale(${scale}) rotateX(16deg)`;
   // Center in viewport
   const offsetX = (vw - 1920 * scale) / 2;
   const offsetY = (vh - 1080  * scale) / 2;
