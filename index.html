@@ -3942,13 +3942,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 #pa3-area {
   top: 173px !important;
-  bottom: 278px !important;
+  bottom: 50px !important;
   width: 300px !important;
   z-index: 9 !important;
 }
 #pa1-area {
   top: 173px !important;
-  bottom: 278px !important;
+  bottom: 50px !important;
   width: 300px !important;
   z-index: 9 !important;
 }
@@ -4055,6 +4055,27 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pa1-area .pbar {
   max-width: 220px !important;
 }
+
+/* ── 左家(p3)整體右移 100px，右家(p1)整體左移 100px ─────────
+   translateX 整體平移所有子元素（pbar/ht/ma），
+   不改動各子元素的相對定位，overflow:visible 確保超界可見。
+   手牌(ht3/ht1)追加 30px，本輪共移動 80px（整體 50px + 30px）。
+   pbar 放大 150%（zoom 影響 layout，令資訊卡視覺加大）。      */
+#pa3 { transform: translateX(100px)  rotate(17deg)  !important; }
+#pa1 { transform: translateX(-100px) rotate(-17deg) !important; }
+#ht3 { transform: translate(20px, -100px) !important; overflow: visible !important; justify-content: center !important; }
+#ht3 .t { width: 32px !important; height: 45px !important; }
+#ht1 { transform: translate(-20px, -100px) !important; overflow: visible !important; justify-content: center !important; }
+#ht1 .t { width: 32px !important; height: 45px !important; }
+#ht2 { zoom: 1.8 !important; }
+#pb3 { zoom: 1.5 !important; transform: rotate(-17deg) translateX(-150px) !important; }
+#pb1 { zoom: 1.5 !important; transform: rotate(17deg)  translateX(150px)  !important; }
+/* 對家(p2)與自己(p0)資訊牌面放大 150% */
+#pb2 { zoom: 1.5 !important; }
+#pb0 { zoom: 1.5 !important; }
+/* 左右家鳴牌花牌：往中心再移 30px + 往下 30px */
+#ma3 { transform: translate(150px,  -30px) rotate(-13deg) !important; zoom: 1.2 !important; }
+#ma1 { transform: translate(-100px, -30px) rotate(13deg)  !important; zoom: 1.2 !important; }
 
 /* ── 自家底部佈局微調（1920×1080）────────────────────────────
    flex-end 讓手牌＋資訊整體沉底，靠近木框下緣；
@@ -5560,16 +5581,11 @@ function _tileSVGGen(tile){
   return tile.n||'?';
 }
 
-// mkPreviewTile: SVG-based tile for meld-preview / tooltip (no .t class → no sprite, SVG shows)
-// Use instead of mkTile+zoom for any floating preview context outside the main board.
+// mkPreviewTile: sprite-based tile for meld-preview / tooltip
+// Uses mkTile(t,'') full-size + zoom:0.52 so sprite proportions match the main board.
 function mkPreviewTile(tile,discTile=null){
-  const d=document.createElement('div');
-  d.style.cssText='width:32px;height:44px;border-radius:4px;flex-shrink:0;cursor:default;'+
-    'background:linear-gradient(145deg,#f5ecd7,#e8d8b8);'+
-    'border:1.5px solid rgba(120,80,20,.5);'+
-    'display:flex;align-items:center;justify-content:center;overflow:hidden;'+
-    'box-shadow:2px 5px 10px rgba(20,10,0,.45);color:#1a0e04;';
-  d.innerHTML=tileSVG(tile);
+  const d=mkTile(tile,'');
+  d.style.cssText+=';zoom:0.52;cursor:default;flex-shrink:0;';
   if(discTile&&tile.id===discTile.id){
     d.style.outline='2.5px solid var(--gold2)';
     d.style.boxShadow='0 0 10px rgba(212,168,67,.85)';
@@ -8021,7 +8037,7 @@ const Game={
         // Opponent back tiles
         const ht=document.getElementById(`ht${i}`);ht.innerHTML='';
         const isSide=i===1||i===3;
-        s.hands[i].forEach(()=>ht.appendChild(mkBack(isSide?'ti':'sm')));
+        s.hands[i].forEach(()=>ht.appendChild(mkBack(isSide?'sm':'ti')));
       }
       // (discards rendered in central pool after loop)
     }
