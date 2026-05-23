@@ -2034,7 +2034,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #flower-flash { position:fixed; top:38%; left:50%; transform:translate(-50%,-50%); z-index:8100; pointer-events:none; display:none; background:rgba(4,12,6,.9); border:2px solid var(--gold); border-radius:14px; padding:8px 26px; text-align:center; }
 #flower-flash.on { display:block; animation:ffAnim 1.4s ease-out forwards; }
 @keyframes ffAnim { 0%{opacity:0;transform:translate(-50%,-50%) scale(.6)} 18%{opacity:1;transform:translate(-50%,-50%) scale(1.1)} 60%{opacity:1;transform:translate(-50%,-50%) scale(1)} 100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)} }
-.ff-ic { font-size:2rem; }
+.ff-ic { display:flex; justify-content:center; align-items:center; min-height:48px; }
 .ff-nm { font-size:.8rem; font-weight:700; color:var(--gold); margin-top:2px; }
 
 /* ══ ROUND PROGRESS DOTS ══════════════════════════════════ */
@@ -3894,11 +3894,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pa2 .ma .mg,
 #pa3 .ma .mg,
 #ma0 .mg {
-  background: rgba(2,10,20,.22) !important;
-  border: 1px solid rgba(212,168,67,.08) !important;
+  background: rgba(20,14,5,.60) !important;
+  border: 1px solid rgba(180,130,50,.55) !important;
   border-radius: 5px !important;
   padding: 2px !important;
-  box-shadow: 0 2px 6px rgba(0,0,0,.16) !important;
+  box-shadow: inset 0 1px 0 rgba(255,200,80,.15), 0 2px 8px rgba(0,0,0,.5) !important;
 }
 
 /* 對家維持資訊框 → 暗牌 → 副露，副露停在上方毯面邊緣 */
@@ -4073,9 +4073,26 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* 對家(p2)與自己(p0)資訊牌面放大 150% */
 #pb2 { zoom: 1.5 !important; }
 #pb0 { zoom: 1.5 !important; }
-/* 左右家鳴牌花牌：往中心再移 30px + 往下 30px */
-#ma3 { transform: translate(150px,  -30px) rotate(-13deg) !important; zoom: 1.2 !important; }
-#ma1 { transform: translate(-100px, -30px) rotate(13deg)  !important; zoom: 1.2 !important; }
+/* 左右家鳴牌（不含花牌） */
+#ma3 { transform: translate(150px,  -30px) rotate(-13deg) !important; zoom: 1.2 !important; gap: 1px !important; }
+#ma1 { transform: translate(-100px, -30px) rotate(13deg)  !important; zoom: 1.2 !important; gap: 1px !important; }
+
+/* 左右家花牌：獨立容器，定位於資訊欄下方角落 */
+#fl3, #fl1 {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 2px !important;
+  flex-shrink: 0 !important;
+}
+#fl3 { justify-content: flex-end !important; transform: translateX(110px) !important; }
+#fl1 { justify-content: flex-start !important; transform: translateX(-110px) !important; }
+
+/* p0/p2 花牌與鳴牌之間加明顯間距 */
+#ma0 .flower-group,
+#ma2 .flower-group {
+  margin-right: 12px !important;
+}
 
 /* ── 自家底部佈局微調（1920×1080）────────────────────────────
    flex-end 讓手牌＋資訊整體沉底，靠近木框下緣；
@@ -4387,6 +4404,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         </div>
         <span class="tpbadge" id="tp3"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
       </div>
+      <div class="fl" id="fl3"></div>
       <div class="ma" id="ma3"></div>
       <div class="ht" id="ht3"></div>
     </div>
@@ -4404,6 +4422,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         </div>
         <span class="tpbadge" id="tp1"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="22" height="22" style="vertical-align:middle"><rect width="100" height="100" rx="20" fill="#cc0000" stroke="#ffcccc" stroke-width="4"/><text x="50" y="72" font-family="'Microsoft JhengHei','Noto Serif TC',sans-serif" font-size="62" font-weight="900" fill="#ffffff" text-anchor="middle">聽</text></svg></span>
       </div>
+      <div class="fl" id="fl1"></div>
       <div class="ma" id="ma1"></div>
       <div class="ht" id="ht1"></div>
     </div>
@@ -6319,8 +6338,12 @@ const Game={
   _flashFlower(fl){
     if(this.settings&&this.settings.quickStart)return;
     const ff=document.getElementById('flower-flash');if(!ff)return;
-    const icons=['🌸','🌿','🌼','🎋','🌱','☀️','🍂','❄️'];
-    ff.querySelector('.ff-ic').textContent=icons[fl.v]||'🌸';
+    // 用 mkTile sprite 呈現，與主牌面設計一致
+    const ic=ff.querySelector('.ff-ic');
+    ic.innerHTML='';
+    const tileEl=mkTile(fl,'');
+    tileEl.style.cssText+='zoom:1.8;cursor:default;pointer-events:none;';
+    ic.appendChild(tileEl);
     ff.querySelector('.ff-nm').textContent=fl.n+'　補花！';
     ff.classList.remove('on');void ff.offsetWidth;
     ff.classList.add('on');
@@ -7963,17 +7986,32 @@ const Game={
       // Neon border on pbar for opponents (p1/p2/p3); p0 keeps tpanel for self-awareness
       const pbarEl=document.getElementById(`pb${i}`);
       if(pbarEl){pbarEl.classList.toggle('tenpai-neon',!!s.tenpai[i]&&i!==0);}
-      // Melds + flowers (flowers shown like melds above hand)
+      // Melds + flowers (p1/p3 flowers go to separate #fl container)
       const ma=document.getElementById(`ma${i}`);ma.innerHTML='';
       // pa2 uses ti-size tiles to fit in the 115px top zone
       const meldSz=i===2?'ti':'sm';
-      // Flowers first (grouped)
-      if(s.flowers[i]&&s.flowers[i].length){
-        const fg=document.createElement('div');fg.className='mg flower-group';
-        s.flowers[i].forEach(t=>{
-          const e=mkTile(t,`${meldSz} flower`);e.style.cursor='default';fg.appendChild(e);
-        });
-        ma.appendChild(fg);
+      // Flowers: p1/p3 → dedicated #fl container; p0/p2 → inline in #ma with margin
+      const isSidePlayer=i===1||i===3;
+      if(isSidePlayer){
+        const flEl=document.getElementById(`fl${i}`);
+        if(flEl){
+          flEl.innerHTML='';
+          if(s.flowers[i]&&s.flowers[i].length){
+            const fg=document.createElement('div');fg.className='mg flower-group';
+            s.flowers[i].forEach(t=>{
+              const e=mkTile(t,`${meldSz} flower`);e.style.cursor='default';fg.appendChild(e);
+            });
+            flEl.appendChild(fg);
+          }
+        }
+      } else {
+        if(s.flowers[i]&&s.flowers[i].length){
+          const fg=document.createElement('div');fg.className='mg flower-group';
+          s.flowers[i].forEach(t=>{
+            const e=mkTile(t,`${meldSz} flower`);e.style.cursor='default';fg.appendChild(e);
+          });
+          ma.appendChild(fg);
+        }
       }
       // Melds
       s.melds[i].forEach(meld=>{
