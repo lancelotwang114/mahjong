@@ -3738,6 +3738,42 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   align-self:  center !important;
   padding-bottom: 0 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   v1.6.43-frame · 左右家往中央進框校正
+   木框內沿約 x=46（左側）/ x=1234（右側）。
+   電腦C (p3) 整體右移 46px；電腦A (p1) 整體左移 46px。
+   ─────────────────────────────────────────────────────────────
+   pa3-area / pa1-area 寬 200px 不動，只移子元素位置。
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 電腦C (p3) 往右移 ──────────────────────────────────────── */
+#ht3 {
+  left: 80px !important;
+}
+#ma3 {
+  left: 108px !important;
+  right: 0 !important;
+  overflow: visible !important;
+}
+#pb3 {
+  margin-left: 80px !important;
+  width: calc(100% - 80px) !important;
+}
+
+/* ── 電腦A (p1) 往左移 ──────────────────────────────────────── */
+#ht1 {
+  right: 80px !important;
+}
+#ma1 {
+  right: 108px !important;
+  left: 0 !important;
+  overflow: visible !important;
+}
+#pb1 {
+  margin-right: 80px !important;
+  width: calc(100% - 80px) !important;
+}
 </style>
 </head>
 <body>
