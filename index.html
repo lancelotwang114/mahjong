@@ -2607,6 +2607,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   border-color:rgba(220,80,40,.5);
 }
 #restart-round-btn:hover { background:rgba(180,60,30,.45); border-color:rgba(255,100,60,.75); color:#ffa080; }
+#debug-report-btn {
+  color:rgba(180,200,255,.85); display:none;
+  border-color:rgba(100,130,220,.45);
+}
+#debug-report-btn:hover { background:rgba(60,80,180,.35); border-color:rgba(120,160,255,.7); color:#c0d4ff; }
 #chat-btn:hover { background:rgba(93,173,226,.32); }
 #chat-panel {
   position:absolute; left:205px; bottom:185px;
@@ -4220,7 +4225,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.51</div>
+    <div class="lver">v1.6.52</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -4595,6 +4600,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       <button id="pause-btn" class="tb-btn" onclick="Game.togglePause()">⏸ 暫停</button>
       <button id="leave-btn" class="tb-btn" onclick="Game.leaveAndSave()" title="儲存牌局並返回大廳（AI 代打）">🚪 離開</button>
       <button id="restart-round-btn" class="tb-btn" onclick="Game.hostRestartRound()" title="重開此把（僅房主）">↺ 重開此把</button>
+      <button id="debug-report-btn" class="tb-btn" onclick="DbgLog.copy()" title="複製錯誤紀錄給房主">🐛 錯誤回報</button>
     </div>
     <!-- 右側：控制工具（房主開局、速度、自動、音效） -->
     <div id="topbar-right">
@@ -5730,6 +5736,49 @@ function mkBack(cls=''){
 }
 
 // ══════════════════════════════════════════════════════════
+// DEBUG LOG (DbgLog) — ring buffer，供「錯誤回報」按鈕複製
+// ══════════════════════════════════════════════════════════
+const DbgLog=(()=>{
+  const MAX=200;
+  const buf=[];
+  function ts(){const d=new Date();return`${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}:${d.getSeconds().toString().padStart(2,'0')}.${d.getMilliseconds().toString().padStart(3,'0')}`;}
+  function log(tag,msg){
+    const entry=`[${ts()}][${tag}] ${msg}`;
+    buf.push(entry);
+    if(buf.length>MAX)buf.shift();
+  }
+  function copy(){
+    const G=window.Game;
+    const role=G?.(G._online?(G._isHost?`房主(p0)`:`非房主(p${G._myIndex??'?'})`):'單機'):'?';
+    const ver=document.querySelector('.lver')?.textContent?.trim()||'?';
+    const st=G?.st;
+    const header=[
+      '=== 麻將 Debug Log ===',
+      `版本: ${ver}`,
+      `時間: ${new Date().toLocaleString('zh-TW')}`,
+      `角色: ${role}`,
+      `Phase: ${st?.phase||'?'} | Turn: ${st?.turn??'?'} | Dealer: ${st?.dealer??'?'}`,
+      `_isDiscarding: ${G?._isDiscarding??'?'} | _waitingMeldFrom: ${G?._waitingMeldFrom??'?'}`,
+      `_meldPendingSet: ${G?._meldPendingSet?`size=${G._meldPendingSet.size}`:'null'}`,
+      '====================='
+    ].join('\n');
+    const text=header+'\n'+buf.join('\n');
+    const done=()=>G?.toast('已複製！請貼給房主回報',2500);
+    if(navigator.clipboard?.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(()=>{_fallback(text);done();});
+    }else{_fallback(text);done();}
+  }
+  function _fallback(text){
+    const ta=document.createElement('textarea');
+    ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');}catch(_){}
+    document.body.removeChild(ta);
+  }
+  return{log,copy};
+})();
+
+// ══════════════════════════════════════════════════════════
 // GAME STATE
 // ══════════════════════════════════════════════════════════
 const Game={
@@ -5781,6 +5830,9 @@ const Game={
     // Restart-round button: only host in online mode
     const rrb=document.getElementById('restart-round-btn');
     if(rrb)rrb.style.display=isHost?'flex':'none';
+    // Debug report button: all online players
+    const drb=document.getElementById('debug-report-btn');
+    if(drb)drb.style.display=this._online?'flex':'none';
   },
   toggleHostPanel(){
     const p=document.getElementById('host-ctrl-panel');
@@ -6621,6 +6673,7 @@ const Game={
   },
 
   doDiscard(p,tileId){
+    DbgLog.log('DISCARD',`p${p} tileId=${tileId} isDisc=${this._isDiscarding} host=${!!this._isHost}`);
     // Online non-host: send action to host instead of processing locally
     if(this._online&&!this._isHost&&p===0){
       if(this._isDiscarding)return; // 【Task1】雙重出牌防護鎖：等主機確認前鎖死
@@ -6778,6 +6831,7 @@ const Game={
 
   // Send meld offer to a non-host real player; timeout → skip
   _offerNonHostMeld(p,opts,tile,discP){
+    DbgLog.log('OFFER',`_offerNonHostMeld p=${p} tile=${tile?.n}${tile?.suit} opts=${opts.map(o=>o.type).join(',')}`);
     const s=this.st;
     const peer=this._peers[p];
     if(!peer?.id){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
@@ -6837,6 +6891,7 @@ const Game={
 
   // 提交玩家的鳴牌回應；當所有待回應玩家都已回應時自動解鎖
   _submitMeldResponse(p,action){
+    DbgLog.log('MELD_RESP',`p=${p} type=${action?.type} pendingSet=${this._meldPendingSet?`has(${p})=${this._meldPendingSet.has(p)}`:'null'}`);
     if(!this._meldPendingSet||!this._meldPendingSet.has(p))return;
     this._meldResponseMap.set(p,action);
     this._meldPendingSet.delete(p);
@@ -7398,6 +7453,7 @@ const Game={
   },
 
   doWin(p,selfDraw){
+    DbgLog.log('WIN',`p${p} selfDraw=${selfDraw} host=${!!this._isHost} phase=${this.st?.phase} turn=${this.st?.turn}`);
     if(this._online&&!this._isHost&&p===0){
       MahjongNetwork.broadcast({type:'action',action:'win',selfDraw});
       return;
@@ -7681,6 +7737,7 @@ const Game={
 
   // Non-host: set up interactive UI when it's our turn (tile already in hand from broadcast)
   _setupNonHostTurn(){
+    DbgLog.log('NHT','_setupNonHostTurn enter isDisc='+this._isDiscarding+' turn='+this.st?.turn+' phase='+this.st?.phase);
     this.clearBtns(); // Clear any leftover meld buttons (e.g. from a just-executed chi/pong)
     const s=this.st;
     this._myTurnSeq=s.turnSeq||0; // v1.6.9：必須在分支前更新，確保 autoPlay/riichiMode/一般三條路徑都帶正確序號
@@ -7856,6 +7913,7 @@ const Game={
 
   // ── TIMER ─────────────────────────────────────────────
   startTimer(p){
+    DbgLog.log('TIMER',`startTimer p=${p} isDisc=${this._isDiscarding} phase=${this.st?.phase} turn=${this.st?.turn}`);
     const s=this.st;
     // Guard: 計時圓圈只用於 p0（人類玩家）出牌倒數，其他玩家一律不顯示
     if(p!==0)return;
@@ -9989,6 +10047,7 @@ const Online = {
         break;
       case 'game_state':
         if(!Game._isHost && data.state){
+          DbgLog.log('GSTATE',`recv phase=${data.state.phase} turn=${data.state.turn} myPhase=${Game.st?.phase}`);
           // 【Bug1修復】局已結算（phase=ended）時，game_state 廣播可能帶著 winData，
           // 但不可覆蓋已由 game_over 封包正確設定好的本地狀態，否則會抹去正確的贏家資訊
           if(Game.st&&Game.st.phase==='ended') break;
@@ -10012,6 +10071,7 @@ const Online = {
         break;
       case 'meld_offer':
         if(!Game._isHost){
+          DbgLog.log('MELD_OFFER',`recv tile=${data.tile?.n}${data.tile?.suit} opts=${(data.opts||[]).map(o=>o.type).join(',')}`);
           // Calculate elapsed time to sync countdown with host's timer
           const elapsed=data.sentAt?Math.round((Date.now()-data.sentAt)/1000):0;
           Game._meldOfferElapsed=Math.max(0,Math.min(elapsed,9));
@@ -10022,6 +10082,7 @@ const Online = {
         if(Game._isHost) this._processAction(peerId,data);
         break;
       case 'action_resolved':
+        DbgLog.log('RESOLVED',`winner=${data.winner??'-'} action=${data.action?.type||'-'}`);
         // 非主機客戶端收到裁定結果：清除自己的 meld UI，等待下一次 game_state 廣播
         if(!Game._isHost){ Game.clearBtns(); Game.hideTenpai(); }
         break;
@@ -10109,6 +10170,7 @@ const Online = {
 
   _processAction(peerId,data){
     const peerIdx=Game._peers.findIndex(p=>p.id===peerId);
+    DbgLog.log('RECV',`p${peerIdx} action=${data.action||data.type||'?'} selfDraw=${data.selfDraw??'-'} tileId=${data.tileId||'-'}`);
     if(peerIdx<0) return;
     // isRoundOver guard：局已結束，丟棄任何後到的出牌封包（防止勝負後繼續出牌）
     if(!Game.st||Game.st.phase!=='playing'){
