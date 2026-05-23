@@ -3793,7 +3793,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   v1.6.43 · 讀牌版格局調整
+   v1.6.45 · 讀牌版格局調整
    目標：副露回到玩家外圈、棄牌河集中但不貼中心圓、左右資訊卡降低壓迫。
    只追加 CSS，不改 JS 與 DOM。
 ═══════════════════════════════════════════════════════════════ */
@@ -3843,7 +3843,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   white-space: nowrap !important;
 }
 
-/* 左右家改成兩條清楚軌道：外側暗牌、內側副露；副露貼近毯面邊界 */
+/* 左右家改成兩條清楚軌道：外側暗牌、內側副露；副露留在玩家身邊 */
 #pb3 {
   margin-left: 52px !important;
   width: 132px !important;
@@ -3854,9 +3854,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   width: 28px !important;
 }
 #ma3 {
-  left: 132px !important;
-  right: -28px !important;
-  top: 104px !important;
+  left: 104px !important;
+  right: 4px !important;
+  top: 132px !important;
   bottom: 6px !important;
   align-items: flex-end !important;
   overflow: visible !important;
@@ -3871,9 +3871,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   width: 28px !important;
 }
 #ma1 {
-  right: 132px !important;
-  left: -28px !important;
-  top: 104px !important;
+  right: 104px !important;
+  left: 4px !important;
+  top: 132px !important;
   bottom: 6px !important;
   align-items: flex-start !important;
   overflow: visible !important;
@@ -3883,23 +3883,42 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   width: 28px !important;
   height: 39px !important;
 }
+#pa1 .ma .mg,
+#pa2 .ma .mg,
+#pa3 .ma .mg,
+#ma0 .mg {
+  background: rgba(2,10,20,.22) !important;
+  border: 1px solid rgba(212,168,67,.08) !important;
+  border-radius: 5px !important;
+  padding: 2px !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,.16) !important;
+}
 
-/* 對家副露放在手牌下方，落在木框內的毯面上沿 */
+/* 對家維持資訊框 → 暗牌 → 副露，副露停在上方毯面邊緣 */
 #ma2 {
   order: 3 !important;
-  margin-top: 6px !important;
+  margin-top: 7px !important;
   margin-bottom: 0 !important;
 }
 #ht2 {
   order: 2 !important;
 }
 
-/* 自己的副露列往桌心上移，停在木框內的毯面下沿 */
+/* 自己的副露列略收回手牌側，避免貼進自己的棄牌河 */
+#p0-zone {
+  height: 230px !important;
+}
 #pa0 {
-  padding-top: 2px !important;
+  padding-top: 4px !important;
 }
 #pa0-meld-row {
-  margin-bottom: 12px !important;
+  margin-bottom: 8px !important;
+}
+#pb0 {
+  margin-top: 2px !important;
+  transform: translateY(-10px) !important;
+  position: relative !important;
+  z-index: 20 !important;
 }
 </style>
 </head>
@@ -3911,7 +3930,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.43</div>
+    <div class="lver">v1.6.45</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -5553,6 +5572,105 @@ const Game={
       document.getElementById(`pn${i}`).textContent=names[i];
     }
     this.showDice();
+  },
+
+  loadLayoutQaTemplate(){
+    this._killAllTimers?.();
+    this.clearBtns?.();
+    this.autoPlay=false;
+    this.paused=false;
+    this.riichiMode=false;this.riichiTile=null;
+    this._online=false;this._isHost=true;
+    this.settings={
+      base:1,tai:100,money:10000,time:0,voice:'auto',rate:1.05,
+      quickStart:true,maxRounds:4,aiStyle:[null,'balanced','attack','defense'],
+    };
+    this.setSpeed?.('turbo');
+
+    const deck=mkDeck(), used=new Set();
+    const take=(s,v)=>{
+      const t=deck.find(x=>!used.has(x.id)&&x.s===s&&x.v===v);
+      if(!t)throw new Error(`layoutqa missing tile ${s}${v}`);
+      used.add(t.id);return t;
+    };
+    const takeMany=(defs)=>defs.map(([s,v])=>take(s,v));
+    const chi=(defs)=>({type:'chi',tiles:takeMany(defs)});
+    const pong=(s,v)=>({type:'pong',tiles:takeMany([[s,v],[s,v],[s,v]])});
+    const hand=(defs)=>sortH(takeMany(defs));
+    const disc=(defs)=>takeMany(defs);
+
+    const melds=[
+      [
+        chi([['sou',4],['sou',5],['sou',6]]),
+        pong('honor',6),
+      ],
+      [
+        pong('honor',4),
+        chi([['pin',2],['pin',3],['pin',4]]),
+        chi([['man',4],['man',5],['man',6]]),
+      ],
+      [
+        chi([['man',7],['man',8],['man',9]]),
+        pong('pin',7),
+        chi([['sou',1],['sou',2],['sou',3]]),
+      ],
+      [
+        pong('honor',3),
+        chi([['pin',5],['pin',6],['pin',7]]),
+        chi([['sou',6],['sou',7],['sou',8]]),
+      ],
+    ];
+
+    const hands=[
+      hand([['man',2],['man',5],['man',9],['pin',1],['pin',4],['pin',8],['sou',2],['sou',5],['sou',8],['honor',0]]),
+      hand([['man',1],['man',3],['man',9],['pin',6],['pin',9],['sou',1],['sou',4]]),
+      hand([['man',1],['man',4],['pin',1],['pin',9],['sou',5],['honor',1],['honor',5]]),
+      hand([['man',2],['man',7],['pin',3],['pin',8],['sou',4],['honor',2],['honor',5]]),
+    ];
+    const discards=[
+      disc([['honor',0],['honor',1],['pin',4],['man',3],['man',1],['pin',2],['sou',9],['man',8],['pin',5],['sou',3],['man',6],['pin',9],['sou',1],['honor',3],['man',4],['pin',6]]),
+      disc([['honor',0],['honor',1],['pin',5],['sou',8],['man',9],['pin',1],['man',3],['man',6],['pin',4],['sou',2],['sou',9],['honor',4],['pin',6],['man',8],['sou',5]]),
+      disc([['honor',2],['sou',3],['man',2],['pin',3],['sou',4],['man',5],['pin',8],['sou',7],['honor',1],['man',7],['pin',2],['sou',6],['honor',5],['man',1],['pin',9]]),
+      disc([['honor',0],['honor',2],['sou',9],['man',4],['pin',5],['sou',1],['man',7],['pin',8],['sou',2],['sou',8],['sou',7],['pin',3],['honor',5],['pin',2],['man',6]]),
+    ];
+    const flowers=[
+      [take('flower',0),take('flower',3)],
+      [take('flower',4)],
+      [take('flower',1)],
+      [take('flower',2)],
+    ];
+    const remain=deck.filter(t=>!used.has(t.id));
+    const last=discards[1][discards[1].length-1];
+
+    this.st={
+      phase:'playing',turn:0,dealer:0,deck:remain.slice(0,14),
+      hands,flowers,pending:[0,0,0,0],melds,discards,
+      money:[10000,10300,9900,9800],
+      names:['玩家','電腦A','電腦B','電腦C'],
+      ai:[1,2,3],drawnId:null,
+      tenpai:[true,true,false,true],
+      tenpaiT:[[ {s:'pin',v:2,id:90001,n:'二筒'} ],null,null,null],
+      riichiPlayers:[false,false,false,false],
+      last,lastP:1,roundWind:'東',roundNum:4,
+      log:['版面 QA 模板：四家副露、牌堆剩 14 張','用 ?layoutqa=1 可重現此局面'],
+      dice:[3,5],firstRound:false,
+      aiStyle:this.settings.aiStyle,
+      _afterKong:false,_kongWin:false,_renhu:false,_robKong:false,
+      honba:1,turnSeq:99,wallTailDrawn:6,wallBreak:9,
+    };
+
+    document.getElementById('lobby').style.display='none';
+    const gameEl=document.getElementById('game');gameEl.classList.add('show');
+    document.getElementById('game-topbar').style.display='flex';
+    document.getElementById('pause-btn').style.display='block';
+    document.getElementById('leave-btn').style.display='block';
+    document.getElementById('autoplay-btn').style.display='block';
+    document.getElementById('audio-btn').style.display='block';
+    document.getElementById('speed-panel').style.display='flex';
+    document.getElementById('host-round-start-btn').style.display='none';
+    this.render();this.hideTenpai();
+    updateTblVars();
+    this.toast('版面 QA 模板已載入',1800);
   },
 
   // E4: AI 聊天泡泡
@@ -10241,6 +10359,9 @@ function _loadVoices(){
 }
 _loadVoices();
 if(window.speechSynthesis) speechSynthesis.addEventListener('voiceschanged',_loadVoices);
+if(new URLSearchParams(location.search).has('layoutqa')){
+  setTimeout(()=>Game.loadLayoutQaTemplate(),0);
+}
 </script>
 </body>
 </html>                                                                                                                                                                                                                                                                                             
