@@ -1269,7 +1269,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   border:2px solid rgba(200,160,60,.7);
   border-radius:18px;padding:28px 36px;text-align:center;
   box-shadow:0 0 80px rgba(212,168,67,.35),0 0 0 6px rgba(80,40,10,.4);
-  animation:wpop .38s cubic-bezier(.34,1.5,.64,1);max-width:680px;width:100%;margin:auto;
+  animation:wpop .38s cubic-bezier(.34,1.5,.64,1);max-width:min(96vw,920px);width:100%;margin:auto;
 }
 @keyframes wpop{from{transform:scale(.5) rotate(-3deg);opacity:0}to{transform:none;opacity:1}}
 .wtit{font-family:'Noto Serif TC';font-size:2.6rem;font-weight:900;color:var(--gold);text-shadow:0 0 28px rgba(212,168,67,.8)}
@@ -1280,7 +1280,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .whands{margin:12px 0}
 .whs{margin-bottom:12px}
 .whl{font-size:.72rem;color:rgba(212,168,67,.6);margin-bottom:5px;letter-spacing:.1em}
-.whr{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:flex-end}
+.whr{display:flex;flex-wrap:nowrap;gap:3px;justify-content:center;align-items:flex-end;overflow-x:auto;padding-bottom:3px}
 .wact{display:flex;gap:10px;justify-content:center;margin-top:16px}
 
 /* ══ DICE OVERLAY ════════════════════════════════════════ */
@@ -4227,7 +4227,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.60</div>
+    <div class="lver">v1.6.61</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -7510,11 +7510,12 @@ const Game={
     // ⑤ 搶槓 +1
     if(s._robKong) add(1,'搶槓 +1台');
 
-    // ⑥ 莊家台 +1
-    if(p===s.dealer) add(1,'莊家台 +1台');
-
-    // ⑦ 連莊台（每本場 +1）
-    if(p===s.dealer&&(s.honba||0)>0) add(s.honba,`連莊台 +${s.honba}台`);
+    // ⑥⑦ 莊家台 + 連莊台合併（避免同場兩個 +1 chip 並列）
+    if(p===s.dealer){
+      const hb=s.honba||0;
+      if(hb>0) add(1+hb,`莊家+連莊 +${1+hb}台（連莊${hb}本）`);
+      else     add(1,'莊家台 +1台');
+    }
 
     // ── 手牌分析 ─────────────────────────────────────────────────────
     const nonFlower=hand;
