@@ -4346,6 +4346,430 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   padding: 4px !important;
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   index-3d.html  v4  —  極致擬真 3D 六面體 + 雙層牌牆  (Epic Cube)
+   所有規則 append-only，覆蓋上方所有舊規則
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── 視角強化：perspective 更深沉，origin 從正上方俯視 ─────────── */
+#game.show {
+  perspective: 900px !important;
+  perspective-origin: 50% -10% !important;
+  overflow: visible !important;
+}
+#tbl {
+  transform-style: preserve-3d !important;
+}
+
+/* ── 牌桌整體微傾：讓桌面出現遠近透視感 ──────────────────────── */
+#pool {
+  transform-style: preserve-3d !important;
+  overflow: visible !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   § 1  六面體麻將牌  —  .tf-top / .tf-side / .tf-bot
+   ════════════════════════════════════════════════════════════════════ */
+
+/* .t 成為 preserve-3d 容器（前面是 sprite 背景） */
+.t {
+  position: relative !important;
+  transform-style: preserve-3d !important;
+  border-radius: 3px !important;
+  /* 消滅舊 box-shadow 堆疊法；改用 filter drop-shadow */
+  box-shadow: none !important;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,.72)) !important;
+}
+
+/* 深度 CSS variable（各尺寸覆蓋） */
+.t          { --td: 12px; }
+.t.sm       { --td:  7px; }
+.t.ti       { --td:  5px; }
+
+/* ── 頂面（象牙米黃，從 top edge 往後旋轉 90°）────────────────── */
+.tf-top {
+  position: absolute;
+  width: 100%;
+  height: var(--td, 12px);
+  top: 0; left: 0;
+  background: linear-gradient(
+    to right,
+    #fefae8 0%,
+    #f6e89c 35%,
+    #ead870 65%,
+    #d8c050 100%
+  );
+  border-top:   1.5px solid rgba(210,165,40,.55);
+  border-left:  1px   solid rgba(210,165,40,.25);
+  border-right: 1px   solid rgba(210,165,40,.25);
+  transform-origin: 50% 0%;
+  transform: rotateX(-90deg);
+  pointer-events: none;
+  backface-visibility: hidden;
+  z-index: 10;
+}
+
+/* ── 右側面（深木色，從 right edge 往右旋轉 90°）─────────────── */
+.tf-side {
+  position: absolute;
+  width:  var(--td, 12px);
+  height: 100%;
+  top: 0; right: 0;
+  background: linear-gradient(
+    180deg,
+    #9a7035 0%,
+    #7a5022 40%,
+    #4a2808 80%,
+    #2a1404 100%
+  );
+  border-right:  1.5px solid rgba(0,0,0,.45);
+  border-top:    1px   solid rgba(160,110,40,.4);
+  border-bottom: 1px   solid rgba(0,0,0,.4);
+  transform-origin: 100% 50%;
+  transform: rotateY(90deg);
+  pointer-events: none;
+  backface-visibility: hidden;
+  z-index: 10;
+}
+
+/* ── 底陰影片（模擬落地接觸點暗部）──────────────────────────── */
+.tf-bot {
+  position: absolute;
+  width: 100%;
+  height: calc(var(--td, 12px) * 0.6);
+  bottom: 0; left: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,.55) 0%,
+    rgba(0,0,0,.0)  100%
+  );
+  transform-origin: 50% 100%;
+  transform: rotateX(90deg);
+  pointer-events: none;
+  backface-visibility: hidden;
+  z-index: 10;
+}
+
+/* ── 牌背（back）頂面顏色更深（暗色背面）────────────────────── */
+.t.back .tf-top {
+  background: linear-gradient(
+    to right,
+    #2a2010 0%,
+    #3a2e18 50%,
+    #2a2010 100%
+  );
+}
+.t.back .tf-side {
+  background: linear-gradient(
+    180deg,
+    #2a1a08 0%,
+    #1a0e04 60%,
+    #0a0602 100%
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   § 2  各區手牌的 3D 擺放姿態
+   ════════════════════════════════════════════════════════════════════ */
+
+/* 玩家（下家 p0）：立牌、前傾 16°，讓頂面朝玩家可見 */
+#ht0 .t {
+  transform: rotateX(-16deg) !important;
+  transform-style: preserve-3d !important;
+  filter: drop-shadow(0 10px 18px rgba(0,0,0,.75)) !important;
+  transition: transform .12s ease, filter .12s ease !important;
+}
+#ht0 .t:hover:not(.meld-candidate) {
+  transform: rotateX(-16deg) translateY(-14px) !important;
+  filter: drop-shadow(0 18px 24px rgba(0,0,0,.85)) !important;
+}
+#ht0 .t.sel {
+  transform: rotateX(-16deg) translateY(-10px) !important;
+  filter: drop-shadow(0 14px 20px rgba(0,0,0,.8)) !important;
+}
+#ht0 .t.meld-candidate {
+  transform: rotateX(-16deg) translateY(-7px) !important;
+}
+#ht0 .t.meld-candidate:hover {
+  transform: rotateX(-16deg) translateY(-14px) !important;
+}
+#ht0 .t.drawn {
+  transform: rotateX(-16deg) translateY(-4px) !important;
+}
+
+/* 對家（上家 p2）：向後傾 10°（遠端立牌感）*/
+#ht2 .t {
+  transform: rotateX(10deg) !important;
+  transform-style: preserve-3d !important;
+}
+#ht2 .t .tf-top {
+  background: linear-gradient(to right, #1e1208 0%, #2a1e0e 50%, #1a0e04 100%);
+}
+
+/* 右家（p1）：rotateY(-12deg) 讓牌面略朝中間，側面朝右可見 */
+#pa1-area {
+  transform: rotateY(-22deg) !important;
+  transform-origin: left center !important;
+  transform-style: preserve-3d !important;
+}
+#pa1-area .t {
+  transform-style: preserve-3d !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,.65)) !important;
+}
+#pa1-area .t .tf-side {
+  right: 0; left: auto;
+  transform-origin: 100% 50%;
+  transform: rotateY(90deg);
+  background: linear-gradient(180deg, #9a7035 0%, #7a5022 50%, #3a1e08 100%);
+}
+
+/* 左家（p3）：rotateY(22deg) 鏡像，側面朝左可見 */
+#pa3-area {
+  transform: rotateY(22deg) !important;
+  transform-origin: right center !important;
+  transform-style: preserve-3d !important;
+}
+#pa3-area .t {
+  transform-style: preserve-3d !important;
+  box-shadow: none !important;
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,.65)) !important;
+}
+/* 左家側面改到左邊 */
+#pa3-area .t .tf-side {
+  right: auto; left: 0;
+  transform-origin: 0% 50%;
+  transform: rotateY(-90deg);
+  background: linear-gradient(180deg, #9a7035 0%, #7a5022 50%, #3a1e08 100%);
+}
+
+/* ── 棄牌區：平躺的牌不需要頂面 / 側面 ─────────────────────── */
+#pool #dc0 .t .tf-top,
+#pool #dc1 .t .tf-top,
+#pool #dc2 .t .tf-top,
+#pool #dc3 .t .tf-top,
+#pool #dc0 .t .tf-side,
+#pool #dc1 .t .tf-side,
+#pool #dc2 .t .tf-side,
+#pool #dc3 .t .tf-side,
+#pool #dc0 .t .tf-bot,
+#pool #dc1 .t .tf-bot,
+#pool #dc2 .t .tf-bot,
+#pool #dc3 .t .tf-bot {
+  display: none !important;
+}
+/* 棄牌稍微平躺（xy 細微偏轉，保持小陰影） */
+#pool .t {
+  box-shadow: none !important;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.5)) !important;
+  transform: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   § 3  四邊雙層牌牆  —  真實 3D 磚牆
+   ════════════════════════════════════════════════════════════════════ */
+
+/* 啟用四邊牌牆 */
+.tile-wall { display: flex !important; }
+
+/* 牌牆整體容器 */
+.tile-wall {
+  position: absolute !important;
+  display: flex !important;
+  gap: 1px !important;
+  z-index: 6 !important;
+  pointer-events: none !important;
+  transform-style: preserve-3d !important;
+}
+.wall-h { flex-direction: row !important; align-items: flex-end !important; }
+.wall-v { flex-direction: column !important; align-items: flex-end !important; }
+
+/* 牌牆定位（貼近 pool 四邊）*/
+#wall-top {
+  top: 2px !important; left: 50% !important;
+  transform: translateX(-50%) !important;
+  transform-origin: center bottom !important;
+}
+#wall-bot {
+  bottom: 2px !important; left: 50% !important;
+  transform: translateX(-50%) !important;
+  transform-origin: center top !important;
+}
+#wall-left {
+  left: 2px !important; top: 50% !important;
+  transform: translateY(-50%) !important;
+  transform-origin: right center !important;
+}
+#wall-right {
+  right: 2px !important; top: 50% !important;
+  transform: translateY(-50%) !important;
+  transform-origin: left center !important;
+}
+
+/* 牌牆單疊 */
+.wstack {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0px !important;
+  flex-shrink: 0 !important;
+}
+.wall-v .wstack { flex-direction: row !important; }
+
+/* ── 牌牆磚塊（.wt）：3D 六面體 ────────────────────────────── */
+.wt {
+  width:  28px !important;
+  height: 40px !important;
+  flex-shrink: 0 !important;
+  border-radius: 3px !important;
+  /* 象牙前面（背面朝向桌心的平面） */
+  background: linear-gradient(155deg, #f8edd4 0%, #f0d898 50%, #ddb860 100%) !important;
+  border: 1.5px solid #b89040 !important;
+  position: relative !important;
+  transform-style: preserve-3d !important;
+  --td: 9px;
+  box-shadow: none !important;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)) !important;
+}
+/* 空位不顯示 */
+.wt.wt-empty { visibility: hidden !important; }
+
+/* 側牆牌（橫置）*/
+.tile-wall.wall-v .wt {
+  width:  40px !important;
+  height: 28px !important;
+}
+
+/* 下層牌略暗（堆疊深度感）*/
+.wstack > .wt:last-child:not(.wt-empty) {
+  background: linear-gradient(155deg, #d8be82 0%, #c4a044 50%, #a07830 100%) !important;
+  border-color: #8a6020 !important;
+}
+
+/* 牌牆磚塊的頂面（朝桌心方向的象牙面）*/
+.wt .tf-top {
+  background: linear-gradient(
+    to right,
+    #fef5d8 0%,
+    #f0d880 50%,
+    #d8bc4c 100%
+  ) !important;
+  height: var(--td, 9px) !important;
+  border-color: rgba(180,140,30,.5) !important;
+}
+/* 下層牌頂面略暗 */
+.wstack > .wt:last-child:not(.wt-empty) .tf-top {
+  background: linear-gradient(
+    to right,
+    #c8a860 0%,
+    #b09040 50%,
+    #907020 100%
+  ) !important;
+}
+
+/* 側牆的側面方向修正：朝外（而非朝右） */
+.tile-wall.wall-v .wt .tf-side {
+  right: auto !important; left: 0 !important;
+  transform-origin: 0% 50% !important;
+  transform: rotateY(-90deg) !important;
+  width: var(--td, 9px) !important;
+}
+.tile-wall.wall-right .wt .tf-side,
+#wall-right .wt .tf-side {
+  right: 0 !important; left: auto !important;
+  transform-origin: 100% 50% !important;
+  transform: rotateY(90deg) !important;
+}
+
+/* 上方牌牆：頂面朝上，向前傾 */
+#wall-top .wt .tf-top {
+  transform-origin: 50% 0% !important;
+  transform: rotateX(-90deg) !important;
+}
+/* 下方牌牆：頂面也朝上，但稍稍俯視更明顯 */
+#wall-bot .wt .tf-top {
+  transform-origin: 50% 0% !important;
+  transform: rotateX(-90deg) !important;
+}
+/* 左右牌牆：頂面仍朝上 */
+#wall-left  .wt .tf-top { transform-origin: 50% 0% !important; transform: rotateX(-90deg) !important; }
+#wall-right .wt .tf-top { transform-origin: 50% 0% !important; transform: rotateX(-90deg) !important; }
+
+/* ════════════════════════════════════════════════════════════════════
+   § 4  玩家自己（p0）鳴牌區定位修正
+   ════════════════════════════════════════════════════════════════════ */
+
+/* 鳴牌區：水平一字排開於右下角，不插入木框 */
+#pa0-meld-row {
+  position: fixed !important;
+  bottom: 14px !important;
+  right: 14px !important;
+  left: auto !important;
+  top: auto !important;
+  z-index: 70 !important;
+  transform: none !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-end !important;
+  gap: 3px !important;
+  background: rgba(0,0,0,.28) !important;
+  border-radius: 6px !important;
+  padding: 4px 6px !important;
+  max-width: 380px !important;
+}
+#pa0-meld-row #fl0,
+#pa0-meld-row #ma0 {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: flex-end !important;
+  gap: 2px !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   § 5  中央圓圈 & 全域光影精修
+   ════════════════════════════════════════════════════════════════════ */
+
+/* 中央圓圈：補正傾角讓它顯示正面 */
+.cp#col-table {
+  transform: translate(-50%, -50%) scale(1.14) rotateX(-18deg) !important;
+  transform-style: preserve-3d !important;
+}
+
+/* action-overlay 保持 flat */
+#action-overlay {
+  z-index: 9999 !important;
+  transform: none !important;
+}
+
+/* p0 整體放大強調（離玩家最近）*/
+#pa0 {
+  transform: scale(1.04) !important;
+  transform-origin: center top !important;
+}
+
+/* p2 對家縮小（遠端）*/
+#pa2-area {
+  transform: scale(0.88) !important;
+  transform-origin: center bottom !important;
+}
+
+/* Pbar frosted-glass（全家一致）*/
+.pbar {
+  background: rgba(0,0,0,.55) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  border: 1px solid rgba(212,168,67,.25) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.5) !important;
+}
+
+/* ── 清理舊 3D box-shadow 覆蓋 ──────────────────────────────── */
+#tbl .t { box-shadow: none !important; }
+#ht0 .t { box-shadow: none !important; }
+#pa1-area .t { box-shadow: none !important; }
+#pa3-area .t { box-shadow: none !important; }
+#pool .t      { box-shadow: none !important; }
+
 </style>
 </head>
 <body>
@@ -5857,13 +6281,20 @@ function mkTile(tile,cls='',click=null){
   const d=document.createElement('div');
   d.className=`t ${tile.s||''} v${tile.v} ${cls}`.trim();
   d.dataset.id=tile.id;
-  d.innerHTML=tileSVG(tile);
+  // 六面體子節點：tf-top（頂面）、tf-side（右側面）、tf-bot（底陰影）
+  d.innerHTML=tileSVG(tile)
+    +'<div class="tf-top"></div>'
+    +'<div class="tf-side"></div>'
+    +'<div class="tf-bot"></div>';
   if(click)d.onclick=click;
   else d.style.cursor='default';
   return d;
 }
 function mkBack(cls=''){
-  const d=document.createElement('div');d.className=`t back ${cls}`;return d;
+  const d=document.createElement('div');
+  d.className=`t back ${cls}`;
+  d.innerHTML='<div class="tf-top"></div><div class="tf-side"></div><div class="tf-bot"></div>';
+  return d;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -9789,10 +10220,12 @@ const Game={
         const cnt=physToStackCnt(phys);
         const stack=document.createElement('div');
         stack.className='wstack';
-        // 上層牌（視覺正面）先 append，下層牌在後
+        // 上層牌（視覺正面）先 append，下層牌在後；每張加 3D 面片
         for(let layer=1;layer>=0;layer--){
           const tile=document.createElement('div');
           tile.className='wt'+(layer>=cnt?' wt-empty':'');
+          // 3D 六面體子節點：頂面 + 側面 + 底陰影
+          tile.innerHTML='<div class="tf-top"></div><div class="tf-side"></div><div class="tf-bot"></div>';
           stack.appendChild(tile);
         }
         el.appendChild(stack);
