@@ -4227,7 +4227,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.62</div>
+    <div class="lver">v1.6.63</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6161,6 +6161,7 @@ const Game={
       tenpai:[false,false,false,false],
       tenpaiT:[null,null,null,null],
       riichiPlayers:[false,false,false,false], // 各玩家是否已宣告聽牌
+      guoShui:[false,false,false,false],       // 過水：玩家跳過放槍胡機會後禁止放槍
       last:null,lastP:-1,roundWind:roundWind,roundNum:roundNum,
       log:[],dice:null,
       firstRound:true,   // 天胡/地胡 用：第一圈未有人打牌前為 true
@@ -6379,6 +6380,8 @@ const Game={
     this.saveGame();
     s.turnSeq=(s.turnSeq||0)+1; // 【防雙打】遞增回合序號
     const p=s.turn;
+    // 【過水重設】玩家摸牌時解除過水限制
+    if(s.guoShui) s.guoShui[p]=false;
     const isAI=s.ai.includes(p);
     // Track 槓上開花 flag
     s._kongWin=s._afterKong||false;
@@ -6764,6 +6767,8 @@ const Game={
       let opts=meldOpts(s.hands[p].filter(x=>!x.fl),tile,p,discP,s.melds[p]);
       // 聽牌玩家只能胡牌，不能吃碰槓
       if(s.riichiPlayers&&s.riichiPlayers[p]) opts=opts.filter(o=>o.type==='win');
+      // 過水：曾跳過放槍胡機會的玩家，本輪不可再放槍胡
+      if(s.guoShui&&s.guoShui[p]) opts=opts.filter(o=>o.type!=='win');
       if(opts.length)rr.push({p,opts});
     }
     if(!rr.length){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
@@ -7071,11 +7076,15 @@ const Game={
       const b=document.createElement('button');b.className='ab ask';b.textContent='跳過';
       b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
         this.hideChiPicker();const rp=document.getElementById('riichi-select-panel');if(rp)rp.remove();
-        if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip'});}
+        // 【過水】跳過放槍胡機會 → 設旗標，本輪不可再放槍胡
+        if(winOpt&&this.st?.guoShui) this.st.guoShui[0]=true;
+        if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip',guoShui:!!winOpt});}
         else{this.nextTurn();}};
       ap.appendChild(b);
     }
     ov.classList.add('active');
+    // 記錄本次 offer 是否含胡牌選項（供 _startMeldCountdown 的 skip 讀取）
+    this._meldHasWin=!!winOpt;
 
     // 【自動顯示牌組預覽】—— 讓玩家一眼看清點擊後會拿到什麼牌組；點字卡即可確認鳴牌
     if(pongOpt){
@@ -7126,7 +7135,9 @@ const Game={
       if(bar)bar.style.width='0%';
       this.hideMeldPreview();this.clearBtns();
       if(!this.st||this.st.phase!=='playing')return; // Guard: don't advance turn if game already ended
-      if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip'});}
+      // 【過水】倒數跳過放槍胡機會 → 設旗標
+      if(this._meldHasWin&&this.st?.guoShui) this.st.guoShui[0]=true;
+      if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip',guoShui:!!this._meldHasWin});}
       else{this.nextTurn();}
     };
     this._meldCountInterval=setInterval(()=>{rem--;if(rem<=0){clearInterval(this._meldCountInterval);skip();}},1000);
@@ -7748,6 +7759,8 @@ const Game={
     this.clearBtns(); // Clear any leftover meld buttons (e.g. from a just-executed chi/pong)
     const s=this.st;
     this._myTurnSeq=s.turnSeq||0; // v1.6.9：必須在分支前更新，確保 autoPlay/riichiMode/一般三條路徑都帶正確序號
+    // 【過水重設】非房主摸牌時解除過水限制
+    if(s.guoShui) s.guoShui[0]=false;
     const nonFl=s.hands[0].filter(x=>!x.fl);
     // 判斷目前是「摸牌後出牌」還是「鳴牌後出牌」
     // 摸牌後：手牌張數 = (16 - melds*3) + 1（多出一張摸牌）
@@ -10369,8 +10382,13 @@ const Online = {
       switch(data.action){
         case 'meld': Game._submitMeldResponse(peerIdx,{type:data.meldType,tiles:resolveTiles(data.tiles)}); break;
         case 'win':  Game._submitMeldResponse(peerIdx,{type:'win',selfDraw:data.selfDraw}); break;
-        case 'skip': Game._submitMeldResponse(peerIdx,{type:'skip'}); break;
-        default:     Game._submitMeldResponse(peerIdx,{type:'skip'}); break;
+        case 'skip':
+          // 【過水】meld lock 路徑：非房主跳過放槍胡機會
+          if(data.guoShui&&Game.st?.guoShui) Game.st.guoShui[peerIdx]=true;
+          Game._submitMeldResponse(peerIdx,{type:'skip'}); break;
+        default:
+          if(data.guoShui&&Game.st?.guoShui) Game.st.guoShui[peerIdx]=true;
+          Game._submitMeldResponse(peerIdx,{type:'skip'}); break;
       }
       return;
     }
@@ -10506,6 +10524,8 @@ const Online = {
       case 'skip':
         // 【H1】skip 只在有合法的 legacy 鳴牌等待情境時才允許，防止任意 spam 推進回合
         if(_wasLegacyWaiting){
+          // 【過水】非房主跳過放槍胡機會，標記主機端 guoShui
+          if(data.guoShui&&Game.st?.guoShui) Game.st.guoShui[peerIdx]=true;
           Game.nextTurn();
         } else {
           console.warn(`[skip] unauthorized skip from p${peerIdx}, ignoring`);
