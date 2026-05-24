@@ -1423,7 +1423,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   opacity:0; transition:all .3s; pointer-events:none; z-index:400;
   white-space:nowrap;
 }
-#toast.on{transform:translateX(-50%) translateY(0)}
+#toast.on{transform:translateX(-50%) translateY(0);opacity:1}
 
 /* ══ GAME LOG ════════════════════════════════════════════ */
 #glog{
@@ -3301,15 +3301,17 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 .pbar.tenpai-neon { animation: tenpaiNeonPulse 2s ease-in-out infinite; }
 
-/* ── 3c. Remove analysis panel, danger dots, tenpai popups ── */
-#assist-toggle,
-#assist-panel,
-#shanten-label,
-#tile-tracker   { display: none !important; }
-.danger-dot     { display: none !important; }
-.danger-low, .danger-mid, .danger-high { outline: none !important; }
-#tenpai-banner  { display: none !important; }
-#ann.tp         { display: none !important; }
+/* ── 3c. 手機版隱藏分析面板、危險點、聽牌彈出 ── */
+@media (max-width: 768px) and (pointer: coarse) {
+  #assist-toggle,
+  #assist-panel,
+  #shanten-label,
+  #tile-tracker   { display: none !important; }
+  .danger-dot     { display: none !important; }
+  .danger-low, .danger-mid, .danger-high { outline: none !important; }
+  #tenpai-banner  { display: none !important; }
+  #ann.tp         { display: none !important; }
+}
 
 /* ── 3d. Tenpai hover tooltip ───────────────────────────────── */
 #tenpai-tooltip {
