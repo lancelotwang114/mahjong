@@ -2947,10 +2947,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    ★ 絕對不觸碰 sprite background-size / background-position 計算邏輯 ★
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── 1. P0 手牌整體放大 10% ──────────────────────────────────────── */
+/* ── 1. P0 手牌整體放大 15% ──────────────────────────────────────── */
 /* transform: scale 不影響 flex 排版，sprite 背景隨視覺一起縮放正確 */
 #ht0 {
-  transform: scale(1.1);
+  transform: scale(1.15);
   transform-origin: bottom center;
   will-change: transform; /* 穩定 GPU 合成層，防止子元素 box-shadow 動畫觸發父層重繪閃爍 */
 }
@@ -3937,7 +3937,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   height: 230px !important;
 }
 #pa0 {
-  padding-top: 4px !important;
+  padding-top: 9px !important;
 }
 #pa0-meld-row {
   margin-bottom: 8px !important;
@@ -4227,7 +4227,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.63</div>
+    <div class="lver">v1.6.64</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -4547,6 +4547,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <span class="cw">西</span><span class="ce">東</span>
       </div>
       <div class="cwind" id="rwind">東風</div>
+      <div id="croundinfo" style="font-size:.62rem;color:rgba(212,168,67,.65);letter-spacing:.04em;margin:1px 0 2px">第1/4局</div>
       <div class="cdice" id="cdice" style="font-size:1rem;min-height:20px">🎲🎲</div>
       <div class="cdeckrow" style="font-size:.65rem;margin:2px 0">
         <span style="color:rgba(255,255,255,.4)">牌</span>
@@ -8124,6 +8125,9 @@ const Game={
     // v1.6.16: 中央圓圈顯示 連莊 字樣，避免和風向混淆
     const honbaTxt=s.honba>0?` ${s.honba}連莊`:'';
     document.getElementById('rwind').textContent=(s.roundWind||'東')+'風'+honbaTxt;
+    const _maxR=this.settings?.maxRounds||4;
+    const _crEl=document.getElementById('croundinfo');
+    if(_crEl) _crEl.textContent=`第${rn}/${_maxR}局`;
     if(s.dice) document.getElementById('cdice').textContent=nums[s.dice[0]]+nums[s.dice[1]];
     // Compass score badges: p2=N, p3=W, p0=S(me), p1=E
     [{id:'ps-N',p:2},{id:'ps-S',p:0},{id:'ps-W',p:3},{id:'ps-E',p:1}].forEach(({id,p})=>{
