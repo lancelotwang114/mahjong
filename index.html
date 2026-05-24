@@ -4227,7 +4227,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.61</div>
+    <div class="lver">v1.6.62</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -6126,6 +6126,10 @@ const Game={
 
   initRound(names,aiIdx,money,dealer=0,roundNum=1,roundWind='東',honba=0){
     const hsb=document.getElementById('host-round-start-btn');if(hsb)hsb.style.display='none';
+    // 【v1.6.62】每局開始自動關閉自動打牌
+    this.autoPlay=false;
+    const _apBtn=document.getElementById('autoplay-btn');
+    if(_apBtn){_apBtn.classList.remove('on');_apBtn.textContent='🤖 自動';}
     const deck=shuffle(mkDeck());
     const hands=[[],[],[],[]],flowers=[[],[],[],[]];
     let pos=0;
@@ -6471,26 +6475,29 @@ const Game={
         const _isAddK=s.melds[p].some(m=>m.type==='pong'&&m.tiles[0].s===sk[0].s&&m.tiles[0].v===sk[0].v);
         extraBtns.push({type:'sk',label:_isAddK?'加槓':'暗槓',cls:'ako',tiles:sk});
       }
-      // Riichi mode: auto-handle turn — smart discard: prefer drawn tile if it keeps tenpai
+      // 【v1.6.62】宣告聽牌後：自摸自動胡，否則自動打牌（不顯示停止聽牌）
       if(this.riichiMode){
         if(winNow){this.doWin(0,true);return;}
-        // v1.6.15：聽牌可以槓 — 槓後仍有等牌才顯示槓按鈕
+        // 聽牌後仍可暗槓（槓後確認仍聽牌）
         if(sk&&selfKongPreservesTenpai(s.hands[0].filter(x=>!x.fl),s.melds[0],sk)){
           const _isAddK2=s.melds[0].some(m=>m.type==='pong'&&m.tiles[0].s===sk[0].s&&m.tiles[0].v===sk[0].v);
-          this.showBtns([{type:'sk',label:_isAddK2?'加槓':'暗槓',cls:'ako',tiles:sk},{type:'stop-riichi',label:'停止聽牌',cls:'stop-riichi'}]);
+          this.showBtns([{type:'sk',label:_isAddK2?'加槓':'暗槓',cls:'ako',tiles:sk}]);
           document.getElementById('action-overlay')?.classList.add('active');
+          this._isDiscarding=false;
           this.startTimer(p);
           return;
         }
-        // 【v1.6.59 轉張支援】不自動出牌，給玩家完整倒數時間自行點牌，或按停止聽牌轉張
-        this.showBtns([{type:'stop-riichi',label:'停止聽牌',cls:'stop-riichi'}]);
-        document.getElementById('action-overlay')?.classList.add('active');
         if(s.tenpai[p]&&s.tenpaiT[p])this.showTenpai(s.tenpaiT[p]);
+        const _rDiscId=this._autoPlayDiscard(0);
         this._isDiscarding=false;
         const _ht0r=document.getElementById('ht0');
         _ht0r?.classList.add('my-turn','riichi-mode');
         _ht0r?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
         this.startTimer(p);
+        setTimeout(()=>{
+          if(this.riichiMode&&this.st?.phase==='playing'&&this.st?.turn===0)
+            this.doDiscard(0,_rDiscId);
+        },this.spd('discard'));
         return;
       }
       const riichiCandidates=this.findRiichiDiscards(s.hands[0],s.melds[0]);
@@ -7782,18 +7789,20 @@ const Game={
       },this.spd('discard'));
       return;
     }
-    // 【聽牌宣告後】riichiMode=true：顯示正常倒數，玩家可手動出牌或按停止聽牌轉張
+    // 【v1.6.62】宣告聽牌後：自摸自動胡，否則自動打牌（不顯示停止聽牌）
     if(this.riichiMode){
       if(winNow){this.doWin(0,true);return;}
-      this.showBtns([{type:'stop-riichi',label:'停止聽牌',cls:'stop-riichi'}]);
-      document.getElementById('action-overlay')?.classList.add('active');
       if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
+      const _rDiscIdNH=this._autoPlayDiscard(0);
       this._isDiscarding=false; // v1.6.7：聽牌路徑解鎖
-      // 【v1.6.59 轉張支援】不自動出牌，給玩家完整倒數時間自行點牌，或按停止聽牌轉張
       const ht0R=document.getElementById('ht0');
       ht0R?.classList.add('my-turn','riichi-mode');
       ht0R?.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
       this.startTimer(0);
+      setTimeout(()=>{
+        if(this.riichiMode&&this.st?.phase==='playing'&&this.st?.turn===0)
+          this.doDiscard(0,_rDiscIdNH);
+      },this.spd('discard'));
       return;
     }
     const extraBtns=[];
