@@ -4770,6 +4770,80 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pa3-area .t { box-shadow: none !important; }
 #pool .t      { box-shadow: none !important; }
 
+/* ════════════════════════════════════════════════════════════════════
+   § 6  sampe-2.png 貼圖紋理  —  用真實截圖顏色取代純 CSS 積木感
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── 頂面貼圖：象牙/奶油色（取自 sampe-2.png y=4-9 頂部象牙帶）── */
+.tf-top {
+  background-image: url('images/tile-top-face.png') !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  /* 覆蓋舊漸層 */
+  background-color: transparent !important;
+}
+/* 牌背頂面用較深象牙（暗面） */
+.t.back .tf-top {
+  background-image: url('images/tile-top-face.png') !important;
+  filter: brightness(0.65) sepia(0.3) !important;
+}
+
+/* ── 側面貼圖：深木色（取自 sampe-2.png 側邊暗部調色）──────── */
+.tf-side {
+  background-image: url('images/tile-side-face.png') !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  background-color: transparent !important;
+}
+/* 左家側面（鏡像）*/
+#pa3-area .t .tf-side {
+  background-image: url('images/tile-side-face.png') !important;
+  transform: rotateY(-90deg) scaleX(-1) !important; /* 水平鏡像 */
+}
+
+/* ── 牌背正面貼圖：金黃麻將質感（取自 sampe-2.png 精確採樣）── */
+/* 對家/左右家手牌（背面朝玩家）*/
+.t.back {
+  background-image: url('images/tile-back-face.png') !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  background-color: transparent !important;
+  /* 清除舊的暗色漸層 */
+}
+
+/* ── 牌牆磚塊貼圖：金黃麻將質感 ─────────────────────────────── */
+.wt:not(.wt-empty) {
+  background-image: url('images/tile-back-face.png') !important;
+  background-size: 100% 100% !important;
+  background-repeat: no-repeat !important;
+  background-color: transparent !important;
+  border-color: rgba(160,100,20,.5) !important;
+}
+/* 下層牌：亮度略低（層次感）*/
+.wstack > .wt:last-child:not(.wt-empty) {
+  filter: brightness(0.78) !important;
+}
+
+/* ── 牌牆 tf-top / tf-side 繼承紋理但縮放到牆磚尺寸 ────────── */
+.wt .tf-top {
+  background-image: url('images/tile-top-face.png') !important;
+  background-size: 100% 100% !important;
+  height: var(--td, 9px) !important;
+}
+.wt .tf-side {
+  background-image: url('images/tile-side-face.png') !important;
+  background-size: 100% 100% !important;
+  width: var(--td, 9px) !important;
+}
+
+/* ── 正面牌象牙底色配合金黃質感 ─────────────────────────────── */
+/* 維持原本 sprite 顯示，但底色更溫暖（配合金色系） */
+.t:not(.back) {
+  background-color: #faf3e0 !important;   /* 偏暖象牙，配合金色牌邊 */
+  border-color: rgba(175,130,45,.55) !important;
+}
+/* sprite 本身已有 background-image，覆蓋底色不影響圖案 */
+
 </style>
 </head>
 <body>

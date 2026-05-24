@@ -2,13 +2,22 @@
 
 > 純前端台灣 16 張麻將，無需安裝、無需伺服器，直接在瀏覽器玩。支援單機 AI 對戰與 P2P 連線多人對戰。
 
-**🎮 線上試玩：[https://lancelotwang114.github.io/mahjong/](https://lancelotwang114.github.io/mahjong/)**
+| 版本 | 連結 | 說明 |
+|------|------|------|
+| 🀄 **標準版** | [**立即遊玩**](https://lancelotwang114.github.io/mahjong/) | 輕量高效，2D Sprite 渲染 |
+| ✨ **3D 版** | [**index-3d.html**](https://lancelotwang114.github.io/mahjong/index-3d.html) | 極致擬真 CSS 3D 六面體麻將 |
 
 ---
 
 ## 畫面截圖
 
+### 標準版
 ![遊戲畫面](preview.jpg)
+
+### ✨ 3D 版
+> 採用 CSS `transform-style: preserve-3d` 六面體技術，每張牌皆為真實立體方塊：金色頂面、深木色側面、象牙正面，搭配四邊雙層牌牆與落地陰影，高度還原實體麻將手感。
+
+![3D版預覽](images/sample.png)
 
 ---
 
@@ -22,6 +31,14 @@
 - ⏱️ **出牌計時器** — 可設定 8～20 秒限制
 - 🎯 **聽牌偵測** — 自動顯示等待牌與剩餘張數
 - 📱 **自動縮放** — 適應任意視窗大小
+
+### ✨ 3D 版額外特色
+
+- 🧱 **CSS 3D 六面體麻將** — 每張牌為真實六面體（`preserve-3d`），具金色頂面、深木色側面
+- 🏯 **四邊雙層牌牆** — 四側動態渲染雙層磚牆，隨摸牌逐步缺口
+- 🎨 **實拍紋理貼圖** — `.tf-top / .tf-side` 直接採樣真實麻將截圖，非純 CSS 積木
+- 💡 **落地 drop-shadow** — `filter: drop-shadow` 讓每張牌重力貼合藍色桌布
+- 🌐 **多玩家視角** — 下家前傾 16°、左右家各 ±22° 旋轉，對家後仰，真實桌面透視
 
 ---
 
@@ -69,13 +86,19 @@ python3 -m http.server 8080
 
 ```
 mahjong/
-├── index.html          # 主遊戲入口（HTML+CSS+JS 單一檔案，v1.6.0）
-├── mahjong-solo.html   # 同 index.html（備用連結）
-├── tiles-sprite.css    # 牌圖 Sprite 樣式
-├── images/             # 牌圖資源（萬/筒/條/字/花）
-├── CHANGELOG.md        # 版本更新紀錄
-├── CLAUDE.md           # AI 開發指引
-└── README.md           # 本文件
+├── index.html              # 主遊戲入口（標準版，HTML+CSS+JS 單一檔案）
+├── index-3d.html           # ✨ 3D 版入口（CSS 六面體 + 雙層牌牆）
+├── mahjong-solo.html       # 同 index.html（備用連結）
+├── tiles-sprite.css        # 牌圖 Sprite 樣式
+├── images/
+│   ├── man/pin/sou/...     # 牌圖資源（萬/筒/條/字/花 PNG sprite）
+│   ├── tile-back-face.png  # 3D 版：牌背金黃紋理（取自實拍截圖）
+│   ├── tile-top-face.png   # 3D 版：頂面象牙紋理
+│   ├── tile-side-face.png  # 3D 版：側面深木紋理
+│   └── sample.png          # 3D 版參考截圖
+├── CHANGELOG.md            # 版本更新紀錄
+├── CLAUDE.md               # AI 開發指引
+└── README.md               # 本文件
 ```
 
 ---
