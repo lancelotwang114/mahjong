@@ -7640,7 +7640,7 @@ const Game={
     // ⑥⑦ 莊家台 + 連莊台合併（避免同場兩個 +1 chip 並列）
     if(p===s.dealer){
       const hb=s.honba||0;
-      if(hb>0) add(1+hb,`莊家+連莊 +${1+hb}台（連莊${hb}本）`);
+      if(hb>0) add(1+hb,`連莊 ×${1+hb}台`);
       else     add(1,'莊家台 +1台');
     }
 
