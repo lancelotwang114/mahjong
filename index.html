@@ -4227,7 +4227,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.64</div>
+    <div class="lver">v1.6.65</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -9876,6 +9876,7 @@ const Online = {
         this.peers.push({id:peerId,name:peerName.substring(0,8)});
         this._updatePlayerList();
         MahjongNetwork.broadcast({type:'player_list',peers:this.peers.map(p=>p.name)});
+        this._broadcastSettings(); // v1.6.65: 同步目前房主設定給所有訪客
         this._status(`${peerName} 加入了 (${this.peers.length}/4)`);
       };
       MahjongNetwork.onPlayerLeave=(peerId)=>{
@@ -9942,9 +9943,18 @@ const Online = {
       document.getElementById('ol-create-view').style.display='block';
       document.getElementById('ol-room-code').textContent=code;
       document.getElementById('ol-room-code').style.cursor='default';
-      // v1.6.20: 非房主只看玩家列表，隱藏設定與開始按鈕
+      // v1.6.65: 非房主顯示唯讀設定，隱藏開始按鈕
       const olhs=document.getElementById('ol-host-settings');
-      if(olhs) olhs.style.display='none';
+      if(olhs){
+        olhs.querySelectorAll('select').forEach(s=>{s.disabled=true;});
+        if(!olhs.querySelector('.guest-readonly-badge')){
+          const badge=document.createElement('div');
+          badge.className='guest-readonly-badge';
+          badge.style.cssText='font-size:.65rem;color:rgba(255,255,255,.35);text-align:center;margin-bottom:6px;margin-top:4px';
+          badge.textContent='\u2699 \u4ee5\u4e0b\u70ba\u623f\u4e3b\u8a2d\u5b9a\uff08\u552f\u8b80\uff09';
+          olhs.insertBefore(badge,olhs.firstChild);
+        }
+      }
       const olsb=document.getElementById('ol-start-btn');
       if(olsb) olsb.style.display='none';
       this._submitting=false;
@@ -9964,6 +9974,26 @@ const Online = {
       this._submitting=false;
       if(joinBtn){ joinBtn.disabled=false; joinBtn.style.opacity=''; }
     });
+  },
+
+  // v1.6.65: 廣播目前房主設定給所有訪客，並在房主 select 上加 onchange 監聽
+  _broadcastSettings(){
+    const ids=['sbase-online','stai-online','smoney-online','stime-online','squickstart-online','srounds-online'];
+    const settings={};
+    ids.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) settings[id.replace('-online','')]=el.value;
+    });
+    MahjongNetwork.broadcast({type:'settings_update',...settings});
+    // 確保房主 select 有 onchange 同步（只綁一次）
+    if(!this._settingsListenersBound){
+      this._settingsListenersBound=true;
+      ids.forEach(id=>{
+        const el=document.getElementById(id);
+        if(!el) return;
+        el.addEventListener('change',()=>this._broadcastSettings());
+      });
+    }
   },
 
   _updatePlayerList(){
@@ -10090,6 +10120,14 @@ const Online = {
           this._updatePlayerList();
         }
         break;
+      case 'settings_update': { // v1.6.65: 訪客接收房主設定並更新顯示
+        const keys=['sbase','stai','smoney','stime','squickstart','srounds'];
+        keys.forEach(k=>{
+          const el=document.getElementById(`${k}-online`);
+          if(el&&el.disabled&&data[k]!==undefined) el.value=data[k];
+        });
+        break;
+      }
       case 'game_start':
         this.myIndex=data.playerIndex;
         Game._online=true; Game._isHost=false; Game._myIndex=data.playerIndex;
@@ -10952,4 +10990,146 @@ document.addEventListener('click',()=>{ Snd.init(); },{once:true});
 // 10px margin ensures hand tiles never get cut by browser chrome / scrollbars.
 function updateTblVars(){
   const tbl=document.getElementById('tbl');
-  if(
+  if(!tbl)return;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const scaleX = (vw - 10) / 1920;
+  const scaleY = (vh - 10) / 1080;
+  const scale  = Math.min(scaleX, scaleY);
+  tbl.style.transformOrigin = 'top left';
+  tbl.style.transform = `scale(${scale})`;
+  // Center in viewport
+  const offsetX = (vw - 1920 * scale) / 2;
+  const offsetY = (vh - 1080  * scale) / 2;
+  tbl.style.left = offsetX + 'px';
+  tbl.style.top  = Math.max(0, offsetY) + 'px';
+}
+updateTblVars();
+let _tblResizeTimer=null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_tblResizeTimer);
+  _tblResizeTimer=setTimeout(updateTblVars, 80);
+});
+// Load voices — must reset cache when voices change (Chrome loads async)
+function _loadVoices(){
+  if(!window.speechSynthesis)return;
+  Snd._bestVoice=null;  // reset cache so _pickVoice re-selects
+  const voices=speechSynthesis.getVoices();
+  if(voices.length) Snd._pickVoice(); // pre-cache best voice
+}
+_loadVoices();
+if(window.speechSynthesis) speechSynthesis.addEventListener('voiceschanged',_loadVoices);
+if(new URLSearchParams(location.search).has('layoutqa')){
+  setTimeout(()=>Game.loadLayoutQaTemplate(),0);
+}
+
+// ══════════════════════════════════════════════════════════
+// VISUAL DEBUG SANDBOX — triggerDebugLayoutScenario()
+// Extreme late-game stress test: 3+ melds, 20 discards each
+// Usage: open browser console and call triggerDebugLayoutScenario()
+// ══════════════════════════════════════════════════════════
+function triggerDebugLayoutScenario(){
+  // Auto-bootstrap if called from lobby
+  if(!Game.st) Game.loadLayoutQaTemplate();
+
+  // Stop all timers & clear buttons
+  Game._killAllTimers?.();
+  Game.clearBtns?.();
+
+  // Tile factory — fake IDs 50000+ to avoid real deck collisions
+  let _uid=50000;
+  const T=(s,v,n)=>({s,v,id:_uid++,n});
+  const MAN=['','一萬','二萬','三萬','四萬','五萬','六萬','七萬','八萬','九萬'];
+  const PIN=['','一筒','二筒','三筒','四筒','五筒','六筒','七筒','八筒','九筒'];
+  const SOU=['','一索','二索','三索','四索','五索','六索','七索','八索','九索'];
+  const HON=['東','南','西','北','中','白','發'];
+  const M=v=>T('man',  v,MAN[v]);    // v=1..9 matches real deck
+  const P=v=>T('pin',  v,PIN[v]);
+  const S=v=>T('sou',  v,SOU[v]);
+  const H=v=>T('honor',v,HON[v]);
+
+  const chi =(...t)=>({type:'chi', tiles:t});
+  const pong=(...t)=>({type:'pong',tiles:t});
+  const kong=(...t)=>({type:'kong',tiles:t});
+  const dkon=(...t)=>({type:'kong',tiles:t,dark:true});
+
+  // 20 discards per player — each player has a distinct tile palette
+  const DISC=[
+    // p0（玩家）：萬子為主
+    [M,1],[M,3],[M,5],[M,7],[M,9],[M,2],[M,4],[M,6],[M,8],[M,1],
+    [P,1],[P,5],[S,9],[H,0],[H,1],[P,3],[S,3],[M,3],[P,7],[S,5],
+    // p1（電腦A）：筒子為主
+    [P,1],[P,2],[P,3],[P,5],[P,7],[P,9],[P,4],[P,6],[P,8],[P,2],
+    [M,2],[M,8],[S,1],[H,2],[H,3],[S,7],[M,6],[P,4],[S,4],[M,4],
+    // p2（電腦B）：索子為主
+    [S,1],[S,2],[S,3],[S,5],[S,7],[S,9],[S,4],[S,6],[S,8],[S,2],
+    [M,5],[P,6],[S,1],[H,4],[H,5],[M,3],[P,2],[S,6],[M,7],[P,8],
+    // p3（電腦C）：字牌+混合
+    [H,0],[H,1],[H,2],[H,3],[H,6],[H,5],[H,0],[H,1],[H,2],[H,6],
+    [M,9],[P,9],[S,9],[M,1],[P,1],[S,1],[M,5],[P,5],[S,5],[H,3],
+  ];
+  const mkDiscs=p=>DISC.slice(p*20,(p+1)*20).map(([fn,v])=>fn(v));
+
+  const s=Game.st;
+
+  // Basic game state
+  s.phase='playing';
+  s.roundWind='東'; s.roundNum=1; s.honba=0; s.dealer=0;
+  s.turn=0; s.last=null; s.lastP=-1; s.drawnId=null;
+  s.firstRound=false; s._afterKong=false; s._kongWin=false;
+  s.deck=Array.from({length:13},()=>M(1));
+  s.wallTailDrawn=0; s.dice=[3,5]; s.wallBreak=9;
+  s.log=['[DebugLayout] 視覺壓力測試模板'];
+  s.names=['玩家','電腦A','電腦B','電腦C'];
+  s.money=[10000,11700,8300,10000];
+  s.tenpai=[false,true,false,false];
+  s.tenpaiT=[null,null,null,null];
+  s.riichiPlayers=[false,false,false,false];
+
+  // p0 玩家（下家）：吃二三四萬 + 碰北 + 明槓一筒 | 手牌 東東東發發
+  s.melds[0]=[
+    chi(M(2),M(3),M(4)),
+    pong(H(3),H(3),H(3)),
+    kong(P(1),P(1),P(1),P(1)),
+  ];
+  s.hands[0]=[H(0),H(0),H(0),H(6),H(6)];
+  s.flowers[0]=[];
+
+  // p1 電腦A（右家）：吃四五六筒 + 碰南 + 碰一萬 | 5 牌背
+  s.melds[1]=[
+    chi(P(4),P(5),P(6)),
+    pong(H(1),H(1),H(1)),
+    pong(M(1),M(1),M(1)),
+  ];
+  s.hands[1]=Array.from({length:5},()=>M(1));
+  s.flowers[1]=[];
+
+  // p2 電腦B（對家）：碰發 + 暗槓中 | 8 牌背
+  s.melds[2]=[
+    pong(H(6),H(6),H(6)),
+    dkon(H(4),H(4),H(4),H(4)),
+  ];
+  s.hands[2]=Array.from({length:8},()=>M(1));
+  s.flowers[2]=[];
+
+  // p3 電腦C（左家）：碰東 + 吃七八九條 + 碰九萬 | 5 牌背
+  s.melds[3]=[
+    pong(H(0),H(0),H(0)),
+    chi(S(7),S(8),S(9)),
+    pong(M(9),M(9),M(9)),
+  ];
+  s.hands[3]=Array.from({length:5},()=>M(1));
+  s.flowers[3]=[];
+
+  // 20 discards per player — each player's palette is distinct
+  s.discards[0]=mkDiscs(0);
+  s.discards[1]=mkDiscs(1);
+  s.discards[2]=mkDiscs(2);
+  s.discards[3]=mkDiscs(3);
+
+  Game.render();
+  console.log('[DebugLayout] Done. Tile IDs 50000 ~',_uid-1);
+}
+</script>
+</body>
+</html>
