@@ -4103,8 +4103,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ht1 { transform: translate(-20px, -100px) !important; overflow: visible !important; justify-content: center !important; }
 #ht1 .t { width: 32px !important; height: 45px !important; }
 #ht2 { zoom: 1.8 !important; }
-#pb3 { zoom: 1.5 !important; transform: rotate(-17deg) translateX(-150px) !important; }
-#pb1 { zoom: 1.5 !important; transform: rotate(17deg)  translateX(150px)  !important; }
+#pb3 { zoom: 1.5 !important; transform: none !important; }
+#pb1 { zoom: 1.5 !important; transform: none !important; }
 /* 對家(p2)與自己(p0)資訊牌面放大 150% */
 #pb2 { zoom: 1.5 !important; }
 #pb0 { zoom: 1.5 !important; }
@@ -4280,18 +4280,17 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   transform-origin: center top !important;
 }
 
-/* (7) Left side: angle to match left wood-frame slant */
+/* (7) Left side: 不整體旋轉容器（preserve-3d 會繞過 overflow:hidden）
+   改為個別牌 rotateY，確保牌排留在框內 */
 #pa3-area {
-  transform: rotateY(20deg) !important;
-  transform-origin: right center !important;
-  transform-style: preserve-3d !important;
+  transform: none !important;
+  transform-style: flat !important;
 }
 
-/* (8) Right side: mirror of left */
+/* (8) Right side: 同上 */
 #pa1-area {
-  transform: rotateY(-20deg) !important;
-  transform-origin: left center !important;
-  transform-style: preserve-3d !important;
+  transform: none !important;
+  transform-style: flat !important;
 }
 
 /* (9) Left/right tile shadows: side-facing */
@@ -4472,29 +4471,29 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    § 2  各區手牌的 3D 擺放姿態
    ════════════════════════════════════════════════════════════════════ */
 
-/* 玩家（下家 p0）：立牌、前傾 16°，讓頂面朝玩家可見 */
+/* 玩家（下家 p0）：平面顯示，不套 3D 傾斜 */
 #ht0 .t {
-  transform: rotateX(-16deg) !important;
-  transform-style: preserve-3d !important;
+  transform: none !important;
+  transform-style: flat !important;
   filter: drop-shadow(0 10px 18px rgba(0,0,0,.75)) !important;
   transition: transform .12s ease, filter .12s ease !important;
 }
 #ht0 .t:hover:not(.meld-candidate) {
-  transform: rotateX(-16deg) translateY(-14px) !important;
+  transform: translateY(-14px) !important;
   filter: drop-shadow(0 18px 24px rgba(0,0,0,.85)) !important;
 }
 #ht0 .t.sel {
-  transform: rotateX(-16deg) translateY(-10px) !important;
+  transform: translateY(-10px) !important;
   filter: drop-shadow(0 14px 20px rgba(0,0,0,.8)) !important;
 }
 #ht0 .t.meld-candidate {
-  transform: rotateX(-16deg) translateY(-7px) !important;
+  transform: translateY(-7px) !important;
 }
 #ht0 .t.meld-candidate:hover {
-  transform: rotateX(-16deg) translateY(-14px) !important;
+  transform: translateY(-14px) !important;
 }
 #ht0 .t.drawn {
-  transform: rotateX(-16deg) translateY(-4px) !important;
+  transform: translateY(-4px) !important;
 }
 
 /* 對家（上家 p2）：向後傾 10°（遠端立牌感）*/
@@ -4737,10 +4736,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   align-items: flex-end !important;
   gap: 2px !important;
 }
-/* 鳴牌磚與手牌共享相同傾斜角，視覺融合 */
+/* 鳴牌磚與手牌同為平面顯示 */
 #pa0-meld-row .t {
-  transform: rotateX(-16deg) !important;
-  transform-style: preserve-3d !important;
+  transform: none !important;
+  transform-style: flat !important;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -4872,7 +4871,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.64</div>
+    <div class="lver">v1.6.65</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -10318,12 +10317,12 @@ const Game={
       return stackCnt(linear-32);      // 剩餘牌堆中的位置
     }
 
-    // 渲染每一面牆
+    // 渲染每一面牆（順序：bot→top→left→right，確保 wall-right 最後抽，初始局全可見）
     const walls=[
       {id:'wall-bot',  physStart:0,  count:BOT},
-      {id:'wall-right',physStart:22, count:RIGHT},
-      {id:'wall-top',  physStart:36, count:TOP},
-      {id:'wall-left', physStart:58, count:LEFT},
+      {id:'wall-top',  physStart:22, count:TOP},
+      {id:'wall-left', physStart:44, count:LEFT},
+      {id:'wall-right',physStart:58, count:RIGHT},
     ];
     walls.forEach(def=>{
       const el=document.getElementById(def.id);
