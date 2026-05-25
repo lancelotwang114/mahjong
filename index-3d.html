@@ -4788,6 +4788,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* P1 右家：牌面朝向右家（tile head → 左，右家俯首即可讀） */
 #pool #dc1 .t { transform: rotate(-90deg) !important; }
 
+/* p0 active-turn：轉發到 2D 層 pbar 脈衝 + 手牌輪廓 */
+#pb0.active-turn { animation:activeTurnPulse 1.3s ease-in-out infinite !important; }
+#ui-p0-hand.active-turn { outline: 2px solid rgba(212,168,67,.35); border-radius:10px; }
+
 /* ════════════════════════════════════════════════════════════════════
    § 4.8  #ui-layer-2d — 純 2D 平面覆蓋層
           與 #tbl 並列，不繼承任何 3D transform
@@ -4952,7 +4956,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.69</div>
+    <div class="lver">v1.6.71</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -5272,7 +5276,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
   <!-- ═══ Player 0 — Me (bottom) ════════════════════════════════ -->
   <!-- pb0/ht0/pa0-meld-row 已移至 #ui-layer-2d，脫離 3D transform 容器 -->
-  <div id="p0-zone"></div>
+  <!-- #pa0 保留為空殼 stub，防止 render() 的 getElementById('pa0') 回傳 null 導致 crash -->
+  <div id="p0-zone"><div id="pa0" style="position:absolute;width:0;height:0;overflow:hidden;pointer-events:none"></div></div>
 
 <!-- game-topbar / audio-panel / host-ctrl-panel 已移至 #tbl 外，避免被 transform 影響 -->
 
@@ -5427,7 +5432,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div id="pa0-hand-row" style="display:flex;flex-direction:row;align-items:flex-end;">
       <div class="ht" id="ht0"></div>
     </div>
-    <div class="tbar" style="width:100%;"><div class="tfill" id="tf0"></div></div>
+    <!-- tbar (#tf0) 隱藏：計時功能已由 #tbadge SVG 圓圈取代，此欄保留供 JS 相容但不顯示 -->
+    <div class="tbar" style="display:none;"><div class="tfill" id="tf0"></div></div>
   </div>
 
   <!-- ── Action overlay（操作按鈕 / 計時圓 / 等待點，浮在手牌右上方） ── -->
@@ -8916,8 +8922,18 @@ const Game={
     for(let i=0;i<4;i++){
       // Active turn highlight
       const area=document.getElementById(`pa${i}`);
-      if(s.phase==='playing'&&s.turn===i)area.classList.add('active-turn');
-      else area.classList.remove('active-turn');
+      const isMyTurn=s.phase==='playing'&&s.turn===i;
+      if(area){  // null-safe（#pa0 是 stub，仍可安全操作）
+        if(isMyTurn)area.classList.add('active-turn');
+        else area.classList.remove('active-turn');
+      }
+      // p0 的 active-turn 視覺效果轉發到 #ui-layer-2d 的手牌容器
+      if(i===0){
+        const hand2d=document.getElementById('ui-p0-hand');
+        const pb0El=document.getElementById('pb0');
+        if(hand2d){if(isMyTurn)hand2d.classList.add('active-turn');else hand2d.classList.remove('active-turn');}
+        if(pb0El){if(isMyTurn)pb0El.classList.add('active-turn');else pb0El.classList.remove('active-turn');}
+      }
       // Dealer badge + wind badge (update each render so they rotate with dealer)
       // v1.6.29: Show 莊連N when honba>0, gold styling
       const db=document.getElementById(`db${i}`);
@@ -9538,7 +9554,8 @@ const Game={
   },
   // ── 自動打牌選牌策略 ─────────────────────────────────────
   // 情境A（聽牌）：摸啥打啥，絕不拆牌
-  // 情境B（未聽牌）：優先打摸進的牌，次選孤立字牌，fallback AI
+  // 情境B（未聽牌）：孤張字牌 > 孤張邊張 > 摸進的牌 > AI
+  // 選出非摸進牌時（autoPlay p0）顯示 toast 說明原因
   _autoPlayDiscard(p){
     const s=this.st;
     const hd=s.hands[p].filter(x=>!x.fl);
@@ -9568,7 +9585,7 @@ const Game={
     const isolatedHonor=hd.find(t=>t.s==='honor'&&isIsolated(t,hd));
     if(isolatedHonor)return isolatedHonor.id;
 
-    // 優先級 2：邊章孤張（1 或 9 的數牌，無搭子、無對子）
+    // 優先級 2：邊張孤張（1 或 9 的數牌，無搭子、無對子）
     const isolatedTerminal=hd.find(t=>
       t.s!=='honor'&&(t.v===1||t.v===9)&&isIsolated(t,hd)
     );
