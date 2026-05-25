@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <!--
   台灣麻將 單機版 3D — index-3d.html
-  v1.6.82 (2026-05-25)
+  v1.6.83 (2026-05-25)
   Changelog:
-    Fix: 修正牌牆 3D 空間軸向，讓上層牌從懸空飄浮回歸實體雙層對齊
-    Fix: 以 translateY/X 前置取代 translateZ，消除近景放大穿幫
-    Feat: 牌牆正面改為傳統竹骨深褐；tf-side 加入象牙→翠綠→竹棕夾心截面
+    Fix: 徹底移除牌牆 rotateX/rotateY，牌背完全朝上平躺，消滅斑馬線與骨牌翹起
+    Fix: wt-top 改用純 translateZ(14px) 疊高，上下層平行對齊
+    Fix: wstack gap 縮至 1px，恢復緊密雙層牌墩外觀
 -->
 <html lang="zh-TW">
 <head>
@@ -6253,6 +6253,42 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow: none !important;
 }
 
+/* ══ § 18  v1.6.83
+   Fix: 徹底導正牌牆旋轉 — 移除 rotateX/Y，牌背朝上平躺
+   ═══════════════════════════════════════════════════════ */
+
+/* ── 1. 清除所有 wall tile 的 rotateX/Y — 牌背完全朝上平躺 ── */
+#wall-top .wt,
+#wall-bot .wt,
+#wall-left .wt,
+#wall-right .wt {
+  transform: none !important;
+}
+
+/* ── 2. wt-top：僅用 translateZ(14px) 疊高，與 wt-bot 完全平行 ── */
+/* perspective: 1200px 下 14px Z 視差 < 1.2%，不穿幫 */
+#wall-top .wt.wt-top:not(.wt-empty),
+#wall-bot .wt.wt-top:not(.wt-empty),
+#wall-left .wt.wt-top:not(.wt-empty),
+#wall-right .wt.wt-top:not(.wt-empty) {
+  transform: translateZ(14px) !important;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,.50)) !important;
+  z-index: 2 !important;
+}
+
+/* ── 3. wt-bot：保留 brightness(0.65) 暗色陰影 ── */
+.wstack > .wt.wt-bot:not(.wt-empty) {
+  filter: brightness(0.65) !important;
+  z-index: 1 !important;
+}
+.tile-wall.wall-v .wstack > .wt.wt-bot:not(.wt-empty) {
+  filter: brightness(0.65) !important;
+}
+
+/* ── 4. 牌墩 gap — 緊密疊放 ── */
+.tile-wall { gap: 3px !important; }
+.wstack    { gap: 1px !important; }
+
 </style>
 </head>
 <body>
@@ -6263,7 +6299,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.82</div>
+    <div class="lver">v1.6.83</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
