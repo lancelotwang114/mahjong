@@ -5189,6 +5189,64 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   ) !important;
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   § 10  v1.6.75  2D 面板完全修正 + 賽博 pbar 主題 + overflow 全鏈
+   ① #ui-layer-2d overflow:visible — 防止左右邊緣面板被裁切
+   ② pbar 外觀升級：木色/金色 → 賽博暗碳 + 霓虹邊框
+   ③ 左右家 pa1/pa3 + ma/ht/area 全鏈 overflow:visible 再確認
+   ④ P0 pbar 位置微調，避免與副露行視覺交疊
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── ① ui-layer-2d：解除 overflow:hidden，邊緣面板完整顯示 ─── */
+#ui-layer-2d { overflow: visible !important; }
+/* 各 pbar wrap 強化 z-index，確保浮在 3D 牌桌之上 */
+#ui-pb1-wrap, #ui-pb2-wrap, #ui-pb3-wrap, #ui-pb0-wrap {
+  z-index: 9999 !important;
+  position: absolute !important;
+}
+
+/* ── ② pbar 外觀：賽博暗碳 + 霓虹青藍邊框（覆蓋舊木色/金色）── */
+#ui-layer-2d .pbar {
+  background: linear-gradient(
+    135deg,
+    rgba(5, 8, 20, 0.93) 0%,
+    rgba(10, 14, 32, 0.90) 100%
+  ) !important;
+  border: 1.5px solid rgba(0, 212, 255, 0.45) !important;
+  border-radius: 8px !important;
+  box-shadow:
+    0 0  8px rgba(0, 200, 255, 0.18),
+    0 4px 12px rgba(0, 0, 0, 0.65) !important;
+}
+/* 風位 badge → 霓虹藍 */
+#ui-layer-2d .wbadge {
+  background: rgba(0, 180, 255, 0.20) !important;
+  border: 1px solid rgba(0, 212, 255, 0.55) !important;
+  color: #00e8ff !important;
+}
+/* 名字/金錢文字 */
+#ui-layer-2d .pnm   { color: #c8e8ff !important; }
+#ui-layer-2d .pmoney { color: #00d4ff !important; }
+/* active-turn：霓虹藍脈衝 */
+#ui-layer-2d .pbar.active-turn {
+  border-color: rgba(0, 255, 240, 0.85) !important;
+  box-shadow:
+    0 0 18px rgba(0, 240, 255, 0.65),
+    0 0 36px rgba(0, 200, 255, 0.30) !important;
+  animation: activeTurnPulse 1.3s ease-in-out infinite !important;
+}
+
+/* ── ③ 左右家容器 overflow 全鏈確保 ─────────────────────────── */
+#pa1-area, #pa3-area { overflow: visible !important; }
+#pa1, #pa3           { overflow: visible !important; }
+#ht1, #ht3           { overflow: visible !important; }
+#ma1, #ma3           { overflow: visible !important; }
+#ma1 .mg, #ma3 .mg   { overflow: visible !important; }
+
+/* ── ④ P0 pbar 向下移避免壓手牌 ─────────────────────────────── */
+/* 副露行底部 ≈ bottom:156px，pbar 落在 bottom:20px（手牌下空間）*/
+#ui-pb0-wrap { bottom: 20px !important; left: 18px !important; }
+
 </style>
 </head>
 <body>
@@ -5199,7 +5257,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.74</div>
+    <div class="lver">v1.6.75</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
