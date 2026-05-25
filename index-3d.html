@@ -5247,6 +5247,112 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* 副露行底部 ≈ bottom:156px，pbar 落在 bottom:20px（手牌下空間）*/
 #ui-pb0-wrap { bottom: 20px !important; left: 18px !important; }
 
+/* ════════════════════════════════════════════════════════════════════
+   § 11  v1.6.75  全面覆蓋象牙/琥珀色 → 賽博霓虹電晶
+   ────────────────────────────────────────────────────────────────────
+   診斷：§9 .t.back 只能覆蓋低特異度規則；以下三類被遺漏：
+   A. .wt（牌牆磚塊）— 有獨立 background !important，非 .t.back
+   B. #ht1/2/3 .t.back — 高特異度 ID+class + !important
+   C. #pool .t.back    — 同上
+   修正方式：以更高特異度 + !important 在最後覆蓋
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── A. 牌牆磚塊（.wt）: 象牙/琥珀 → 暗晶碳纖 + 霓虹邊框 ──── */
+.wt {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 5px,
+      rgba(0,212,255,.045) 5px, rgba(0,212,255,.045) 6px),
+    repeating-linear-gradient(-45deg,
+      transparent 0, transparent 5px,
+      rgba(130,0,200,.035) 5px, rgba(130,0,200,.035) 6px),
+    linear-gradient(155deg, #0c0e1e 0%, #12152c 50%, #0a0b18 100%) !important;
+  border: 1px solid rgba(0,180,255,.42) !important;
+  box-shadow:
+    -1px 0   0 rgba(0,200,255,.35),
+    -2px 1px 0 rgba(0,100,200,.22),
+    -3px 2px 4px rgba(0,0,0,.7),
+    0 0 5px rgba(0,200,255,.12) !important;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.6)) !important;
+}
+/* 下層牌略暗（堆疊深度感） */
+.wstack > .wt:last-child:not(.wt-empty) {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 5px,
+      rgba(0,180,255,.03) 5px, rgba(0,180,255,.03) 6px),
+    linear-gradient(155deg, #080910 0%, #0d0f1e 50%, #060709 100%) !important;
+  border-color: rgba(0,140,200,.35) !important;
+}
+/* 側牆牌（橫置）陰影方向 */
+.tile-wall.wall-v .wt {
+  box-shadow:
+    0  -1px 0 rgba(0,200,255,.35),
+    1px -2px 0 rgba(0,100,200,.22),
+    2px -3px 4px rgba(0,0,0,.7),
+    0 0 5px rgba(0,200,255,.12) !important;
+}
+
+/* ── B & C. 其他玩家手牌背面 + 棄牌池背面 → 碳纖電晶 ───────── */
+#ht1 .t.back, #ht2 .t.back, #ht3 .t.back,
+#pool .t.back {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 6px,
+      rgba(0,212,255,.05) 6px, rgba(0,212,255,.05) 7px),
+    repeating-linear-gradient(-45deg,
+      transparent 0, transparent 6px,
+      rgba(160,0,220,.04) 6px, rgba(160,0,220,.04) 7px),
+    radial-gradient(ellipse 45% 55% at 50% 50%,
+      rgba(0,180,255,.13) 0%, transparent 70%),
+    radial-gradient(circle 7px at 12% 12%, rgba(0,220,255,.17) 0%, transparent 100%),
+    radial-gradient(circle 7px at 88% 12%, rgba(0,220,255,.17) 0%, transparent 100%),
+    radial-gradient(circle 7px at 12% 88%, rgba(160,0,220,.17) 0%, transparent 100%),
+    radial-gradient(circle 7px at 88% 88%, rgba(160,0,220,.17) 0%, transparent 100%),
+    #070810 !important;
+  border: 1px solid rgba(0,212,255,.55) !important;
+  border-radius: 4px !important;
+  box-shadow:
+    inset 0 0 10px rgba(0,212,255,.12),
+    inset 0 0  3px rgba(160,0,220,.08) !important;
+  animation: neonPulse 2.8s ease-in-out infinite !important;
+}
+
+/* ── 暗槓背面：保留深色，加霓虹邊框點綴 ─────────────────────── */
+.mg.dark-kong .t.back {
+  background: linear-gradient(145deg, #090b14, #060810) !important;
+  border-color: rgba(0,180,255,.45) !important;
+  animation: neonPulse 2.8s ease-in-out infinite !important;
+}
+
+/* ── 牌牆磚塊頂/側面：覆蓋 § 1 amber 頂面（同選擇器，我在後故勝）*/
+.wt .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #1c1e34 0%, #282a46 14%, #1e2038 17%,
+    #00c8f8 18%, #00f0ff 20%, #00aad8 23%,
+    #0d0e1c 24%, #0a0a14 100%
+  ) !important;
+  box-shadow: 0 -1px 4px rgba(0,240,255,.60) !important;
+}
+.wstack > .wt:last-child:not(.wt-empty) .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #12141e 0%, #1c1e2e 17%,
+    #008ab0 18%, #00c4dc 20%, #0078a0 23%,
+    #080910 24%, #050608 100%
+  ) !important;
+}
+.wt .tf-side {
+  background: linear-gradient(
+    to right,
+    #050608 0%, #0a0b14 77%,
+    #0076a0 78%, #00c4dc 80%, #0088b8 83%,
+    #1a1c30 84%, #222440 100%
+  ) !important;
+  box-shadow: 1px 0 4px rgba(0,240,255,.55) !important;
+}
+
 </style>
 </head>
 <body>
