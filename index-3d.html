@@ -4585,28 +4585,37 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .wall-h { flex-direction: row !important; align-items: flex-end !important; }
 .wall-v { flex-direction: column !important; align-items: flex-end !important; }
 
-/* 牌牆定位（Direction B：精確坐標，對齊棄牌區四側）*/
+/* ── 牌牆精確定位（pool 1320×645；DC 中心 672,322；wall-h 616×80, wall-v 80×392）
+   wall-top/-bot：水平置中於 DC 區，top 緊貼 dc2 上方 / dc0 下方（8px gap, overflow:visible）
+   wall-left/-right：垂直置中於 DC 區，緊貼 dc3 左 / dc1 右（8px gap）
+   pool 已設 overflow:visible，wall-top/-bot 可超出 pool 邊界顯示。
+   wall-bot 落點 tbl y≈811，夾在棄牌河底（≈803）與底家手牌（≈870+）之間 ✅ */
 #wall-top {
-  left: 341px !important; top: 0px !important;
+  left: 364px !important;   /* (dc3.left+dc1.right)/2 - 616/2 = 672-308 */
+  top:  -73px !important;   /* dc2.top - 8 - 80 = 15-88 */
+  bottom: auto !important;
   transform: none !important;
 }
 #wall-bot {
-  left: 341px !important; top: 565px !important;
+  left: 364px !important;
+  top:  638px !important;   /* dc0.bottom + 8 = 630+8, overflows pool bottom */
   bottom: auto !important;
   transform: none !important;
 }
 #wall-left {
-  left: 264px !important; top: 120px !important;
+  left: 262px !important;   /* dc3.left - 8 - 80 = 350-88 */
+  top:  127px !important;   /* (dc_cy) - 392/2 = 322-196 */
   transform: none !important;
 }
 #wall-right {
-  left: 1000px !important; top: 120px !important;
+  left: 1002px !important;  /* dc1.right + 8 = 994+8 */
+  top:  127px !important;
   right: auto !important;
   transform: none !important;
 }
-/* 棄牌區渲染於牌牆之上 */
-.tile-wall { z-index: 4 !important; }
-#pool #dc0, #pool #dc1, #pool #dc2, #pool #dc3 { z-index: 8 !important; }
+/* z-index 層次：牌牆（6）< 棄牌區（9）< 中心圓盤（999） */
+.tile-wall { z-index: 6 !important; }
+#pool #dc0, #pool #dc1, #pool #dc2, #pool #dc3 { z-index: 9 !important; }
 
 /* 牌牆單疊 */
 .wstack {
@@ -4700,23 +4709,25 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    § 4  玩家自己（p0）鳴牌區定位修正
    ════════════════════════════════════════════════════════════════════ */
 
-/* 鳴牌區：水平一字排開於右下角，不插入木框 */
+/* 鳴牌區：回歸文件流，水平一字排開於手牌上方，與手牌共享 rotateX(-16deg) 傾斜 */
 #pa0-meld-row {
-  position: fixed !important;
-  bottom: 14px !important;
-  right: 14px !important;
-  left: auto !important;
-  top: auto !important;
-  z-index: 70 !important;
-  transform: none !important;
+  position: relative !important;  /* 移除 fixed，回到 p0-zone 文件流 */
+  bottom: auto !important;
+  right:  auto !important;
+  left:   auto !important;
+  top:    auto !important;
+  z-index: 10 !important;
+  transform: none !important;     /* 不另加 transform，靠 p0-zone 整體 3D 旋轉 */
   display: flex !important;
   flex-direction: row !important;
   align-items: flex-end !important;
+  justify-content: center !important;
   gap: 3px !important;
-  background: rgba(0,0,0,.28) !important;
-  border-radius: 6px !important;
-  padding: 4px 6px !important;
-  max-width: 380px !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 8px 4px !important;
+  max-width: none !important;
+  width: 100% !important;
 }
 #pa0-meld-row #fl0,
 #pa0-meld-row #ma0 {
@@ -4725,6 +4736,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   flex-wrap: nowrap !important;
   align-items: flex-end !important;
   gap: 2px !important;
+}
+/* 鳴牌磚與手牌共享相同傾斜角，視覺融合 */
+#pa0-meld-row .t {
+  transform: rotateX(-16deg) !important;
+  transform-style: preserve-3d !important;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -11572,19 +11588,22 @@ function updateTblVars(){
   if(!tbl)return;
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  // rotateX(16deg) shrinks effective visual height: 1080 * cos(16°) ≈ 1038px
+  // transform-origin: bottom center — 桌底固定在視窗底部，底家手牌永遠可見
+  // rotateX(16deg) 保持強烈俯視視角；有效視覺高度 = 1080×cos(16°)
   const ROT_RAD = 16 * Math.PI / 180;
-  const effH = Math.round(1080 * Math.cos(ROT_RAD)); // 1038
-  const scaleX = (vw - 10) / 1920;
-  const scaleY = (vh - 10) / effH;
-  const scale  = Math.min(scaleX, scaleY);
-  tbl.style.transformOrigin = 'top left';
-  tbl.style.transform = `scale(${scale}) rotateX(16deg)`;
-  // Center visual area (effective height, not layout height)
-  const offsetX = (vw - 1920 * scale) / 2;
-  const offsetY = (vh - effH  * scale) / 2;
-  tbl.style.left = offsetX + 'px';
-  tbl.style.top  = Math.max(0, offsetY) + 'px';
+  const cosR    = Math.cos(ROT_RAD); // ≈ 0.9613
+  const MARGIN  = 8;                 // px gap at viewport bottom
+  const scaleX  = (vw - 10) / 1920;
+  const scaleY  = (vh - MARGIN) / (1080 * cosR); // fit effective height
+  const scale   = Math.min(scaleX, scaleY);
+  // With transform-origin: bottom center (960, 1080):
+  //   screen bottom-center = (offsetX + 960,  offsetY + 1080)
+  //   → offsetX = vw/2 - 960
+  //   → offsetY = vh - MARGIN - 1080
+  tbl.style.transformOrigin = 'bottom center';
+  tbl.style.transform       = `scale(${scale}) rotateX(16deg)`;
+  tbl.style.left            = (vw / 2 - 960) + 'px';
+  tbl.style.top             = (vh - MARGIN - 1080) + 'px';
 }
 updateTblVars();
 let _tblResizeTimer=null;
