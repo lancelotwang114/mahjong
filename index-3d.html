@@ -4743,6 +4743,51 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   § 4.5  v1.6.66 修正：功能按鈕、牌牆 z-index、手牌平面化、棄牌朝向
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── 功能按鈕 topbar：脫離 3D tbl 變換，改為 fixed 定位 ─────────── */
+#game-topbar {
+  position: fixed !important;
+  top: 8px !important;
+  left: 8px !important;
+  right: 8px !important;
+  z-index: 5500 !important;
+}
+
+/* ── p0-zone 提高 z-index，手牌不被牌牆壓住 ──────────────────────── */
+#p0-zone {
+  z-index: 12 !important;
+  position: absolute !important;
+}
+
+/* ── 所有玩家手牌平面化：隱藏 3D 六面體側面／頂面，保留正面 sprite ── */
+#ht0 .t .tf-top, #ht0 .t .tf-side, #ht0 .t .tf-bot,
+#ht1 .t .tf-top, #ht1 .t .tf-side, #ht1 .t .tf-bot,
+#ht2 .t .tf-top, #ht2 .t .tf-side, #ht2 .t .tf-bot,
+#ht3 .t .tf-top, #ht3 .t .tf-side, #ht3 .t .tf-bot,
+#pa0-meld-row .t .tf-top, #pa0-meld-row .t .tf-side, #pa0-meld-row .t .tf-bot,
+#ma0 .t .tf-top, #ma0 .t .tf-side, #ma0 .t .tf-bot,
+#ma1 .t .tf-top, #ma1 .t .tf-side, #ma1 .t .tf-bot,
+#ma2 .t .tf-top, #ma2 .t .tf-side, #ma2 .t .tf-bot,
+#ma3 .t .tf-top, #ma3 .t .tf-side, #ma3 .t .tf-bot {
+  display: none !important;
+}
+/* 左右家手牌也回平面，不套 rotateY */
+#pa1-area .t { transform: none !important; transform-style: flat !important; }
+#pa3-area .t { transform: none !important; transform-style: flat !important; }
+/* 對家手牌亦同 */
+#ht2 .t { transform: none !important; transform-style: flat !important; }
+
+/* ── 棄牌朝向各玩家（dc0=我方不動，其餘旋轉） ───────────────────── */
+/* P2 對家（頂部）：牌面朝上（從頂方向可正讀） */
+#pool #dc2 .t { transform: rotate(180deg) !important; }
+/* P3 左家：牌面朝向左家（tile head → 右，左家俯首即可讀） */
+#pool #dc3 .t { transform: rotate(90deg) !important; }
+/* P1 右家：牌面朝向右家（tile head → 左，右家俯首即可讀） */
+#pool #dc1 .t { transform: rotate(-90deg) !important; }
+
+/* ════════════════════════════════════════════════════════════════════
    § 5  中央圓圈 & 全域光影精修
    ════════════════════════════════════════════════════════════════════ */
 
@@ -4871,7 +4916,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.65</div>
+    <div class="lver">v1.6.67</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -5240,69 +5285,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
   </div>
 
-<!-- ═══ TopBar：所有頂部按鈕統一放在 flex 容器，杜絕 absolute 重疊 ═══ -->
-  <div id="game-topbar">
-    <!-- 左側：系統操作 -->
-    <div id="topbar-left">
-      <button id="pause-btn" class="tb-btn" onclick="Game.togglePause()">⏸ 暫停</button>
-      <button id="leave-btn" class="tb-btn" onclick="Game.leaveAndSave()" title="儲存牌局並返回大廳（AI 代打）">🚪 離開</button>
-      <button id="restart-round-btn" class="tb-btn" onclick="Game.hostRestartRound()" title="重開此把（僅房主）">↺ 重開此把</button>
-      <button id="debug-report-btn" class="tb-btn" onclick="DbgLog.copy()" title="複製錯誤紀錄給房主">🐛 錯誤回報</button>
-    </div>
-    <!-- 右側：控制工具（房主開局、速度、自動、音效） -->
-    <div id="topbar-right">
-      <button id="host-round-start-btn" class="tb-btn" onclick="Game.hostStartRound()" title="房主：開始下一局">▶ 開始</button>
-      <button id="host-ctrl-btn" onclick="Game.toggleHostPanel()">🎮 房主</button>
-      <div id="speed-panel">
-        <button class="spd-btn" id="spd-slow" onclick="Game.setSpeed('slow')">慢</button>
-        <button class="spd-btn active" id="spd-normal" onclick="Game.setSpeed('normal')">正常</button>
-        <button class="spd-btn" id="spd-fast" onclick="Game.setSpeed('fast')">快</button>
-        <button class="spd-btn" id="spd-turbo" onclick="Game.setSpeed('turbo')">極快</button>
-      </div>
-      <button id="autoplay-btn" class="tb-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
-      <button id="audio-btn" onclick="Game.toggleAudioPanel()" title="音效 &amp; 音樂">🔊</button>
-    </div>
-  </div>
-  <div id="audio-panel">
-    <div class="aud-row">
-      <span>🔊 音效</span>
-      <input type="range" id="svol-ig" min="0" max="100" value="80"
-        oninput="Snd.volume=this.value/100;document.getElementById('svol-ig-val').textContent=this.value+'%';localStorage.setItem('mj_svol_v1',this.value)">
-      <span class="aud-val" id="svol-ig-val">80%</span>
-    </div>
-    <div class="aud-row" style="justify-content:space-between">
-      <span>🎵 BGM</span>
-      <label class="bgm-toggle-sw">
-        <input type="checkbox" id="bgm-ig-toggle" onchange="Bgm.setEnabled(this.checked);Game._syncBgmVolRow()">
-        <span class="bgm-sl"></span>
-      </label>
-    </div>
-    <div class="aud-row" id="bgm-ig-vol-row" style="opacity:.4;pointer-events:none;transition:opacity .2s">
-      <span>音量</span>
-      <input type="range" id="bgm-ig-vol" min="0" max="100" value="30"
-        oninput="Bgm.setVolume(this.value/100);document.getElementById('bgm-ig-vol-val').textContent=this.value+'%'">
-      <span class="aud-val" id="bgm-ig-vol-val">30%</span>
-    </div>
-  </div>
-
-  <!-- speed-panel 與 host-ctrl-btn 已移入 #game-topbar #topbar-right，此處保留 host-ctrl-panel dropdown -->
-  <div id="host-ctrl-panel">
-    <div class="hcp-title">🎮 房主控制</div>
-    <div class="hcp-row">
-      <button id="host-restart-btn" onclick="Game.hostRestart()">↺ 重啟牌局</button>
-    </div>
-    <div class="hcp-row">
-      <span class="hcp-label">暫停：</span>
-      <button class="spd-btn" id="host-pause-btn" onclick="Game.hostPause()">⏸ 暫停</button>
-    </div>
-    <div class="hcp-row" style="flex-wrap:wrap;gap:4px">
-      <span class="hcp-label">速度：</span>
-      <button class="spd-btn" id="hspd-slow" onclick="Game.hostSetSpeed('slow')">慢</button>
-      <button class="spd-btn active" id="hspd-normal" onclick="Game.hostSetSpeed('normal')">正常</button>
-      <button class="spd-btn" id="hspd-fast" onclick="Game.hostSetSpeed('fast')">快</button>
-      <button class="spd-btn" id="hspd-turbo" onclick="Game.hostSetSpeed('turbo')">極快</button>
-    </div>
-  </div>
+<!-- game-topbar / audio-panel / host-ctrl-panel 已移至 #tbl 外，避免被 transform 影響 -->
 
   <div id="info-box">
     <div style="display:flex;align-items:center;gap:6px">
@@ -5405,6 +5388,67 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 </div><!-- end tbl -->
 
+<!-- ═══ TopBar (移出 #tbl，避免被 transform:rotateX 影響，position:fixed 可正常作用) ═══ -->
+<div id="game-topbar">
+  <!-- 左側：系統操作 -->
+  <div id="topbar-left">
+    <button id="pause-btn" class="tb-btn" onclick="Game.togglePause()">⏸ 暫停</button>
+    <button id="leave-btn" class="tb-btn" onclick="Game.leaveAndSave()" title="儲存牌局並返回大廳（AI 代打）">🚪 離開</button>
+    <button id="restart-round-btn" class="tb-btn" onclick="Game.hostRestartRound()" title="重開此把（僅房主）">↺ 重開此把</button>
+    <button id="debug-report-btn" class="tb-btn" onclick="DbgLog.copy()" title="複製錯誤紀錄給房主">🐛 錯誤回報</button>
+  </div>
+  <!-- 右側：控制工具（房主開局、速度、自動、音效） -->
+  <div id="topbar-right">
+    <button id="host-round-start-btn" class="tb-btn" onclick="Game.hostStartRound()" title="房主：開始下一局">▶ 開始</button>
+    <button id="host-ctrl-btn" onclick="Game.toggleHostPanel()">🎮 房主</button>
+    <div id="speed-panel">
+      <button class="spd-btn" id="spd-slow" onclick="Game.setSpeed('slow')">慢</button>
+      <button class="spd-btn active" id="spd-normal" onclick="Game.setSpeed('normal')">正常</button>
+      <button class="spd-btn" id="spd-fast" onclick="Game.setSpeed('fast')">快</button>
+      <button class="spd-btn" id="spd-turbo" onclick="Game.setSpeed('turbo')">極快</button>
+    </div>
+    <button id="autoplay-btn" class="tb-btn" onclick="Game.toggleAutoPlay()" title="自動打牌：由 AI 代替你出牌">🤖 自動</button>
+    <button id="audio-btn" onclick="Game.toggleAudioPanel()" title="音效 &amp; 音樂">🔊</button>
+  </div>
+</div>
+<div id="audio-panel">
+  <div class="aud-row">
+    <span>🔊 音效</span>
+    <input type="range" id="svol-ig" min="0" max="100" value="80"
+      oninput="Snd.volume=this.value/100;document.getElementById('svol-ig-val').textContent=this.value+'%';localStorage.setItem('mj_svol_v1',this.value)">
+    <span class="aud-val" id="svol-ig-val">80%</span>
+  </div>
+  <div class="aud-row" style="justify-content:space-between">
+    <span>🎵 BGM</span>
+    <label class="bgm-toggle-sw">
+      <input type="checkbox" id="bgm-ig-toggle" onchange="Bgm.setEnabled(this.checked);Game._syncBgmVolRow()">
+      <span class="bgm-sl"></span>
+    </label>
+  </div>
+  <div class="aud-row" id="bgm-ig-vol-row" style="opacity:.4;pointer-events:none;transition:opacity .2s">
+    <span>音量</span>
+    <input type="range" id="bgm-ig-vol" min="0" max="100" value="30"
+      oninput="Bgm.setVolume(this.value/100);document.getElementById('bgm-ig-vol-val').textContent=this.value+'%'">
+    <span class="aud-val" id="bgm-ig-vol-val">30%</span>
+  </div>
+</div>
+<div id="host-ctrl-panel">
+  <div class="hcp-title">🎮 房主控制</div>
+  <div class="hcp-row">
+    <button id="host-restart-btn" onclick="Game.hostRestart()">↺ 重啟牌局</button>
+  </div>
+  <div class="hcp-row">
+    <span class="hcp-label">暫停：</span>
+    <button class="spd-btn" id="host-pause-btn" onclick="Game.hostPause()">⏸ 暫停</button>
+  </div>
+  <div class="hcp-row" style="flex-wrap:wrap;gap:4px">
+    <span class="hcp-label">速度：</span>
+    <button class="spd-btn" id="hspd-slow" onclick="Game.hostSetSpeed('slow')">慢</button>
+    <button class="spd-btn active" id="hspd-normal" onclick="Game.hostSetSpeed('normal')">正常</button>
+    <button class="spd-btn" id="hspd-fast" onclick="Game.hostSetSpeed('fast')">快</button>
+    <button class="spd-btn" id="hspd-turbo" onclick="Game.hostSetSpeed('turbo')">極快</button>
+  </div>
+</div>
 
 </div>
 
