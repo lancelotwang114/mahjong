@@ -5359,7 +5359,31 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
      wt-top — 上層（外層）：更亮邊框、強霓虹頂面光暈、向下投影
      wt-bot — 下層（內層）：明顯暗化、接受上層投影
      wstack gap 增加，讓兩層目視有分隔感
+   根本原因修正：
+     images/tile-back-face.png 實際存在，.wt:not(.wt-empty) 特異度(0,2,0)
+     高於 §11 的 .wt(0,1,0)，貼圖覆蓋暗色漸層。
+     解法：以 .wt.wt-top:not(.wt-empty) (0,3,0) 清除 background-image。
    ══════════════════════════════════════════════════════════════════════ */
+
+/* ── 清除貼圖（特異度0,3,0 > 貼圖選擇器0,2,0）── */
+.wt.wt-top:not(.wt-empty),
+.wt.wt-bot:not(.wt-empty) {
+  background-image: none !important;
+  border-color: inherit !important; /* 讓下方各自的 border 規則生效 */
+}
+/* tf-top / tf-side 子元素同理清除貼圖 */
+.wt.wt-top .tf-top, .wt.wt-bot .tf-top,
+.wt.wt-top .tf-side, .wt.wt-bot .tf-side {
+  background-image: none !important;
+}
+/* 覆蓋舊 .wstack>.wt:last-child:not(.wt-empty){filter:brightness} (0,4,0)
+   以同特異度但位置更後的選擇器取勝 */
+.wstack > .wt.wt-bot:not(.wt-empty) {
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,.88)) brightness(0.68) !important;
+}
+.tile-wall.wall-v .wstack > .wt.wt-bot:not(.wt-empty) {
+  filter: drop-shadow(-3px 0 6px rgba(0,0,0,.88)) brightness(0.68) !important;
+}
 
 /* 增加 3D 頂面深度，讓旋轉視角能看見更厚的稜邊 */
 .wt { --td: 13px !important; }
@@ -5438,6 +5462,182 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     brightness(0.72) !important;
 }
 
+/* ══ § 13  v1.6.78  象牙白 + 琥珀黃台麻材質 (Taiwan Mahjong Premium)
+   參考素材：3a14fbc6-4f19-4612-922d-3a6f09a16f1b.png
+   目標：象牙白正面・琥珀黃背面・深棕厚度側邊・Nintendo 等級精緻感
+   覆蓋 §9（賽博霓虹 tf-top/tf-side/.t.back）
+   覆蓋 §11/§12（暗晶碳纖牆磚）
+   ══════════════════════════════════════════════════════════════════ */
+
+/* 琥珀光暈呼吸 keyframe（取代 neonPulse 冷色版）*/
+@keyframes amberPulse {
+  0%,100% {
+    filter: drop-shadow(0 6px 14px rgba(60,30,0,.52))
+            drop-shadow(0 0 5px rgba(200,140,30,.26));
+  }
+  50% {
+    filter: drop-shadow(0 8px 18px rgba(70,35,0,.68))
+            drop-shadow(0 0 14px rgba(220,165,40,.55));
+  }
+}
+
+/* ── 正面牌：暖金邊框 + 棕色暖陰影（sprite 不動）── */
+.t:not(.back) {
+  border: 1.5px solid rgba(175,125,35,.52) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  filter:
+    drop-shadow(0 6px 14px rgba(55,28,0,.58))
+    drop-shadow(0 0 4px rgba(195,145,35,.20)) !important;
+  animation: none !important;
+}
+
+/* ── 背面牌：象牙圓框 + 琥珀黃漸層主面 + 光暈呼吸 ── */
+.t.back {
+  background:
+    radial-gradient(ellipse 72% 58% at 44% 33%,
+      rgba(255,225,135,.58) 0%, transparent 62%),
+    linear-gradient(155deg,
+      #DA8E12 0%, #C97A08 32%, #B06206 66%, #C07C11 100%) !important;
+  border: 1.5px solid rgba(200,148,38,.68) !important;
+  border-radius: 4px !important;
+  box-shadow:
+    inset 0  1.5px 4px rgba(255,215,105,.38),
+    inset 0 -1px  3px rgba(80,40,0,.28) !important;
+  animation: amberPulse 3s ease-in-out infinite !important;
+  filter: none !important;
+}
+/* 覆蓋 §11 高特異度選擇器（#ht1/2/3 + #pool）*/
+#ht1 .t.back, #ht2 .t.back, #ht3 .t.back, #pool .t.back {
+  background:
+    radial-gradient(ellipse 72% 58% at 44% 33%,
+      rgba(255,225,135,.58) 0%, transparent 62%),
+    linear-gradient(155deg,
+      #DA8E12 0%, #C97A08 32%, #B06206 66%, #C07C11 100%) !important;
+  border: 1.5px solid rgba(200,148,38,.68) !important;
+  box-shadow:
+    inset 0  1.5px 4px rgba(255,215,105,.38),
+    inset 0 -1px  3px rgba(80,40,0,.28) !important;
+  animation: amberPulse 3s ease-in-out infinite !important;
+  filter: none !important;
+}
+/* 暗槓：深琥珀 */
+.mg.dark-kong .t.back {
+  background: linear-gradient(155deg, #8A5008, #6A3A03) !important;
+  border-color: rgba(160,102,22,.55) !important;
+  animation: amberPulse 3s ease-in-out infinite !important;
+}
+
+/* ── tf-top：恢復§1象牙漸層，覆蓋§9賽博霓虹 ── */
+.tf-top {
+  background: linear-gradient(
+    to right,
+    #fefae8 0%, #f6e89c 35%, #ead870 65%, #d8c050 100%
+  ) !important;
+  box-shadow: none !important;
+  border-top:   1.5px solid rgba(210,165,40,.55) !important;
+  border-left:  1px solid rgba(210,165,40,.25) !important;
+  border-right: 1px solid rgba(210,165,40,.25) !important;
+}
+/* 背面牌頂面：琥珀棕稜邊 */
+.t.back .tf-top {
+  background: linear-gradient(
+    to right,
+    #E8A030 0%, #D08820 50%, #B87018 100%
+  ) !important;
+  box-shadow: none !important;
+  border-top: 1.5px solid rgba(200,130,22,.62) !important;
+}
+
+/* ── tf-side：恢復§1深木色，覆蓋§9賽博霓虹 ── */
+.tf-side {
+  background: linear-gradient(
+    180deg,
+    #9a7035 0%, #7a5022 40%, #4a2808 80%, #2a1404 100%
+  ) !important;
+  box-shadow: none !important;
+  border-right:  1.5px solid rgba(0,0,0,.45) !important;
+  border-top:    1px solid rgba(160,110,40,.40) !important;
+  border-bottom: 1px solid rgba(0,0,0,.40) !important;
+}
+/* 背面牌側面：琥珀深棕 */
+.t.back .tf-side {
+  background: linear-gradient(
+    180deg,
+    #A06818 0%, #805010 50%, #5A3808 100%
+  ) !important;
+}
+
+/* ── 牌牆磚塊：象牙白正面 + 琥珀棕側邊
+   特異度(0,3,0) 覆蓋 §11(0,1,0)；同特異度位置更後覆蓋 §12 ── */
+.wt.wt-top:not(.wt-empty),
+.wt.wt-bot:not(.wt-empty) {
+  background:
+    linear-gradient(160deg,
+      #F7EED8 0%, #F0E1BB 45%, #E3CB92 100%) !important;
+  border: 1.5px solid rgba(185,132,42,.62) !important;
+  box-shadow:
+    -1px 0   0 rgba(180,128,38,.52),
+    -2px 1px 0 rgba(148,100,25,.30),
+    -3px 2px 5px rgba(60,30,0,.60) !important;
+  filter: drop-shadow(0 4px 8px rgba(60,30,0,.52)) !important;
+  animation: none !important;
+}
+/* 下層牌略暗（覆蓋§12 brightness .72 → .84暖色）*/
+.wstack > .wt.wt-bot:not(.wt-empty) {
+  background:
+    linear-gradient(160deg,
+      #D9CA9A 0%, #C8B072 45%, #B09242 100%) !important;
+  border-color: rgba(160,108,28,.58) !important;
+  filter: drop-shadow(0 3px 6px rgba(60,30,0,.52)) brightness(0.84) !important;
+}
+/* 側牆下層 — 特異度(0,5,0) 覆蓋§12 wall-v(0,4,0) */
+.tile-wall.wall-v .wstack > .wt.wt-bot:not(.wt-empty) {
+  filter: drop-shadow(-3px 0 6px rgba(60,30,0,.52)) brightness(0.84) !important;
+}
+/* 側牆上層 — 覆蓋§12 cyan filter(0,4,0) */
+.tile-wall.wall-v .wt.wt-top:not(.wt-empty) {
+  filter: drop-shadow(-5px 0 10px rgba(60,30,0,.60))
+          drop-shadow(0 0 5px rgba(220,175,52,.28)) !important;
+}
+
+/* 牌牆 tf-top：象牙→琥珀暖色（覆蓋§11/§12 霓虹）*/
+.wt .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #F5E8B2 0%, #E8CC80 32%, #D0A840 68%, #B88820 100%
+  ) !important;
+  box-shadow: 0 -1px 4px rgba(200,155,32,.52) !important;
+}
+/* 上層頂面：最亮（稜邊高光）*/
+.wt.wt-top .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #FFF5C8 0%, #F5E090 22%, #E0C050 55%, #C8A030 100%
+  ) !important;
+  box-shadow: 0 -2px 8px rgba(220,178,52,.68) !important;
+}
+/* 下層頂面：略暗（堆疊層次感）*/
+.wstack > .wt.wt-bot:not(.wt-empty) .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #C9A972 0%, #B89052 35%, #9A7832 70%, #826022 100%
+  ) !important;
+  box-shadow: 0 -1px 3px rgba(160,112,22,.44) !important;
+}
+
+/* 牌牆 tf-side：深琥珀棕（覆蓋§11/§12 霓虹）*/
+.wt .tf-side {
+  background: linear-gradient(
+    to right,
+    #7A4A08 0%, #9A6818 40%, #B88030 70%, #D0A04A 100%
+  ) !important;
+  box-shadow: 1px 0 4px rgba(100,62,12,.52) !important;
+}
+.tile-wall.wall-v .wt .tf-side {
+  box-shadow: -1px 0 4px rgba(100,62,12,.52) !important;
+}
+
 </style>
 </head>
 <body>
@@ -5448,7 +5648,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.76</div>
+    <div class="lver">v1.6.78</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -5916,7 +6116,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   </div>
 
   <!-- ── P0 手牌區（下方中央，完全 2D，不受 rotateX 影響） ── -->
-  <div id="ui-p0-hand" class="interactive-ui" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:74px;">
+  <div id="ui-p0-hand" class="interactive-ui" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:154px;">
     <div id="pa0-meld-row" style="display:flex;flex-direction:row;align-items:flex-end;justify-content:center;gap:3px;">
       <div id="fl0" class="fl"></div>
       <div class="ma" id="ma0"></div>
