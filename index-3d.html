@@ -5353,6 +5353,91 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow: 1px 0 4px rgba(0,240,255,.55) !important;
 }
 
+/* ══ § 12  v1.6.76  牌牆實體雙層（wt-top / wt-bot）高度差 + 立體陰影 ══
+   目標：每一墩顯示兩枚「明顯分開」的磚塊，有高度落差、層間陰影
+   策略：
+     wt-top — 上層（外層）：更亮邊框、強霓虹頂面光暈、向下投影
+     wt-bot — 下層（內層）：明顯暗化、接受上層投影
+     wstack gap 增加，讓兩層目視有分隔感
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* 增加 3D 頂面深度，讓旋轉視角能看見更厚的稜邊 */
+.wt { --td: 13px !important; }
+
+/* wstack 層間加 2px 縫，視覺區隔上下層 */
+.wstack { gap: 2px !important; }
+.wall-v .wstack { gap: 2px !important; }
+
+/* ── 上層牌（wt-top）：強霓虹邊框 + 向下投影 ── */
+.wt.wt-top {
+  border: 1px solid rgba(0,210,255,.65) !important;
+  filter:
+    drop-shadow(0 7px 12px rgba(0,0,0,.95))
+    drop-shadow(0 0  8px rgba(0,220,255,.40)) !important;
+  z-index: 2;
+}
+
+/* 上層頂面：最亮霓虹光帶，讓「上層邊」醒目 */
+.wt.wt-top .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #d8f8ff 0%,  #90eeff 8%,  #38dcff 13%,
+    #00f4ff 17%, #00e8ff 19%, #00cce8 22%,
+    #0d0e1e 24%, #0a0a14 100%
+  ) !important;
+  box-shadow:
+    0 -3px 10px rgba(0,255,255,.95),
+    0 -1px  4px rgba(0,200,255,.80) !important;
+}
+
+/* ── 下層牌（wt-bot）：明顯暗化 + 接受上層投影 ── */
+.wt.wt-bot {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 5px,
+      rgba(0,140,190,.018) 5px, rgba(0,140,190,.018) 6px),
+    linear-gradient(155deg, #040508 0%, #080912 50%, #030407 100%) !important;
+  border: 1px solid rgba(0,120,170,.30) !important;
+  filter:
+    drop-shadow(0 3px 6px rgba(0,0,0,.75))
+    brightness(0.72) !important;
+  z-index: 1;
+}
+
+/* 下層頂面：霓虹光帶明顯比上層暗 */
+.wt.wt-bot .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #0c0e18 0%,  #161824 14%, #101220 17%,
+    #006888 18%, #009ab8 20%, #005a78 23%,
+    #070810 25%, #040508 100%
+  ) !important;
+  box-shadow: 0 -1px 5px rgba(0,170,210,.55) !important;
+}
+
+/* 下層側面 */
+.wt.wt-bot .tf-side {
+  background: linear-gradient(
+    to right,
+    #020306 0%, #060710 77%,
+    #003c58 78%, #006880 80%, #00445e 83%,
+    #0a0b18 84%, #101220 100%
+  ) !important;
+  box-shadow: 1px 0 3px rgba(0,160,200,.30) !important;
+}
+
+/* 側牆（wall-v）：投影方向從 Y 軸改 X 軸 */
+.tile-wall.wall-v .wt.wt-top {
+  filter:
+    drop-shadow(-7px 0 12px rgba(0,0,0,.95))
+    drop-shadow(0 0  8px rgba(0,220,255,.40)) !important;
+}
+.tile-wall.wall-v .wt.wt-bot {
+  filter:
+    drop-shadow(-3px 0 6px rgba(0,0,0,.75))
+    brightness(0.72) !important;
+}
+
 </style>
 </head>
 <body>
@@ -5363,7 +5448,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.75</div>
+    <div class="lver">v1.6.76</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -10872,7 +10957,7 @@ const Game={
         // 上層牌（視覺正面）先 append，下層牌在後；每張加 3D 面片
         for(let layer=1;layer>=0;layer--){
           const tile=document.createElement('div');
-          tile.className='wt'+(layer>=cnt?' wt-empty':'');
+          tile.className='wt '+(layer===1?'wt-top':'wt-bot')+(layer>=cnt?' wt-empty':'');
           // 3D 六面體子節點：頂面 + 側面 + 底陰影
           tile.innerHTML='<div class="tf-top"></div><div class="tf-side"></div><div class="tf-bot"></div>';
           stack.appendChild(tile);
