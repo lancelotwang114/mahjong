@@ -4946,6 +4946,48 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 }
 /* sprite 本身已有 background-image，覆蓋底色不影響圖案 */
 
+/* ════════════════════════════════════════════════════════════════════
+   § 7  v1.6.72 · 三項 Overflow / 截斷修正
+   ① p0 副露列：空時完全折疊，不再壓住 2D 手牌
+   ② 左右家手牌/副露容器：全鏈解除 overflow:hidden，停止截斷
+   ③ #pool 解除 overflow:hidden：棄牌河旋轉牌與牌牆完整顯示
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── ① p0 副露行：有副露(.mg)才佔高度，否則歸零不佔空間 ──────── */
+/* 空 #fl0 讓 .fl 的 display:block + margin-bottom 消失 */
+#fl0:empty { display: none !important; }
+/* 空 #ma0 不佔 padding 空間 */
+#ma0:not(:has(.mg)) {
+  padding: 0 !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+/* 整行無副露時完全收合 */
+#pa0-meld-row:not(:has(.mg)) {
+  height: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+}
+
+/* ── ② 左右家手牌 / 副露：解除全鏈 overflow:hidden ──────────── */
+/* #ht1/#ht3：原先 overflow:hidden 截斷多張背面手牌 */
+#ht1, #ht3 { overflow: visible !important; }
+/* #ma1/#ma3：防禦性確認，確保副露組不被截斷 */
+#ma1, #ma3 { overflow: visible !important; }
+/* 父容器一路 visible，避免任何中間層裁切 */
+#pa1, #pa3 { overflow: visible !important; }
+#pa1-area, #pa3-area { overflow: visible !important; }
+
+/* ── ③ 棄牌池：解除 overflow:hidden，允許旋轉牌/牌牆完整顯示 ── */
+/* rotate(90deg/-90deg) 的牌視覺寬超出 grid cell，需 visible 才不截斷 */
+#pool { overflow: visible !important; }
+/* dc1/dc3（左右棄牌河）：旋轉牌超出 grid 邊界，解除截斷 */
+#pool #dc1, #pool #dc3 { overflow: visible !important; }
+
 </style>
 </head>
 <body>
@@ -4956,7 +4998,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.71</div>
+    <div class="lver">v1.6.72</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
