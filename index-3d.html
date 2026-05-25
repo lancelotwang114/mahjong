@@ -1,4 +1,12 @@
 <!DOCTYPE html>
+<!--
+  台灣麻將 單機版 3D — index-3d.html
+  v1.6.82 (2026-05-25)
+  Changelog:
+    Fix: 修正牌牆 3D 空間軸向，讓上層牌從懸空飄浮回歸實體雙層對齊
+    Fix: 以 translateY/X 前置取代 translateZ，消除近景放大穿幫
+    Feat: 牌牆正面改為傳統竹骨深褐；tf-side 加入象牙→翠綠→竹棕夾心截面
+-->
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -6100,6 +6108,151 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   ) !important;
 }
 
+/* ══ § 17  v1.6.82
+   Fix: 牌牆 3D 軸向修正 + 傳統竹骨材質
+   ══════════════════════════════════════════════════════════════
+
+   根因：rotateX 後再做 translateZ，Z 軸已旋轉，
+         translateZ(26px) 實際把上層牌推向觀眾（近景放大飄浮）。
+   修正：改為 translateY(−Npx) rotateX(θ)。
+         translateY 在旋轉前施加 → 純粹在螢幕 Y 軸上移，
+         四邊邊緣與下層牌嚴密對齊，無前景扭曲。
+   同時：wstack perspective 拉大至 1200px 進一步消除 Z 視差；
+         牌牆正面改傳統竹骨深棕，tf-side 加入象牙→翠綠→竹棕夾心截面。
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── A. wstack perspective 拉大，消除 Z 視差 ──────────────── */
+.wstack {
+  perspective: 1200px !important;
+  perspective-origin: 50% -120% !important;
+}
+
+/* ── B-1. 水平牆（top / bot）— wt-top 軸向修正 ────────────── */
+/* translateY(-3px) BEFORE rotateX：螢幕座標系上移，旋轉後邊緣對齊 */
+#wall-top .wt.wt-top:not(.wt-empty),
+#wall-bot .wt.wt-top:not(.wt-empty) {
+  transform: translateY(-3px) rotateX(-22deg) !important;
+  filter:    drop-shadow(0 2px 4px rgba(0,0,0,.50)) !important;
+  z-index: 2 !important;
+}
+
+/* ── B-2. 左牆（wall-left）— wt-top 向中心偏移後旋轉 ─────── */
+#wall-left .wt.wt-top:not(.wt-empty) {
+  transform: translateX(-2px) rotateY(22deg) !important;
+  filter:    drop-shadow( 2px 2px 4px rgba(0,0,0,.50)) !important;
+  z-index: 2 !important;
+}
+
+/* ── B-3. 右牆（wall-right）— wt-top 向中心偏移後旋轉 ────── */
+#wall-right .wt.wt-top:not(.wt-empty) {
+  transform: translateX(2px) rotateY(-22deg) !important;
+  filter:    drop-shadow(-2px 2px 4px rgba(0,0,0,.50)) !important;
+  z-index: 2 !important;
+}
+
+/* ── B-4. 下層暗化（brightness 0.70）─────────────────────── */
+.wstack > .wt.wt-bot:not(.wt-empty) {
+  filter: brightness(0.70) !important;
+  z-index: 1 !important;
+}
+/* 側牆（特異度 0,5,0，蓋過 §13 wall-v 0,5,0 + 位置更後）*/
+.tile-wall.wall-v .wstack > .wt.wt-bot:not(.wt-empty) {
+  filter: brightness(0.70) !important;
+}
+
+/* ── C. 牌牆正面：傳統竹骨深棕（取代象牙/琥珀）────────────── */
+/* 特異度 (0,3,0)，§17 位置在 §13 之後 → 蓋過 §13 */
+.wt.wt-top:not(.wt-empty),
+.wt.wt-bot:not(.wt-empty) {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,.025) 0,
+      rgba(255,255,255,.025) 1px,
+      transparent            1px,
+      transparent            5px
+    ),
+    linear-gradient(155deg, #5e3c0c 0%, #3e2408 52%, #4e3210 100%)
+    !important;
+  border:     1px solid rgba(100,65,12,.55) !important;
+  box-shadow: none !important;
+  animation:  none !important;
+}
+.wstack > .wt.wt-bot:not(.wt-empty) {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,.018) 0,
+      rgba(255,255,255,.018) 1px,
+      transparent            1px,
+      transparent            5px
+    ),
+    linear-gradient(155deg, #5e3c0c 0%, #3e2408 52%, #4e3210 100%)
+    !important;
+  border-color: rgba(85,52,10,.50) !important;
+}
+
+/* ── D. 牌牆 tf-top：象牙白陶瓷頂面 ──────────────────────── */
+.wt .tf-top {
+  background: linear-gradient(
+    to right,
+    #ffffff  0%,
+    #f8f5e8 18%,
+    #e8e0c8 55%,
+    #d0c090 100%
+  ) !important;
+  border-top:   2.5px solid rgba(255,252,230,.88) !important;
+  border-left:  1.5px solid rgba(200,180,80,.40)  !important;
+  border-right: 1.5px solid rgba(200,180,80,.40)  !important;
+  box-shadow: none !important;
+}
+/* 上層頂面：最亮（稜邊高光）*/
+.wt.wt-top .tf-top {
+  background: linear-gradient(
+    to right,
+    #ffffff  0%,
+    #fefce5 10%,
+    #f0e8c8 48%,
+    #d8c888 100%
+  ) !important;
+}
+/* 下層頂面：略暗 */
+.wstack > .wt.wt-bot:not(.wt-empty) .tf-top {
+  background: linear-gradient(
+    to right,
+    #e8e4d0 0%,
+    #d8d0b0 42%,
+    #c0b080 100%
+  ) !important;
+}
+
+/* ── E. 牌牆 tf-side：象牙→翠綠→竹棕 夾心截面 ─────────────
+   呈現麻將牌切面：
+     頂部 = 象牙陶瓷白（正面材質）
+     中段 = 翠綠夾心線（傳統竹骨內層）
+     底部 = 深褐竹背（背面材質）
+   ────────────────────────────────────────────────────── */
+.wt .tf-side {
+  background: linear-gradient(
+    180deg,
+    #f8f5e8  0%,   /* 象牙白（靠近正面）*/
+    #e8e2cc  6%,   /* 象牙過渡 */
+    #3a8028 10%,   /* 翠綠夾心上緣 */
+    #2a6818 15%,   /* 翠綠深色核心 */
+    #3a8028 20%,   /* 翠綠夾心下緣 */
+    #7a5820 24%,   /* 過渡至竹棕 */
+    #6B4F0E 52%,   /* 竹棕中部 */
+    #3a2206 82%,   /* 深竹棕 */
+    #1a0c02 100%   /* 最深棕（靠近背面）*/
+  ) !important;
+  border-top:   2px solid rgba(255,248,220,.68) !important;
+  border-right: 1px solid rgba(0,0,0,.45)       !important;
+  box-shadow: none !important;
+}
+.tile-wall.wall-v .wt .tf-side {
+  box-shadow: none !important;
+}
+
 </style>
 </head>
 <body>
@@ -6110,7 +6263,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.81</div>
+    <div class="lver">v1.6.82</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
