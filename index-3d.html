@@ -5948,6 +5948,158 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* wstack 間距略增，讓上下層分隔明顯 */
 .wstack { gap: 3px !important; }
 
+/* ══ § 16  v1.6.81  墩感 · 厚度 · 邊角 · 貼桌
+   1. 全面增厚 --td
+   2. 側面頂部高光帶 + 深色漸層（材質感）
+   3. 頂面白邊 bevel 轉角
+   4. 正面右緣 bevel 過渡（border-right/bottom）
+   5. 正面 AO 內凹陰影（inset box-shadow）
+   6. p0 手牌貼桌：translateY 補償 rotateX 浮離 + 接觸陰影
+   7. 牌牆墩感：wstack gap ↑，上層 translateZ ↑，投影+暗化
+   ════════════════════════════════════════════════════════ */
+
+/* ── 1. 全面增厚 ───────────────────────────────────────── */
+.t         { --td: 15px; }
+.t.sm      { --td: 10px; }
+.t.ti      { --td:  7px; }
+.wt        { --td: 22px !important; }
+
+/* ── 2. 側面品質：頂部高光 + 深色漸層 ──────────────────── */
+.tf-side {
+  background: linear-gradient(
+    180deg,
+    rgba(255,242,175,.82)  0%,
+    #d4a840                5%,
+    #9a7035               28%,
+    #7a5022               58%,
+    #4a2808               82%,
+    #1e0c02              100%
+  ) !important;
+  border-top: 2px solid rgba(255,246,192,.68) !important;
+}
+.t.back .tf-side {
+  background: linear-gradient(
+    180deg,
+    rgba(205,162,58,.48)   0%,
+    #8a6030                6%,
+    #5a3815               42%,
+    #2a1208               78%,
+    #060402              100%
+  ) !important;
+  border-top: 1.5px solid rgba(200,155,55,.32) !important;
+}
+
+/* ── 3. 頂面白邊 bevel ──────────────────────────────────── */
+.tf-top {
+  background: linear-gradient(
+    to right,
+    #ffffff               0%,
+    #fefce6              12%,
+    #f8eba0              48%,
+    #ecd875              76%,
+    #c4ae3c             100%
+  ) !important;
+  border-top:   2.5px solid rgba(255,252,225,.92) !important;
+  border-left:  1.5px solid rgba(215,182,58,.52)  !important;
+  border-right: 1.5px solid rgba(215,182,58,.52)  !important;
+}
+
+/* ── 4. 正面邊緣 bevel 過渡 ─────────────────────────────── */
+.t {
+  border-right:  1.5px solid rgba(195,155,48,.40) !important;
+  border-bottom: 1.5px solid rgba(0,0,0,.44)      !important;
+}
+
+/* ── 5. 正面 AO 內凹陰影（inset）────────────────────────── */
+/* 特異度 (1,1,0) > .t 的 (0,1,0)，覆蓋 §1 box-shadow:none */
+#tbl .t {
+  box-shadow:
+    inset -3px 0 5px rgba(0,0,0,.16),
+    inset  0 -3px 5px rgba(0,0,0,.14),
+    inset  0  1px 3px rgba(255,248,195,.18) !important;
+}
+/* 棄牌河牌面平躺，不需要 AO */
+#pool .t { box-shadow: none !important; }
+
+/* ── 6. p0 手牌貼桌 ─────────────────────────────────────── */
+/* rotateX(10deg) 讓底緣略翹：translateY(+5px) 補償落地，
+   強 contact shadow (0 1px) 讓牌底真正貼桌面             */
+#ht0 .t {
+  transform: rotateX(10deg) translateY(5px) !important;
+  filter:
+    drop-shadow(0 1px 2px rgba(0,0,0,.92))
+    drop-shadow(0 5px 14px rgba(0,0,0,.66)) !important;
+}
+#ht0 .t:hover:not(.meld-candidate) {
+  transform: rotateX(10deg) translateY(-9px) !important;
+  filter:
+    drop-shadow(0 1px 3px rgba(0,0,0,.90))
+    drop-shadow(0 13px 26px rgba(0,0,0,.78)) !important;
+}
+#ht0 .t.sel {
+  transform: rotateX(10deg) translateY(-5px) !important;
+  filter:
+    drop-shadow(0 10px 18px rgba(0,0,0,.75))
+    drop-shadow(0  0  16px rgba(212,168,67,.90)) !important;
+  outline: 2px solid rgba(212,168,67,.90) !important;
+}
+#ht0 .t.meld-candidate       { transform: rotateX(10deg) translateY(-2px) !important; }
+#ht0 .t.meld-candidate:hover { transform: rotateX(10deg) translateY(-9px) !important; }
+#ht0 .t.drawn                { transform: rotateX(10deg) translateY( 1px) !important; }
+
+/* ── 7. 牌牆墩感 ───────────────────────────────────────── */
+
+/* wstack 之間的縫（每墩獨立感） */
+.tile-wall { gap: 3px !important; }
+
+/* wt-top / wt-bot 上下層分離 */
+.wstack { gap: 7px !important; }
+
+/* 水平牆上層：translateZ 加大，投影蓋住下層 */
+#wall-top .wt.wt-top:not(.wt-empty),
+#wall-bot .wt.wt-top:not(.wt-empty) {
+  transform: rotateX(-22deg) translateZ(26px) !important;
+  filter:
+    drop-shadow(0  7px 7px rgba(0,0,0,.80))
+    drop-shadow(0  2px 3px rgba(0,0,0,.90)) !important;
+  z-index: 2 !important;
+}
+
+/* 左牆上層 */
+#wall-left .wt.wt-top:not(.wt-empty) {
+  transform: rotateY(22deg) translateZ(26px) !important;
+  filter:
+    drop-shadow( 4px 2px 6px rgba(0,0,0,.80))
+    drop-shadow( 1px 1px 2px rgba(0,0,0,.90)) !important;
+  z-index: 2 !important;
+}
+
+/* 右牆上層 */
+#wall-right .wt.wt-top:not(.wt-empty) {
+  transform: rotateY(-22deg) translateZ(26px) !important;
+  filter:
+    drop-shadow(-4px 2px 6px rgba(0,0,0,.80))
+    drop-shadow(-1px 1px 2px rgba(0,0,0,.90)) !important;
+  z-index: 2 !important;
+}
+
+/* 下層：陰影遮蔽暗化（在上層投影下） */
+.wstack > .wt.wt-bot:not(.wt-empty) {
+  filter: brightness(0.62) !important;
+  z-index: 1 !important;
+}
+
+/* tf-bot 底部接觸陰影加深 */
+.tf-bot {
+  height: calc(var(--td, 12px) * 0.85) !important;
+  background: linear-gradient(
+    to top,
+    rgba(0,0,0,.72) 0%,
+    rgba(0,0,0,.32) 55%,
+    rgba(0,0,0,.00) 100%
+  ) !important;
+}
+
 </style>
 </head>
 <body>
@@ -5958,7 +6110,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.80</div>
+    <div class="lver">v1.6.81</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
