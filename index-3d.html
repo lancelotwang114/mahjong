@@ -6327,8 +6327,37 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #ht0 .t .tf-side,
 #ht0 .t .tf-bot { display: none !important; }
 
-/* ── 4. 副露/花牌列上移 100px（gap: 154px → 254px） ── */
-#ui-p0-hand { gap: 254px !important; }
+/* ── 4. 副露/花牌列上移 100px
+   真正根因：#ui-layer-2d 仍在 #game 內部，
+   #game.show #pa0-meld-row（spec=200）設 position:fixed; bottom:18px; right:18px !important
+   蓋掉所有 spec=100 的 position:relative，把 meld-row 完全拉出 flex 流。
+   修正：用 3-ID 選擇器（spec=300）強制回到 flex flow。 ── */
+#game.show #ui-p0-hand #pa0-meld-row {   /* spec=300，覆蓋舊的 spec=200 */
+  position: relative !important;
+  bottom: auto !important;
+  right:  auto !important;
+  left:   auto !important;
+  top:    auto !important;
+  transform: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  z-index: auto !important;
+}
+
+/* flex 排序：副露/花牌在上方，手牌在下方靠近底部 */
+#pa0-meld-row { order: 0 !important; }
+#pa0-hand-row { order: 1 !important; }
+
+/* ── 5. 輪到自己時：移除容器外框 + 停止手牌閃爍動畫 ── */
+#ui-p0-hand.active-turn {
+  outline: none !important;
+  box-shadow: none !important;
+}
+#ht0.my-turn {
+  animation: none !important;
+  box-shadow: none !important;
+}
 
 </style>
 </head>
@@ -6808,7 +6837,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   </div>
 
   <!-- ── P0 手牌區（下方中央，完全 2D，不受 rotateX 影響） ── -->
-  <div id="ui-p0-hand" class="interactive-ui" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:154px;">
+  <div id="ui-p0-hand" class="interactive-ui" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;">
     <div id="pa0-meld-row" style="display:flex;flex-direction:row;align-items:flex-end;justify-content:center;gap:3px;">
       <div id="fl0" class="fl"></div>
       <div class="ma" id="ma0"></div>
