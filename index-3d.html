@@ -4947,7 +4947,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* sprite 本身已有 background-image，覆蓋底色不影響圖案 */
 
 /* ════════════════════════════════════════════════════════════════════
-   § 7  v1.6.72 · 三項 Overflow / 截斷修正
+   § 7  v1.6.73 · 三項 Overflow / 截斷修正
    ① p0 副露列：空時完全折疊，不再壓住 2D 手牌
    ② 左右家手牌/副露容器：全鏈解除 overflow:hidden，停止截斷
    ③ #pool 解除 overflow:hidden：棄牌河旋轉牌與牌牆完整顯示
@@ -4988,6 +4988,29 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* dc1/dc3（左右棄牌河）：旋轉牌超出 grid 邊界，解除截斷 */
 #pool #dc1, #pool #dc3 { overflow: visible !important; }
 
+/* ════════════════════════════════════════════════════════════════════
+   § 8  v1.6.73 · 三項 UI 定位修正
+   ① p0 手牌區往上移 70px（bottom:12→82，inline style 已改）
+   ② 右家「聽」badge 尺寸修正（抵消 zoom:1.5 放大）
+   ③ dc1/dc3 grid cell 擴寬至 52px（容納 rotate90 後 50.4px 視覺寬）
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── ② 右家「聽」badge：zoom:1.5 pbar 下，badge 用 zoom:0.667 抵消放大 */
+#ui-layer-2d .tpbadge {
+  zoom: 0.667 !important;
+}
+
+/* ── ③ dc1/dc3 grid cell：36px→52px，旋轉牌（50.4px視覺寬）完全容入格子
+   原始 layout box 36px → 52px cell 留 8px 餘量，相鄰牌不再互相蓋過
+   寬度 144px(4×36) → 208px(4×52)
+   中心 x 不變：dc3=422px → left=318; dc1=922px → left=818 */
+#pool #dc3, #pool #dc1 {
+  grid-template-columns: repeat(4, 52px) !important;
+  width: 208px !important;
+}
+#pool #dc3 { left: 318px !important; }
+#pool #dc1 { left: 818px !important; }
+
 </style>
 </head>
 <body>
@@ -4998,7 +5021,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.72</div>
+    <div class="lver">v1.6.73</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -5466,7 +5489,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   </div>
 
   <!-- ── P0 手牌區（下方中央，完全 2D，不受 rotateX 影響） ── -->
-  <div id="ui-p0-hand" class="interactive-ui" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;">
+  <div id="ui-p0-hand" class="interactive-ui" style="position:absolute;bottom:82px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;">
     <div id="pa0-meld-row" style="display:flex;flex-direction:row;align-items:flex-end;justify-content:center;gap:3px;">
       <div id="fl0" class="fl"></div>
       <div class="ma" id="ma0"></div>
