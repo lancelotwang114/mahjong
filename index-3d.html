@@ -5012,6 +5012,183 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pool #dc3 { left: 320px !important; }
 #pool #dc1 { left: 820px !important; }
 
+/* ════════════════════════════════════════════════════════════════════
+   § 9  v1.6.74  賽博霓虹電晶 (Cyber-Neon Crystal) 材質系統
+   ────────────────────────────────────────────────────────────────────
+   素材規格 ref: 9651452d-5dcd-4845-b9a9-1dd22253ae0f.jpg
+   側面三層：白晶體(5mm) / 螢光青藍(2mm) / 暗晶碳纖(23mm) = 30mm
+   深度比例 → 16.7% : 6.7% : 76.7% 精確映射到 CSS gradient
+   正面：白晶體浮板 + sprite 牌面 + 霓虹邊框光
+   背面：碳纖電路板 + 青藍/紫霓虹框 + 呼吸脈衝
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── 霓虹脈衝 keyframe（牌背微光呼吸）───────────────────────── */
+@keyframes neonPulse {
+  0%,100% {
+    filter:
+      drop-shadow(0 8px 14px rgba(0,0,0,.85))
+      drop-shadow(0 0  6px rgba(0,200,255,.30));
+  }
+  50% {
+    filter:
+      drop-shadow(0 8px 14px rgba(0,0,0,.85))
+      drop-shadow(0 0 14px rgba(0,200,255,.65))
+      drop-shadow(0 0  4px rgba(180,0,255,.35));
+  }
+}
+
+/* ── 正面牌身：霓虹邊框光 + 環境遮蔽陰影 ───────────────────── */
+.t:not(.back) {
+  border: 1px solid rgba(0, 212, 255, 0.28) !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+  filter:
+    drop-shadow(0 8px 14px rgba(0,0,0,.72))
+    drop-shadow(0 0  5px rgba(0,200,255,.22)) !important;
+}
+
+/* ── 牌背正面：碳纖電路板 + 霓虹框光 + 呼吸脈衝 ──────────── */
+.t.back {
+  background:
+    repeating-linear-gradient(45deg,
+      transparent 0, transparent 6px,
+      rgba(0,212,255,.05) 6px, rgba(0,212,255,.05) 7px),
+    repeating-linear-gradient(-45deg,
+      transparent 0, transparent 6px,
+      rgba(160,0,220,.04) 6px, rgba(160,0,220,.04) 7px),
+    radial-gradient(ellipse 45% 55% at 50% 50%,
+      rgba(0,180,255,.14) 0%, transparent 70%),
+    radial-gradient(circle 8px at 12% 12%, rgba(0,220,255,.18) 0%, transparent 100%),
+    radial-gradient(circle 8px at 88% 12%, rgba(0,220,255,.18) 0%, transparent 100%),
+    radial-gradient(circle 8px at 12% 88%, rgba(160,0,220,.18) 0%, transparent 100%),
+    radial-gradient(circle 8px at 88% 88%, rgba(160,0,220,.18) 0%, transparent 100%),
+    #070810 !important;
+  border: 1px solid rgba(0, 212, 255, 0.55) !important;
+  border-radius: 4px !important;
+  box-shadow:
+    inset 0 0 10px rgba(0,212,255,.12),
+    inset 0 0  3px rgba(160,0,220,.08) !important;
+  animation: neonPulse 2.8s ease-in-out infinite !important;
+}
+
+/* ── 頂面：白晶體(前緣) → 螢光青藍 → 暗晶碳纖(後緣) ────────
+   gradient to bottom：元素頂 = 牌前邊緣 / 元素底 = 牌後邊緣
+   比例 5:2:23 → 0-17% 白 / 17-23% 霓虹 / 23-100% 碳纖         */
+.tf-top {
+  background: linear-gradient(
+    to bottom,
+    #f4f5fe  0%,
+    #dde0f6 14%,
+    #b8c0e8 17%,   /* 白晶體末 */
+    #00c8f8 18%,   /* 霓虹青藍起 */
+    #00f0ff 20%,   /* 霓虹峰值 */
+    #00aad8 23%,   /* 霓虹收尾 */
+    #0d0e1c 24%,   /* 暗晶碳纖起 */
+    #141526 55%,
+    #0a0a14 100%   /* 暗晶碳纖末 */
+  ) !important;
+  border: none !important;
+  box-shadow: 0 -1px 4px rgba(0,240,255,.65) !important;
+}
+
+/* ── 右側面：暗晶碳纖(後) → 螢光青藍 → 白晶體(前/鉸鏈) ──────
+   gradient to right：x=0 = 後邊緣 / x=100% = 前邊緣(鉸鏈)
+   比例 23:2:5 → 0-77% 碳纖 / 77-83% 霓虹 / 83-100% 白          */
+.tf-side {
+  background: linear-gradient(
+    to right,
+    #0a0a14  0%,   /* 暗晶碳纖末(後) */
+    #141526 55%,
+    #0d0e1c 77%,   /* 暗晶碳纖收 */
+    #00aad8 78%,   /* 霓虹青藍起 */
+    #00f0ff 80%,   /* 霓虹峰值 */
+    #00c8f8 83%,   /* 霓虹收尾 */
+    #b8c0e8 84%,   /* 白晶體起 */
+    #dde0f6 87%,
+    #f4f5fe 100%   /* 白晶體前緣 */
+  ) !important;
+  border: none !important;
+  box-shadow: 1px 0 4px rgba(0,240,255,.65) !important;
+}
+
+/* ── 底陰影片：暗藍霓虹地面反射 ───────────────────────────── */
+.tf-bot {
+  background: linear-gradient(
+    to top,
+    rgba(0,180,255,.18)  0%,
+    rgba(0,0,0,.50)      30%,
+    transparent         100%
+  ) !important;
+}
+
+/* ── 牌背頂/側面：同三層 但前邊緣改碳纖（背面無白面板）─────── */
+.t.back .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #1a1c2e  0%,   /* 前邊較亮碳纖 */
+    #242640 14%,
+    #1e2038 17%,
+    #00c8f8 18%,
+    #00f0ff 20%,
+    #00aad8 23%,
+    #0d0e1c 24%,
+    #0a0a14 100%
+  ) !important;
+  box-shadow: 0 -1px 5px rgba(0,240,255,.85) !important;
+}
+.t.back .tf-side {
+  background: linear-gradient(
+    to right,
+    #0a0a14  0%,
+    #0d0e1c 77%,
+    #00aad8 78%,
+    #00f0ff 80%,
+    #00c8f8 83%,
+    #1e2038 84%,
+    #242640 87%,
+    #1a1c2e 100%
+  ) !important;
+  box-shadow: 1px 0 5px rgba(0,240,255,.85) !important;
+}
+
+/* ── 覆蓋各方向定位規則的舊色 ─────────────────────────────── */
+/* p2 對家頂面 */
+#ht2 .t .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #1a1c2e 0%, #242640 14%, #1e2038 17%,
+    #00c8f8 18%, #00f0ff 20%, #00aad8 23%,
+    #0d0e1c 24%, #0a0a14 100%
+  ) !important;
+}
+/* p1 右家側面 */
+#pa1-area .t .tf-side {
+  background: linear-gradient(
+    to right,
+    #0a0a14 0%, #141526 55%, #0d0e1c 77%,
+    #00aad8 78%, #00f0ff 80%, #00c8f8 83%,
+    #b8c0e8 84%, #dde0f6 87%, #f4f5fe 100%
+  ) !important;
+}
+/* p3 左家側面 */
+#pa3-area .t .tf-side {
+  background: linear-gradient(
+    to right,
+    #0a0a14 0%, #141526 55%, #0d0e1c 77%,
+    #00aad8 78%, #00f0ff 80%, #00c8f8 83%,
+    #b8c0e8 84%, #dde0f6 87%, #f4f5fe 100%
+  ) !important;
+}
+/* 牌牆頂面 */
+.wt .tf-top {
+  background: linear-gradient(
+    to bottom,
+    #1a1c2e 0%, #242640 14%, #1e2038 17%,
+    #00c8f8 18%, #00f0ff 20%, #00aad8 23%,
+    #0d0e1c 24%, #0a0a14 100%
+  ) !important;
+}
+
 </style>
 </head>
 <body>
@@ -5022,7 +5199,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.73</div>
+    <div class="lver">v1.6.74</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
