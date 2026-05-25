@@ -5638,6 +5638,184 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   box-shadow: -1px 0 4px rgba(100,62,12,.52) !important;
 }
 
+/* ══ § 14  v1.6.79  台麻厚度感 — box-shadow 方向性疊層 ══
+   問題根源：
+   1. line 4869 的 box-shadow:none!important 清光了所有厚度感
+   2. CSS 3D tf-top/tf-side 在俯視角 = 平行視線 = 不可見
+   解法：用 box-shadow 多層偏移模擬真實牌厚度，各方向差異化
+   顏色序列（淺→深）：象牙白 → 米黃 → 琥珀 → 深棕
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── 顏色常數（box-shadow 五層色階）────────────────────────────
+   L1 象牙高光: rgba(255,252,238,.95)
+   L2 淺米黃:   rgba(240,222,168,.92)
+   L3 琥珀中:   rgba(205,168,95,.88)
+   L4 琥珀深:   rgba(155,115,50,.80)
+   L5 深棕:     rgba(90,58,14,.70)
+   ───────────────────────────────────────────────────────────── */
+
+/* ── 覆蓋 line 4869 的 box-shadow:none!important ────────────── */
+
+/* 自己手牌（p0）：底部厚度（牌立在桌上，看到下緣堆疊） */
+#ht0 .t {
+  box-shadow:
+    0  2px 0 rgba(255,252,238,.95),
+    0  4px 0 rgba(240,222,168,.92),
+    0  6px 0 rgba(205,168,95,.88),
+    0  8px 0 rgba(155,115,50,.80),
+    0 10px 0 rgba(90,58,14,.70),
+    0 12px 0 rgba(50,28,4,.55),
+    0 18px 28px rgba(0,0,0,.68) !important;
+  filter: none !important;
+  transition: transform .12s ease, box-shadow .12s ease !important;
+}
+#ht0 .t:hover:not(.meld-candidate) {
+  transform: translateY(-15px) !important;
+  box-shadow:
+    0  2px 0 rgba(255,252,238,.95),
+    0  4px 0 rgba(240,222,168,.92),
+    0  6px 0 rgba(205,168,95,.88),
+    0  8px 0 rgba(155,115,50,.80),
+    0 10px 0 rgba(90,58,14,.70),
+    0 12px 0 rgba(50,28,4,.55),
+    0 26px 38px rgba(0,0,0,.78) !important;
+  filter: none !important;
+}
+#ht0 .t.sel {
+  box-shadow:
+    0  2px 0 rgba(255,252,238,.95),
+    0  4px 0 rgba(240,222,168,.92),
+    0  6px 0 rgba(205,168,95,.88),
+    0  8px 0 rgba(155,115,50,.80),
+    0 10px 0 rgba(90,58,14,.70),
+    0 12px 0 rgba(50,28,4,.55),
+    0 22px 32px rgba(0,0,0,.75),
+    0 0 0 2.5px rgba(255,210,80,.92),
+    0 0 22px rgba(212,168,67,.95) !important;
+  filter: none !important;
+}
+#ht0 .t.drawn {
+  transform: translateY(-5px) !important;
+}
+#ht0 .t.meld-candidate {
+  transform: translateY(-8px) !important;
+}
+#ht0 .t.meld-candidate:hover {
+  transform: translateY(-16px) !important;
+}
+
+/* 右家手牌（pa1-area）：左側厚度
+   從東家視角看南家，牌的左側邊緣朝向自己 */
+#pa1-area .t {
+  transform: rotateY(-18deg) !important;
+  transform-style: preserve-3d !important;
+  transform-origin: left center !important;
+  box-shadow:
+    -2px 0 0 rgba(255,252,238,.95),
+    -4px 0 0 rgba(240,222,168,.92),
+    -6px 0 0 rgba(205,168,95,.88),
+    -9px 0 0 rgba(155,115,50,.80),
+    -12px 0 0 rgba(90,58,14,.70),
+    -14px 0 0 rgba(50,28,4,.55),
+    0 6px 14px rgba(0,0,0,.55),
+    2px 0 5px rgba(0,0,0,.25) !important;
+  filter: none !important;
+}
+
+/* 左家手牌（pa3-area）：右側厚度
+   從東家視角看北家，牌的右側邊緣朝向自己 */
+#pa3-area .t {
+  transform: rotateY(18deg) !important;
+  transform-style: preserve-3d !important;
+  transform-origin: right center !important;
+  box-shadow:
+    2px 0 0 rgba(255,252,238,.95),
+    4px 0 0 rgba(240,222,168,.92),
+    6px 0 0 rgba(205,168,95,.88),
+    9px 0 0 rgba(155,115,50,.80),
+    12px 0 0 rgba(90,58,14,.70),
+    14px 0 0 rgba(50,28,4,.55),
+    0 6px 14px rgba(0,0,0,.55),
+    -2px 0 5px rgba(0,0,0,.25) !important;
+  filter: none !important;
+}
+
+/* 對家手牌（p2/ht2）：頂部厚度
+   從東家往西看，上緣邊可見，transform 取消使其正對 */
+#ht2 .t {
+  transform: none !important;
+  box-shadow:
+    0  -2px 0 rgba(255,252,238,.90),
+    0  -4px 0 rgba(240,222,168,.86),
+    0  -6px 0 rgba(205,168,95,.82),
+    0  -8px 0 rgba(155,115,50,.75),
+    0 -10px 0 rgba(90,58,14,.65),
+    0   6px 14px rgba(0,0,0,.55) !important;
+  filter: none !important;
+}
+/* p2 tf-top 用上緣顏色，不使用旋轉 3D */
+#ht2 .t .tf-top { display: none !important; }
+#ht2 .t .tf-side { display: none !important; }
+#ht2 .t .tf-bot  { display: none !important; }
+
+/* ── 牌牆立體雙層：上層投影蓋下層 ──────────────────────────── */
+
+/* 確保 z-index 生效（position:relative 已在 base .wt 設定）*/
+.wt.wt-top:not(.wt-empty) {
+  z-index: 2;
+  position: relative !important;
+  box-shadow:
+    /* 左側側面邊光（往左突出） */
+    -2px 0 0 rgba(225,195,110,.80),
+    -4px 0 0 rgba(185,148,72,.72),
+    -6px 0 0 rgba(140,105,38,.62),
+    -8px 0 0 rgba(90,60,14,.52),
+    /* 向下投影蓋住下層牌 */
+    0 6px 10px rgba(0,0,0,.60),
+    0 3px 4px rgba(0,0,0,.40),
+    /* 環境遮蔽 */
+    0 0 3px rgba(255,230,150,.28) !important;
+}
+.wt.wt-bot:not(.wt-empty) {
+  z-index: 1;
+  position: relative !important;
+  box-shadow:
+    -2px 0 0 rgba(160,120,42,.65),
+    -4px 0 0 rgba(120,88,25,.55),
+    -6px 0 0 rgba(80,52,10,.45),
+    0 4px 8px rgba(0,0,0,.45) !important;
+}
+
+/* 側牆（wall-v）水平方向翻轉 */
+.tile-wall.wall-v .wt.wt-top:not(.wt-empty) {
+  box-shadow:
+    0 -2px 0 rgba(225,195,110,.80),
+    0 -4px 0 rgba(185,148,72,.72),
+    0 -6px 0 rgba(140,105,38,.62),
+    0 -8px 0 rgba(90,60,14,.52),
+    6px 0 10px rgba(0,0,0,.60),
+    3px 0 4px rgba(0,0,0,.40),
+    0 0 3px rgba(255,230,150,.28) !important;
+}
+.tile-wall.wall-v .wt.wt-bot:not(.wt-empty) {
+  box-shadow:
+    0 -2px 0 rgba(160,120,42,.65),
+    0 -4px 0 rgba(120,88,25,.55),
+    0 -6px 0 rgba(80,52,10,.45),
+    4px 0 8px rgba(0,0,0,.45) !important;
+}
+
+/* wstack gap 略增，讓上下層分隔更明顯 */
+.wstack { gap: 3px !important; }
+
+/* pa1/pa3 tf-top/tf-side：已有 box-shadow 厚度，隱藏 3D 面（避免重疊混亂）*/
+#pa1-area .t .tf-top,
+#pa1-area .t .tf-side,
+#pa1-area .t .tf-bot,
+#pa3-area .t .tf-top,
+#pa3-area .t .tf-side,
+#pa3-area .t .tf-bot { display: none !important; }
+
 </style>
 </head>
 <body>
@@ -5648,7 +5826,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.78</div>
+    <div class="lver">v1.6.79</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
