@@ -5816,6 +5816,138 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 #pa3-area .t .tf-side,
 #pa3-area .t .tf-bot { display: none !important; }
 
+/* ══ § 15  v1.6.80  真正 CSS 3D 幾何
+   廢除 §14 全部 box-shadow 假厚度
+   各手牌容器注入獨立 local perspective（不依賴全域 chain）
+   rotateX / rotateY 放大到足以讓 tf-top / tf-side 真正可見
+   ════════════════════════════════════════════════════════════ */
+
+/* ── 0. 清除 §14 box-shadow 假厚度 ──────────────────────────── */
+#ht0 .t, #ht2 .t,
+#pa1-area .t, #pa3-area .t,
+.wt.wt-top:not(.wt-empty),
+.wt.wt-bot:not(.wt-empty),
+.tile-wall.wall-v .wt.wt-top:not(.wt-empty),
+.tile-wall.wall-v .wt.wt-bot:not(.wt-empty) {
+  box-shadow: none !important;
+}
+
+/* ── 1. p0 手牌 — 上方俯視 perspective + rotateX 露象牙頂面 ── */
+#ht0 {
+  perspective: 500px !important;
+  perspective-origin: 50% -80% !important;
+}
+#ht0 .t {
+  transform-style: preserve-3d !important;
+  transform: rotateX(10deg) !important;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,.75)) !important;
+  transition: transform .12s ease, filter .12s ease !important;
+}
+#ht0 .t:hover:not(.meld-candidate) {
+  transform: rotateX(10deg) translateY(-14px) !important;
+  filter: drop-shadow(0 18px 26px rgba(0,0,0,.86)) !important;
+}
+#ht0 .t.sel {
+  transform: rotateX(10deg) translateY(-10px) !important;
+  filter: drop-shadow(0 14px 20px rgba(0,0,0,.80))
+          drop-shadow(0 0 12px rgba(212,168,67,.85)) !important;
+  outline: 2px solid rgba(212,168,67,.88) !important;
+}
+#ht0 .t.meld-candidate       { transform: rotateX(10deg) translateY(-7px) !important; }
+#ht0 .t.meld-candidate:hover { transform: rotateX(10deg) translateY(-14px) !important; }
+#ht0 .t.drawn                { transform: rotateX(10deg) translateY(-4px) !important; }
+#ht0 .t .tf-top,
+#ht0 .t .tf-side,
+#ht0 .t .tf-bot { display: block !important; }
+
+/* ── 2. 右家 ht1 — local perspective 從左側視，rotateY 露右側面 ── */
+#ht1 {
+  perspective: 260px !important;
+  perspective-origin: 0% 50% !important;
+}
+#ht1 .t {
+  transform: rotateY(-25deg) !important;
+  transform-style: preserve-3d !important;
+  transform-origin: left center !important;
+  filter: drop-shadow(0 5px 14px rgba(0,0,0,.65)) !important;
+}
+#ht1 .t .tf-top,
+#ht1 .t .tf-side,
+#ht1 .t .tf-bot { display: block !important; }
+
+/* ── 3. 左家 ht3 — local perspective 從右側視，rotateY 露左側面 ── */
+#ht3 {
+  perspective: 260px !important;
+  perspective-origin: 100% 50% !important;
+}
+#ht3 .t {
+  transform: rotateY(25deg) !important;
+  transform-style: preserve-3d !important;
+  transform-origin: right center !important;
+  filter: drop-shadow(0 5px 14px rgba(0,0,0,.65)) !important;
+}
+#ht3 .t .tf-top,
+#ht3 .t .tf-side,
+#ht3 .t .tf-bot { display: block !important; }
+
+/* ── 4. 上家 ht2 — local perspective 從下仰視，rotateX 露頂面 ── */
+#ht2 {
+  perspective: 420px !important;
+  perspective-origin: 50% 160% !important;
+}
+#ht2 .t {
+  transform-style: preserve-3d !important;
+  transform: rotateX(10deg) !important;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,.60)) !important;
+}
+#ht2 .t .tf-top,
+#ht2 .t .tf-side,
+#ht2 .t .tf-bot { display: block !important; }
+
+/* ── 5. 牌牆 — wstack 注入 perspective；rotateX/Y 讓頂面側面可見 ── */
+.wstack {
+  perspective: 280px !important;
+  perspective-origin: 50% -120% !important;
+  transform-style: preserve-3d !important;
+}
+.wt {
+  transform-style: preserve-3d !important;
+  --td: 14px !important;
+}
+
+/* 水平牆（top / bot）：rotateX 讓頂面朝觀眾 */
+#wall-top .wt,
+#wall-bot .wt {
+  transform: rotateX(-22deg) !important;
+}
+#wall-top .wt.wt-top:not(.wt-empty),
+#wall-bot .wt.wt-top:not(.wt-empty) {
+  transform: rotateX(-22deg) translateZ(14px) !important;
+}
+
+/* 左牆：rotateY 正 → 右側面朝觀眾 */
+#wall-left .wt {
+  transform: rotateY(22deg) !important;
+}
+#wall-left .wt.wt-top:not(.wt-empty) {
+  transform: rotateY(22deg) translateZ(14px) !important;
+}
+
+/* 右牆：rotateY 負 → 左側面朝觀眾 */
+#wall-right .wt {
+  transform: rotateY(-22deg) !important;
+}
+#wall-right .wt.wt-top:not(.wt-empty) {
+  transform: rotateY(-22deg) translateZ(14px) !important;
+}
+
+/* 確保牆磚 tf-top / tf-side 可見 */
+.wt:not(.wt-empty) .tf-top,
+.wt:not(.wt-empty) .tf-side { display: block !important; }
+
+/* wstack 間距略增，讓上下層分隔明顯 */
+.wstack { gap: 3px !important; }
+
 </style>
 </head>
 <body>
@@ -5826,7 +5958,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.79</div>
+    <div class="lver">v1.6.80</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
