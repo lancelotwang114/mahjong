@@ -5005,11 +5005,12 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
    寬度 144px(4×36) → 208px(4×52)
    中心 x 不變：dc3=422px → left=318; dc1=922px → left=818 */
 #pool #dc3, #pool #dc1 {
-  grid-template-columns: repeat(4, 52px) !important;
-  width: 208px !important;
+  grid-template-columns: repeat(4, 51px) !important;
+  width: 204px !important;
 }
-#pool #dc3 { left: 318px !important; }
-#pool #dc1 { left: 818px !important; }
+/* center-x 不變：dc3=422→left=422-102=320; dc1=922→left=922-102=820 */
+#pool #dc3 { left: 320px !important; }
+#pool #dc1 { left: 820px !important; }
 
 </style>
 </head>
@@ -5489,7 +5490,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   </div>
 
   <!-- ── P0 手牌區（下方中央，完全 2D，不受 rotateX 影響） ── -->
-  <div id="ui-p0-hand" class="interactive-ui" style="position:absolute;bottom:82px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px;">
+  <div id="ui-p0-hand" class="interactive-ui" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:74px;">
     <div id="pa0-meld-row" style="display:flex;flex-direction:row;align-items:flex-end;justify-content:center;gap:3px;">
       <div id="fl0" class="fl"></div>
       <div class="ma" id="ma0"></div>
