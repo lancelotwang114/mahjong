@@ -32,3 +32,8 @@ node_modules/
 # zip 操作失敗產生的暫存垃圾（隨機檔名，無副檔名）
 ziChN8IB
 zikIe0bP
+
+
+# 3D 版備份與整合前 demo（不進 repo）
+index-3d.bak.html
+mahjong-3d-demo.html
