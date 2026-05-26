@@ -3,17 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>台灣麻將 3D · v1.6.65</title>
+<title>台灣麻將 3D · v1.7.0</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- 牌面 sprite 樣式：結算畫面、聽牌選擇、鳴牌 tooltip 中的 mkTile 用 -->
+<link rel="stylesheet" href="tiles-sprite.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin:0; padding:0; height:100%; overflow:hidden;
              background:#0a0604;
              font-family:"Noto Sans TC", system-ui, sans-serif; color:#f3e8c8; user-select:none; }
+/* 桌布已改為 3D 場景內的 plane,CSS 背景只保留暗色 fallback */
 body::before {
   content:"";
   position:fixed; inset:0;
-  background:url('assets/table.png') 50% 28%/95% no-repeat;
+  background:radial-gradient(ellipse at center, #1a1410 0%, #060403 70%);
   z-index:0; pointer-events:none;
 }
 #scene { display:block; width:100vw; height:100vh; position:absolute; inset:0; z-index:1; }
@@ -51,15 +54,87 @@ body::before {
 .pp.tenpai .tenpai-badge { display:block; }
 .pp.active-turn { border-color:#f5cc6a; box-shadow:0 0 12px rgba(245,200,90,.4), 0 4px 14px rgba(0,0,0,.55); }
 
-/* 四家位置 */
-.pp.east   { left:14px;  bottom:64px; }
-.pp.south  { right:14px; top:50%; transform:translateY(-50%); }
-.pp.west   { right:14px; top:60px; min-width:140px; padding:6px 12px 7px 46px; }
+/* 四家位置：left/top 由 JS syncHudOverlays() 用 3D 投影計算填入 */
+/* 仍保留 fallback 在 JS 還沒跑時用 */
+.pp.east   { left:1.5vw;  bottom:3vh; }
+.pp.south  { right:1.5vw; top:50%; transform:translateY(-50%); }
+.pp.west   { right:1.5vw; top:3vh; min-width:140px; padding:6px 12px 7px 46px; }
 .pp.west .av { width:32px; height:32px; font-size:18px; }
-.pp.north  { left:14px;  top:50%; transform:translateY(-50%); }
+.pp.north  { left:1.5vw; top:50%; transform:translateY(-50%); }
+/* JS 接管後加 .hud-pos class 拿掉 right/bottom */
+.pp.hud-pos { right:auto !important; bottom:auto !important; transform:translate(-50%, -50%) !important; }
+
+/* ── 左上獨立暫停浮動按鈕 ── */
+.pause-fab {
+  position:fixed; left:200px; top:14px; z-index:50;
+  display:flex; align-items:center; gap:6px;
+  padding:8px 14px; border-radius:22px;
+  background:linear-gradient(180deg, rgba(28,19,10,.95) 0%, rgba(16,9,5,.95) 100%);
+  border:1px solid #5c4419; color:#f5e2a8; cursor:pointer;
+  font-size:14px; font-weight:700;
+  box-shadow:0 3px 12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,210,140,.12);
+  backdrop-filter:blur(4px); user-select:none;
+  transition:all .15s;
+}
+.pause-fab:hover { border-color:#a07a30; color:#fff; }
+.pause-fab.paused #pause-fab-icon::before { content:'▶'; }
+.pause-fab.paused #pause-fab-icon { color:#5fcf6e; }
+.pause-fab.paused .pause-fab-label::before { content:'繼續'; }
+.pause-fab.paused .pause-fab-label { font-size:0; }
+.pause-fab.paused .pause-fab-label::before { font-size:14px; }
+#pause-fab-icon { font-size:14px; line-height:1; color:#f5cc6a; }
+.pause-fab-label { letter-spacing:1px; }
+
+/* ── 暫停遮罩（全螢幕霧面 + 中央卡片）── */
+#pause-overlay-3d {
+  display:none;
+  position:fixed; inset:0; z-index:9000;
+  background:rgba(8,5,3,.55); backdrop-filter:blur(10px);
+  align-items:center; justify-content:center;
+  pointer-events:auto;
+}
+#pause-overlay-3d.show { display:flex; }
+.po3-card {
+  background:linear-gradient(180deg, rgba(40,28,15,.98), rgba(20,13,7,.98));
+  border:1.5px solid #8a6a30; border-radius:18px;
+  padding:32px 56px; text-align:center;
+  box-shadow:0 12px 48px rgba(0,0,0,.85), 0 0 30px rgba(212,168,67,.18);
+  min-width:280px;
+}
+.po3-icon { font-size:52px; color:#f5cc6a; margin-bottom:8px; text-shadow:0 0 14px rgba(245,200,90,.5); }
+.po3-title { font-family:'Noto Serif TC',serif; font-size:24px; font-weight:700; color:#f5e2a8; letter-spacing:6px; margin-bottom:6px; }
+.po3-sub { font-size:12px; color:rgba(229,212,154,.55); margin-bottom:18px; letter-spacing:1px; }
+.po3-resume {
+  background:linear-gradient(180deg,#d59933,#8c5a14);
+  border:1px solid #f5cc6a; color:#fff8e0;
+  padding:9px 28px; border-radius:6px;
+  font-family:'Noto Serif TC',serif; font-size:14px; font-weight:700;
+  letter-spacing:2px; cursor:pointer; outline:none;
+  box-shadow:0 3px 12px rgba(212,168,67,.3);
+}
+.po3-resume:hover { transform:translateY(-2px); box-shadow:0 5px 18px rgba(212,168,67,.5); }
+
+/* ── 中央圓形資訊膠囊（位置由 JS syncHudOverlays() 算 3D 桌中心）── */
+#hud-center-pill {
+  position:fixed; top:50%; left:50%; transform:translate(-50%, -50%);
+  z-index:8; will-change: left, top;
+  width:96px; height:96px; border-radius:50%;
+  background:radial-gradient(circle at 50% 30%, rgba(40,28,15,.85), rgba(16,9,5,.92));
+  border:2px solid rgba(245,200,90,.55);
+  box-shadow:0 4px 18px rgba(0,0,0,.55), inset 0 0 16px rgba(212,168,67,.18), 0 0 14px rgba(212,168,67,.2);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  pointer-events:none;
+  backdrop-filter:blur(2px);
+}
+.ccp-round { font-family:'Noto Serif TC',serif; font-size:11px; color:#d4a843; letter-spacing:2px; }
+.ccp-deck { font-family:'Noto Serif TC',serif; font-size:30px; color:#ffd76b; font-weight:700; line-height:1.05; text-shadow:0 2px 4px rgba(0,0,0,.7); }
+.ccp-deck.deck-low { color:#e67e22; }
+.ccp-deck.deck-crit { color:#e74c3c; text-shadow:0 0 8px rgba(231,76,60,.6); }
+.ccp-label { font-size:10px; color:rgba(229,212,154,.6); letter-spacing:1.5px; margin-top:-2px; }
 
 /* 局數面板（左上） */
-.roundcard { position:absolute; left:14px; top:14px; width:170px; padding:10px 12px;
+/* 左上局數面板：已被中央圓形資訊取代，隱藏 */
+.roundcard { display:none !important; position:absolute; left:14px; top:14px; width:170px; padding:10px 12px;
              background:linear-gradient(180deg, rgba(28,19,10,.92) 0%, rgba(16,9,5,.92) 100%);
              border:1px solid #5c4419; border-radius:10px;
              box-shadow:0 4px 14px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,210,140,.12);
@@ -72,15 +147,34 @@ body::before {
 .roundcard .chip .bdot { background:linear-gradient(135deg, #555, #1a1a1a); border-color:#000; }
 
 /* 右上工具 */
-.tools { position:absolute; right:14px; top:14px; display:flex; gap:8px; }
+.tools { position:absolute; right:14px; top:14px; display:flex; gap:8px; align-items:flex-start; }
 .tools .ic { width:36px; height:36px; border-radius:8px;
              background:linear-gradient(180deg, rgba(28,19,10,.92) 0%, rgba(16,9,5,.92) 100%);
              border:1px solid #5c4419; display:flex; align-items:center; justify-content:center;
-             color:#e5d49a; font-size:16px; cursor:pointer; backdrop-filter: blur(4px); }
+             color:#e5d49a; font-size:16px; cursor:pointer; backdrop-filter: blur(4px);
+             position:relative; user-select:none; }
 .tools .ic:hover { color:#fff; border-color:#a07a30; }
+/* 按鈕下方中文標籤（永遠顯示，避免別人不懂按鈕用途） */
+.tools .ic::after {
+  content: attr(data-label);
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: rgba(229,212,154,.7);
+  pointer-events: none;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,.7);
+}
+.tools .ic:hover::after { color: #f5e2a8; }
+/* 速度/離開按鈕字較長,需要寬一點 */
+.tools .ic.ic-wide { width:auto; min-width:48px; padding:0 10px; font-size:13px; font-weight:700; }
 
-/* 中央膠囊（頂部） */
-.center-info { position:absolute; left:50%; top:14px; transform:translateX(-50%);
+/* 中央膠囊（頂部）— 已被中央圓形 #hud-center-pill 取代,隱藏避免擋對家手牌 */
+.center-info { display:none !important; position:absolute; left:50%; top:14px; transform:translateX(-50%);
                display:flex; align-items:center; gap:8px;
                background:linear-gradient(180deg, rgba(28,19,10,.92) 0%, rgba(16,9,5,.92) 100%);
                border:1px solid #5c4419; border-radius:999px;
@@ -180,13 +274,148 @@ body::before {
          white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,.5); }
 #toast.on { opacity:1; }
 
+/* ── 左下聊天 FAB ── */
+.chat-fab {
+  position:fixed; left:20px; bottom:20px; z-index:50;
+  display:flex; align-items:center; gap:6px;
+  padding:9px 16px; border-radius:22px;
+  background:linear-gradient(180deg, rgba(28,19,10,.95) 0%, rgba(16,9,5,.95) 100%);
+  border:1px solid rgba(93,173,226,.5); color:rgba(160,210,255,.95); cursor:pointer;
+  font-size:14px; font-weight:700; letter-spacing:1px;
+  box-shadow:0 3px 12px rgba(0,0,0,.55), 0 0 8px rgba(93,173,226,.15);
+  backdrop-filter:blur(4px); user-select:none;
+  transition:all .15s;
+}
+.chat-fab:hover { border-color:rgba(93,173,226,.85); color:#bcdaff; }
+.chat-fab.has-unread::after {
+  content:''; position:absolute; top:-2px; right:-2px;
+  width:9px; height:9px; border-radius:50%;
+  background:#e74c3c; box-shadow:0 0 6px rgba(231,76,60,.7);
+}
+.chat-fab-label { font-size:13px; }
+
+/* ── 3D 版聊天面板（移到左下） ── */
+#chat-panel {
+  position:fixed; left:20px; bottom:80px;
+  width:260px; height:340px;
+  background:rgba(6,16,10,.94); border:1.5px solid rgba(93,173,226,.35);
+  border-radius:10px; display:none; flex-direction:column; z-index:250;
+  pointer-events:auto; overflow:hidden;
+  box-shadow:0 4px 24px rgba(0,0,0,.7);
+  backdrop-filter:blur(4px);
+}
+#chat-panel.open { display:flex; }
+#chat-header {
+  padding:7px 12px; font-size:13px; font-weight:700;
+  color:rgba(93,173,226,.95); border-bottom:1px solid rgba(93,173,226,.22);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+  letter-spacing:1px;
+}
+.chat-close {
+  background:none; border:none; color:rgba(255,255,255,.45); cursor:pointer;
+  font-size:18px; line-height:1; padding:0 4px;
+}
+.chat-close:hover { color:#fff; }
+#chat-msgs {
+  flex:1; overflow-y:auto; padding:7px 10px; display:flex; flex-direction:column; gap:5px;
+}
+#chat-msgs::-webkit-scrollbar { width:5px; }
+#chat-msgs::-webkit-scrollbar-thumb { background:rgba(93,173,226,.3); border-radius:3px; }
+.chat-msg { font-size:12px; line-height:1.5; word-break:break-all; }
+.chat-msg .cm-from { font-weight:700; margin-right:4px; }
+.chat-msg.cm-self .cm-from { color:rgba(212,168,67,.95); }
+.chat-msg.cm-ai   .cm-from { color:rgba(93,173,226,.9); }
+.chat-msg.cm-sys  { color:rgba(255,255,255,.32); font-style:italic; font-size:11px; }
+.chat-msg .cm-txt { color:rgba(245,236,215,.88); }
+#chat-input-row {
+  padding:7px 8px; display:flex; gap:5px;
+  border-top:1px solid rgba(93,173,226,.16); flex-shrink:0;
+}
+#chat-input {
+  flex:1; background:rgba(255,255,255,.08); border:1px solid rgba(93,173,226,.35);
+  border-radius:5px; color:#f5ecd7; font-size:12px; padding:5px 8px; outline:none;
+  min-width:0;
+}
+#chat-input:focus { border-color:rgba(93,173,226,.65); }
+#chat-send {
+  background:rgba(93,173,226,.2); border:1px solid rgba(93,173,226,.45);
+  color:rgba(93,173,226,.95); border-radius:5px; font-size:12px; cursor:pointer;
+  padding:4px 11px; flex-shrink:0; font-weight:700;
+}
+#chat-send:hover { background:rgba(93,173,226,.35); }
+/* 語音輸入 toggle 按鈕 */
+#chat-voice-btn {
+  background:transparent; border:1px solid rgba(255,255,255,.18);
+  color:rgba(255,255,255,.55); border-radius:5px; cursor:pointer;
+  padding:3px 8px; flex-shrink:0; font-size:13px;
+}
+#chat-voice-btn:hover { color:rgba(93,173,226,.95); border-color:rgba(93,173,226,.5); }
+/* 語音輸入區（隱藏狀態，按麥克風才切出來） */
+#chat-voice-row {
+  display:none; gap:5px; padding:7px 8px;
+  border-top:1px solid rgba(93,173,226,.16); flex-shrink:0;
+}
+#chat-voice-row.show { display:flex; }
+#chat-voice-row input {
+  flex:1; background:rgba(255,255,255,.08); border:1px solid rgba(212,168,67,.45);
+  border-radius:5px; color:#f5cc6a; font-size:13px; padding:5px 8px; outline:none;
+  font-family:'Noto Serif TC',serif; letter-spacing:3px; text-align:center;
+}
+#chat-voice-row button {
+  background:rgba(212,168,67,.18); border:1px solid rgba(212,168,67,.4);
+  color:#d4a843; border-radius:5px; cursor:pointer; padding:4px 8px; flex-shrink:0; font-size:13px;
+}
+#chat-voice-row button:hover { background:rgba(212,168,67,.32); }
+/* 未讀小紅點 */
+#hud-chat-btn.has-unread::after {
+  content:''; position:absolute; top:4px; right:4px;
+  width:7px; height:7px; border-radius:50%;
+  background:#e74c3c; box-shadow:0 0 4px rgba(231,76,60,.7);
+}
+.tools .ic { position:relative; }
+
+/* ── 大字鳴牌/胡牌宣告（從 2D 版搬） ── */
+#ann{
+  position:fixed; top:30%; left:50%;
+  transform:translate(-50%,-50%) scale(.5); opacity:0; pointer-events:none;
+  z-index:500;
+  font-family:'Noto Serif TC',serif; font-weight:900;
+  font-size:5rem; color:#d4a843;
+  text-shadow:0 0 40px rgba(212,168,67,.9),2px 2px 0 rgba(0,0,0,.6);
+  transition:transform .18s cubic-bezier(.34,1.5,.64,1),opacity .18s; white-space:nowrap;
+}
+#ann.on{transform:translate(-50%,-50%) scale(1);opacity:1}
+#ann.po{color:#e67e22;text-shadow:0 0 40px rgba(230,126,34,.9),2px 2px 0 rgba(0,0,0,.6)}
+#ann.ch{color:#3498db;text-shadow:0 0 40px rgba(52,152,219,.9),2px 2px 0 rgba(0,0,0,.6)}
+#ann.ko{color:#9b59b6;text-shadow:0 0 40px rgba(155,89,182,.9),2px 2px 0 rgba(0,0,0,.6)}
+#ann.wi{color:#e74c3c;text-shadow:0 0 60px rgba(231,76,60,1),2px 2px 0 rgba(0,0,0,.6);font-size:6rem}
+#ann.tp{color:#2ecc71;text-shadow:0 0 40px rgba(46,204,113,.9),2px 2px 0 rgba(0,0,0,.6);font-size:3.5rem}
+
+/* ── 東風局結算（從 ghost-dom 拉出來,3D 樣式） ── */
+#match-ov { display:none; position:fixed; inset:0;
+  background:rgba(5,3,1,.92); align-items:center; justify-content:center; z-index:8500;
+  flex-direction:column; backdrop-filter:blur(6px); }
+.match-card { background:linear-gradient(160deg,rgba(28,19,10,.98),rgba(16,9,5,.98));
+  border:2px solid #8a6a30; border-radius:16px; padding:28px 36px;
+  min-width:420px; max-width:90vw; text-align:center;
+  box-shadow:0 12px 48px rgba(0,0,0,.85), 0 0 30px rgba(212,168,67,.18); }
+.match-title { font-family:'Noto Serif TC',serif; font-size:22px; color:#f5cc6a; font-weight:700;
+  letter-spacing:4px; margin-bottom:14px; }
+.rank-row { display:flex; align-items:center; gap:14px; padding:9px 4px;
+  border-bottom:1px solid rgba(212,168,67,.12); }
+.rank-num { font-size:1.4rem; font-weight:900; min-width:36px; }
+.rank-name { flex:1; text-align:left; font-size:14px; color:#f5e2a8; }
+.rank-chip { font-size:14px; font-weight:700; }
+
 /* ── 勝利面板 ── */
 #wov { display:none; position:fixed; inset:0; background:rgba(5,3,1,.88);
        align-items:center; justify-content:center; z-index:200; flex-direction:column; }
 .wov-box { background:linear-gradient(180deg,rgba(28,19,10,.98),rgba(16,9,5,.98));
            border:1px solid #5c4419; border-radius:14px; padding:24px 30px;
-           max-width:560px; width:90%; max-height:80vh; overflow-y:auto; text-align:center;
+           max-width:780px; width:92%; max-height:88vh; overflow-y:auto; text-align:center;
            box-shadow:0 8px 32px rgba(0,0,0,.7); }
+/* 結算畫面內每家手牌列：允許自動換行,避免長副露被切掉 */
+.whr { flex-wrap:wrap; }
 #wtit { font-family:"Noto Serif TC"; font-size:22px; color:#f5cc6a; font-weight:700; margin-bottom:8px; }
 #wtai { font-size:13px; color:#d8c89a; margin-bottom:10px; }
 #wbon { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin-bottom:10px; }
@@ -203,6 +432,8 @@ body::before {
 .wov-btn:hover { border-color:#a07a30; color:#fff; }
 .wov-btn.primary { background:linear-gradient(180deg,#d59933,#8c5a14);
                    border-color:#f5cc6a; color:#fff8e0; }
+.wov-btn.peek { background:rgba(80,120,80,.2); border-color:rgba(100,180,100,.4); color:#7dd4a8; }
+.wov-btn.peek:hover { background:rgba(80,140,80,.35); border-color:rgba(140,220,140,.65); color:#9fe3bc; }
 
 /* ══ LOBBY CSS（原 2D 版）══════════════════════════════ */
 #lobby{overflow-y:auto}
@@ -271,9 +502,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .sgrid{display:grid;grid-template-columns: 100px 160px 1fr 160px 100px;gap:8px;margin:10px 0}
 .btn{width:100%;padding:9px;border:none;border-radius:6px;
   font-family:'Noto Serif TC';font-size:.95rem;font-weight:700;
-  cursor:pointer;letter-spacing:.1em;margin-bottom:8px;transition:all .18s}
-.bp{background:linear-gradient(135deg,var(--gold),#b8860b);color:#1a0a00;box-shadow:0 3px 12px rgba(212,168,67,.3)}
-.bp:hover{transform:translateY(-2px);box-shadow:0 5px 18px rgba(212,168,67,.45)}
+  cursor:pointer;letter-spacing:.1em;margin-bottom:8px;transition:all .18s;
+  outline:none; /* 移除瀏覽器 focus 綠色框 */
+}
+.btn:focus, .btn:focus-visible{ outline:none; box-shadow:0 0 0 2px rgba(212,168,67,.5); }
+.bp{background:linear-gradient(135deg,#d4a843,#b8860b)!important;color:#1a0a00!important;
+    box-shadow:0 3px 12px rgba(212,168,67,.3); border:1px solid rgba(255,220,120,.55)!important;}
+.bp:hover{transform:translateY(-2px);box-shadow:0 5px 18px rgba(212,168,67,.55)}
 .sec-title{color:var(--gold);font-size:.75rem;font-weight:700;letter-spacing:.1em;text-align:left;margin:8px 0 4px;border-bottom:1px solid rgba(212,168,67,.2);padding-bottom:4px}
 
 /* ══ LOBBY VISUAL UPGRADE ════════════════════════════════════ */
@@ -508,13 +743,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   100% { transform:translateY(var(--dy,200px)) translateX(var(--dx,0)) rotate(var(--dr,360deg)); opacity:0; }
 }
 
-/* .t 牌面（win overlay 用，簡化版） */
+/* .t 牌面（結算/tooltip 用，比例對齊 2D 版 sprite 預設 62×86） */
 .t { display:inline-flex; align-items:center; justify-content:center;
-     width:32px; height:44px; background:linear-gradient(135deg,#f8f4ea,#ede5cc);
-     border:1px solid #ccc; border-radius:4px; font-size:11px; flex-shrink:0;
+     width:42px; height:58px; background:linear-gradient(135deg,#f8f4ea,#ede5cc);
+     border:1px solid #ccc; border-radius:4px; font-size:13px; flex-shrink:0;
      box-shadow:1px 1px 3px rgba(0,0,0,.2); position:relative; overflow:hidden; }
-.t.sm { width:28px; height:38px; }
-.t.ti { width:20px; height:27px; }
+.t.sm { width:34px; height:46px; font-size:11px; }
+.t.ti { width:22px; height:30px; font-size:9px; }
 .t.back { background:linear-gradient(135deg,#b07840,#7a4818); border-color:#5c3a10; }
 .t.drawn { outline:2px solid #f5cc6a; }
 </style>
@@ -526,6 +761,29 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
 <!-- HUD 覆蓋層 -->
 <div class="hud">
+
+  <!-- 左上獨立暫停按鈕 -->
+  <div id="hud-pause-floating" class="pause-fab" title="暫停 / 繼續 (P)" onclick="Game.togglePause?.()">
+    <span id="pause-fab-icon">⏸</span>
+    <span class="pause-fab-label">暫停</span>
+  </div>
+
+  <!-- 暫停霧面遮罩（全玩家可見） -->
+  <div id="pause-overlay-3d">
+    <div class="po3-card">
+      <div class="po3-icon">⏸</div>
+      <div class="po3-title">暫停中</div>
+      <div class="po3-sub">按 P 或點上方按鈕繼續</div>
+      <button class="po3-resume" onclick="Game.togglePause?.()">▶ 繼續</button>
+    </div>
+  </div>
+
+  <!-- 中央圓形資訊膠囊（取代頂部資訊條,放在桌正中央） -->
+  <div id="hud-center-pill">
+    <div class="ccp-round" id="ccp-round">東風</div>
+    <div class="ccp-deck" id="ccp-deck">--</div>
+    <div class="ccp-label">剩牌</div>
+  </div>
 
   <!-- 局數面板（左上） -->
   <div class="roundcard" id="hud-roundcard">
@@ -539,9 +797,43 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
   <!-- 右上工具 -->
   <div class="tools">
-    <div class="ic" title="返回大廳" onclick="Game.returnLobby?.()">⬅</div>
-    <div class="ic" title="自動代打" id="hud-autoplay-btn" onclick="Game.toggleAutoPlay?.()">🤖</div>
-    <div class="ic" title="音效" onclick="Snd.volume=Snd.volume?0:0.5">🔊</div>
+    <div class="ic" data-label="提示" title="出牌提示 (H)" id="hud-hint-btn" onclick="Game.showHint?.()">提</div>
+    <div class="ic" data-label="整理" title="整理手牌 (S)" id="hud-sort-btn" onclick="Game.sortHand?.()">排</div>
+    <div class="ic" data-label="輔助" title="輔助面板（聽牌計算 / 危險牌 / 牌追蹤）" id="hud-assist-btn" onclick="Game.toggleAssistPanel?.()">輔</div>
+    <div class="ic ic-wide" data-label="AI 速度" title="AI 速度：正常" id="hud-speed-btn" onclick="Game.cycleSpeed?.()">正常</div>
+    <div class="ic" data-label="代打" title="自動代打" id="hud-autoplay-btn" onclick="Game.toggleAutoPlay?.()">代</div>
+    <div class="ic" data-label="音效" title="音效開關" id="hud-audio-btn" onclick="Game.toggleAudioMute?.()">🔊</div>
+    <div class="ic" data-label="返回大廳" title="返回大廳" onclick="Game.returnLobby?.()">廳</div>
+    <div class="ic" data-label="存檔離開" title="離開（自動存檔）" onclick="Game.leaveAndSave?.()">出</div>
+  </div>
+
+  <!-- 左下聊天 FAB -->
+  <div id="hud-chat-fab" class="chat-fab" title="聊天 (C)" onclick="Game.toggleChat?.()">
+    <span>💬</span>
+    <span class="chat-fab-label">聊天</span>
+  </div>
+
+  <!-- 聊天面板（跟 2D 版同 id,避免兩套衝突） -->
+  <div id="chat-panel">
+    <div id="chat-header">
+      <span>聊天室</span>
+      <button class="chat-close" onclick="Game.toggleChat?.()">×</button>
+    </div>
+    <div id="chat-msgs"></div>
+    <!-- 一般文字輸入 -->
+    <div id="chat-input-row">
+      <input id="chat-input" placeholder="說點什麼…" maxlength="60"
+        onkeydown="if(event.key==='Enter')Game.sendChat?.()">
+      <button id="chat-voice-btn" onclick="Game.toggleVoiceInput?.()" title="切換語音輸入">🎤</button>
+      <button id="chat-send" onclick="Game.sendChat?.()">送出</button>
+    </div>
+    <!-- 語音輸入(限 3 字,送出後 TTS 念出) -->
+    <div id="chat-voice-row">
+      <input id="chat-voice-input" placeholder="3 字內(會念出)" maxlength="3"
+        onkeydown="if(event.key==='Enter')Game.sendVoiceChat?.();else if(event.key==='Escape')Game.toggleVoiceInput?.()">
+      <button onclick="Game.sendVoiceChat?.()" title="送出並念出">📢</button>
+      <button onclick="Game.toggleVoiceInput?.()" title="返回文字">✕</button>
+    </div>
   </div>
 
   <!-- 四家面板 -->
@@ -610,7 +902,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div id="meld-preview"></div>
 
   <!-- 手牌欄（聽牌信息） -->
-  <div id="hand-bar"></div>
+  <div id="hand-bar">
+    <span class="hb-label" id="hb-label"></span>
+    <div class="hb-tiles" id="hb-tiles"></div>
+  </div>
 
 </div><!-- /.hud -->
 
@@ -623,6 +918,22 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 <!-- Toast -->
 <div id="toast"></div>
 
+<!-- 大字鳴牌/胡牌宣告（從 2D 版補回） -->
+<div id="ann"></div>
+
+<!-- 東風局完賽結算 overlay（從 ghost-dom 拉出來） -->
+<div id="match-ov">
+  <div class="match-card">
+    <div class="match-title" id="match-title">🏆 完賽</div>
+    <div id="match-ranks"></div>
+    <div id="match-chart"></div>
+    <div style="display:flex;gap:12px;margin-top:18px;justify-content:center">
+      <button class="btn bp" style="width:auto;padding:9px 28px;margin:0" onclick="Game.playAgain?.()">再來一局</button>
+      <button class="btn" style="width:auto;padding:9px 22px;margin:0;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);color:#e8d49a" onclick="Game.returnLobby?.()">返回大廳</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── 勝利 / 流局面板 ── -->
 <div id="wov">
   <div class="wov-box">
@@ -633,10 +944,21 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div id="whands"></div>
     <div class="wov-btns">
       <button class="wov-btn primary" onclick="Game.newRound?.()">下一局</button>
+      <button class="wov-btn peek" onclick="Game.peekBoard?.()">👁 查看牌桌</button>
       <button class="wov-btn" onclick="Game.returnLobby?.()">返回大廳</button>
     </div>
   </div>
 </div>
+
+<!-- 查看牌桌時的「返回結算」浮動按鈕（從 2D 版搬） -->
+<button id="peek-return-btn" onclick="Game.peekBoard?.()"
+  style="display:none;position:fixed;bottom:24px;right:24px;z-index:1001;
+    background:rgba(12,26,14,.95);border:1.5px solid rgba(200,160,60,.7);
+    border-radius:22px;color:#d4a843;padding:9px 20px;
+    font-family:'Noto Serif TC',serif;font-size:14px;font-weight:700;cursor:pointer;
+    box-shadow:0 4px 18px rgba(0,0,0,.55),0 0 16px rgba(212,168,67,.25);letter-spacing:.05em">
+  📋 返回結算
+</button>
 
 <!-- ── 大廳（原 2D 版）── -->
 <div id="lobby">
@@ -644,7 +966,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.6.65</div>
+    <div class="lver">v1.7.0</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -964,7 +1286,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div id="st-games"></div><div id="st-wins"></div><div id="st-rate"></div>
   <div id="st-net"></div><div id="st-best"></div>
   <div id="hint-btn"></div>
-  <div id="match-ov"></div>
+  <!-- match-ov 已拉到主 DOM,這裡保留空 placeholder 不會影響(getElementById 只回第一個) -->
   <div id="tenpai-select-panel"></div>
 </div>
 
@@ -1054,17 +1376,16 @@ async function sliceSprite(url, count, opts) {
         if (a > 32) { if (x<minX) minX=x; if (y<minY) minY=y; if (x>maxX) maxX=x; if (y>maxY) maxY=y; }
       }
     }
-    const cw = Math.max(1, maxX-minX+1);
-    const ch = Math.max(1, maxY-minY+1);
+    const rawCw = Math.max(1, maxX-minX+1);
+    const rawCh = Math.max(1, maxY-minY+1);
+    // maskTopFrac:把藍頂條真的「裁掉」而非「填白」,讓牌面填滿整張 canvas(跟 2D sprite css 一致)
+    const stripH = maskTopFrac > 0 ? Math.round(rawCh * maskTopFrac) : 0;
+    const cw = rawCw;
+    const ch = rawCh - stripH;
     const c = document.createElement('canvas');
     c.width = cw; c.height = ch;
     const cctx = c.getContext('2d');
-    cctx.drawImage(img, i*slotW+minX, minY, cw, ch, 0, 0, cw, ch);
-    if (maskTopFrac > 0) {
-      const stripH = Math.round(ch * maskTopFrac);
-      cctx.fillStyle = '#ffffff';
-      cctx.fillRect(0, 0, cw, stripH);
-    }
+    cctx.drawImage(img, i*slotW+minX, minY+stripH, cw, ch, 0, 0, cw, ch);
     // 淺色像素推成純白
     {
       const id0 = cctx.getImageData(0, 0, cw, ch); const d0 = id0.data;
@@ -1134,19 +1455,34 @@ function loadTex(url) {
 
 const TEX = {};
 async function loadAllTextures() {
-  const [man, pin, sou, honor, flower, woodBackTex] = await Promise.all([
-    sliceSprite('assets/man.png', 9, {maskTop:0.30}),
-    sliceSprite('assets/pin.png', 9, {maskTop:0.30}),
-    sliceSprite('assets/sou.png', 9, {maskTop:0.30}),
-    sliceSprite('assets/honor.png', 7, {maskTop:0.30}),
+  const [man, pin, sou, honor, flower, woodBackTex, tableTex] = await Promise.all([
+    // maskTop 從 0.30 → 0.20:0.30 會把牌面文字頂端也裁掉(見「八筒頭被截」),
+    // 0.20 剛好對齊 sprite 圖內藍頂條的實際比例,讓牌面字完整顯示
+    sliceSprite('assets/man.png', 9, {maskTop:0.20}),
+    sliceSprite('assets/pin.png', 9, {maskTop:0.20}),
+    sliceSprite('assets/sou.png', 9, {maskTop:0.20}),
+    sliceSprite('assets/honor.png', 7, {maskTop:0.20}),
     sliceSprite('assets/flower.png', 8),
     loadTex('assets/tile-back-style2.png'),
+    loadTex('assets/table.png'),
   ]);
   for (let i = 1; i <= 9; i++) { TEX[`man-${i}`]=man[i-1]; TEX[`pin-${i}`]=pin[i-1]; TEX[`sou-${i}`]=sou[i-1]; }
   ['東','南','西','北','中','發','白'].forEach((ch, i) => TEX[`honor-${ch}`] = honor[i]);
   ['梅','蘭','菊','竹','春','夏','秋','冬'].forEach((ch, i) => TEX[`flower-${ch}`] = flower[i]);
   TEX['wood-back'] = woodBackTex;
   TEX['back'] = TEX['wood-back'];
+  TEX['table'] = tableTex;
+  // 所有牌面 texture 套高品質 filtering,避免遠看時牌面糊
+  const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 8;
+  for (const key of Object.keys(TEX)) {
+    const t = TEX[key];
+    if (!t) continue;
+    t.anisotropy = maxAniso;
+    t.minFilter = THREE.LinearMipmapLinearFilter;
+    t.magFilter = THREE.LinearFilter;
+    t.generateMipmaps = true;
+    t.needsUpdate = true;
+  }
 }
 
 /* ============================================================
@@ -1181,7 +1517,15 @@ const tileGeom = makeTileGeometry(TW, TD, TH, 0.07);
 const _matCache = new Map();
 function getFaceMat(texKey, isCandidate) {
   const cacheKey = texKey + (isCandidate ? '_gold' : '');
-  if (_matCache.has(cacheKey)) return _matCache.get(cacheKey);
+  const cached = _matCache.get(cacheKey);
+  if (cached) {
+    // 若 cache 當時 TEX 還沒載入,map=undefined,現在 TEX 有了就補上(修「白框牌」bug)
+    if (!cached.map && TEX[texKey]) {
+      cached.map = TEX[texKey];
+      cached.needsUpdate = true;
+    }
+    return cached;
+  }
   let mat;
   if (isCandidate) {
     mat = new THREE.MeshStandardMaterial({
@@ -1264,6 +1608,24 @@ const Groups = {
 // 每次 render3D 後 p0 手牌 mesh 陣列（供 raycast 用）
 let _p0HandMeshes = [];  // [{mesh, tileId, tile}]
 
+// 摸牌光暈用的 sprite texture（canvas radial gradient，整個專案共用一份）
+let _glowTexture = null;
+function getGlowTexture() {
+  if (_glowTexture) return _glowTexture;
+  const c = document.createElement('canvas');
+  c.width = 256; c.height = 256;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(128, 128, 8, 128, 128, 120);
+  g.addColorStop(0,    'rgba(255,230,140,0.95)');
+  g.addColorStop(0.25, 'rgba(255,215,107,0.55)');
+  g.addColorStop(0.6,  'rgba(212,168,67,0.20)');
+  g.addColorStop(1,    'rgba(212,168,67,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 256, 256);
+  _glowTexture = new THREE.CanvasTexture(c);
+  return _glowTexture;
+}
+
 function clearGroup(g) { if (g) { scene.remove(g); g.traverse(c => { if (c.geometry) c.geometry.dispose(); }); } }
 
 /* ============================================================
@@ -1297,19 +1659,43 @@ function buildHand3D(side, tiles, candidateIds) {
   const GAP = 0.01;
   const len = N * (TW + GAP);
 
-  // south：斜立面向玩家；其他：平放背面朝上
-  const tiltX = isSouth ? Math.PI*0.43 : Math.PI;
-  const posY  = isSouth ? (TD/2*Math.cos(tiltX) + TH/2*Math.sin(tiltX)) : TD/2;
-  const posZ  = isSouth ? -TD/2 : 0;
+  // 自家斜立 0.43π (微仰,玩家視角看 face 方便);其他三家完全直立 0.50π
+  // (使用者明確要求:左右家的問題是旋轉而非仰角,所以不動仰角)
+  const tiltX = isSouth ? Math.PI*0.43 : Math.PI*0.50;
+  const posY  = TD/2*Math.cos(tiltX) + TH/2*Math.sin(tiltX); // 讓牌底貼桌面
+  const posZ  = -TD/2;
 
+  // 摸牌視覺：懸浮在手牌上方 + 大間距 + 牌身金色 emissive 發光（仿 2D 版風格）
+  const DRAWN_GAP = TW * 0.65;   // 右側額外間距,讓摸牌明顯脫離手牌排列
+  const DRAWN_LIFT = TH * 0.55;  // 大幅抬高（懸浮感）
   tiles.forEach((entry, i) => {
     const texKey = entry.texKey;
     const tileId = entry.tileId;
     const isCandidate = candidateIds && tileId !== undefined && candidateIds.has(tileId);
+    const isDrawn = !!entry.isDrawn;
     const mesh = makeTile3D(texKey, isCandidate);
     mesh.rotation.x = tiltX;
-    const x = -len/2 + i*(TW+GAP) + TW/2;
-    mesh.position.set(x, posY, posZ);
+    const xExtra = isDrawn ? DRAWN_GAP : 0;
+    const x = -len/2 + i*(TW+GAP) + TW/2 + xExtra;
+    const yBoost = isDrawn ? DRAWN_LIFT : 0;
+    mesh.position.set(x, posY + yBoost, posZ);
+    // 摸牌「光暈」：用 Sprite billboard + canvas radial gradient texture
+    // 永遠面對相機,牌本體不變色,光從牌「外圍」散開（仿 2D 範例）
+    if (isDrawn) {
+      const spriteMat = new THREE.SpriteMaterial({
+        map: getGlowTexture(),
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: true,
+        opacity: 0.9,
+      });
+      const sprite = new THREE.Sprite(spriteMat);
+      sprite.scale.set(TW*3.0, TH*2.0, 1);
+      // sprite 加到 group 而非 mesh,避免 sprite 跟著 mesh.rotation 翻轉縮放異常
+      sprite.position.set(x, posY + yBoost, posZ);
+      group.add(sprite);
+    }
     if (isCandidate || isSouth) {
       mesh.userData = { tileId, isSouth };
     }
@@ -1319,12 +1705,13 @@ function buildHand3D(side, tiles, candidateIds) {
     }
   });
 
-  // 對手手牌靠近各邊牆壁；south 依舊保持原距離
-  const dist = side==='south'?11.4 : side==='north'?11.5 : 10.8;
+  // 對手手牌往各自牌牆靠（讓畫面中央留出空間,避免手牌伸進視野中央）
+  const dist = side==='south'?11.4 : side==='north'?12.6 : 12.0;
   if (side==='south')      { group.position.z = dist; }
   else if (side==='north') { group.position.z = -dist; group.rotation.y = Math.PI; }
-  else if (side==='east')  { group.position.x = dist;  group.rotation.y = -Math.PI/2; }
-  else if (side==='west')  { group.position.x = -dist; group.rotation.y = Math.PI/2; }
+  // east/west 旋轉方向修正：原本 ±π/2 反過來,face 朝桌中央(背對玩家),改成 face 朝各自玩家方向
+  else if (side==='east')  { group.position.x = dist;  group.rotation.y =  Math.PI/2; }
+  else if (side==='west')  { group.position.x = -dist; group.rotation.y = -Math.PI/2; }
   if (isSouth) group.scale.setScalar(1.22);
   return group;
 }
@@ -1363,11 +1750,19 @@ function placeBySide(group, side, lx, lz) {
 }
 
 function buildFlowers3D(side, tiles) {
+  // 花牌平躺 face up,跟棄牌一樣的擺法,而不是直立面向玩家
   const group = new THREE.Group();
+  const DTILT = Math.PI / 18; // 10° 微仰
+  const TILT_Y = TD/2*Math.cos(DTILT) + TH/2*Math.sin(DTILT);
   tiles.forEach((entry, i) => {
     const t = makeTile3D(entry.texKey, false);
-    t.rotation.x = Math.PI/2;
-    t.position.set(i*(TW+0.04), TD/2, 0);
+    // 與棄牌相同:south/north 平躺,east/west 需先 Y 軸轉 180 度再仰角
+    if (side==='south' || side==='north') {
+      t.rotation.x = side==='south' ? -DTILT : +DTILT;
+    } else {
+      t.rotation.set(0, Math.PI, side==='east' ? +DTILT : -DTILT);
+    }
+    t.position.set(i*(TW+0.04), TILT_Y, 0);
     group.add(t);
   });
   const flowerLx = side==='east'?-3.4 : side==='west'?-6.2 : side==='south'?-6.2 : -7.2;
@@ -1435,10 +1830,13 @@ function render3D() {
     const isSelf = pi === 0;
 
     // 手牌
+    const drawnId = isSelf ? s.drawnId : null;
     const handTiles = (s.hands[pi] || []).map(tile => ({
       texKey: isSelf ? tileTexKey(tile) : 'back',
       tileId: tile.id,
       tile,
+      // 自家摸到的牌標記，給 buildHand3D 做「右側拉開間距 + 抬高 + 金邊」視覺
+      isDrawn: !!(isSelf && drawnId && tile.id === drawnId),
     }));
     const hg = buildHand3D(side, handTiles, candidateIds);
     scene.add(hg); Groups.hands[pi] = hg;
@@ -3063,10 +3461,12 @@ const Game={
       s.hands[p]=sortH(s.hands[p]);
     }
     if(hadFlowers){
-      Snd.play(660,.18,'sine',.18);
-      Snd.say('補花');
-      this.toast('補花完成',1000);
-      this.render();
+      // 防禦：Snd.say / toast / render 若任一 throw，必須仍把 done 排上，
+      // 否則 closeDice → doTurn 整條鏈會斷,遊戲卡在「補花完成不開始」
+      try { Snd.play(660,.18,'sine',.18); } catch(e){}
+      try { Snd.say('補花'); } catch(e){}
+      try { this.toast('補花完成',1000); } catch(e){}
+      try { this.render(); } catch(e){ console.warn('[補花後 render throw]',e); }
       setTimeout(done,500);
     } else {
       done();
@@ -5197,6 +5597,13 @@ const Game={
   showWin(isDraw=false){
     const s=this.st;
     const ov=document.getElementById('wov');
+    // 防殘留：結算畫面開啟前清掉聽牌/立直選擇面板，避免覆蓋在結算上方擋住按鈕
+    document.getElementById('tenpai-select-panel')?.replaceChildren();
+    document.getElementById('riichi-select-panel')?.remove();
+    // 同時清掉鳴牌相關計時器與旗標，防止結算後仍有 timer 觸發
+    this._killAllTimers?.();
+    this.clearBtns?.();
+    this.hideTenpai?.();
     if(isDraw){
       document.getElementById('wtit').textContent='🀄 流局！';
       document.getElementById('wtai').textContent='';
@@ -5417,8 +5824,8 @@ const Game={
     this.paused=!this.paused;
     const ov=document.getElementById('pause-overlay');
     const btn=document.getElementById('pause-btn');
-    ov.style.display=this.paused?'flex':'none';
-    btn.textContent=this.paused?'▶ 繼續':'⏸ 暫停';
+    if(ov) ov.style.display=this.paused?'flex':'none';
+    if(btn) btn.textContent=this.paused?'▶ 繼續':'⏸ 暫停';
     if(this.paused){
       // Pause: stop timer interval but keep timerSec value
       if(this.timer){clearInterval(this.timer);this._pausedTimer=this.timer;this.timer=null;}
@@ -5474,7 +5881,7 @@ const Game={
     // Restore volume slider from localStorage
     const sv=localStorage.getItem('mj_svol_v1');
     const svEl=document.getElementById('svol-ig');
-    if(svEl&&sv){svEl.value=sv;document.getElementById('svol-ig-val').textContent=sv+'%';Snd.volume=+sv/100;}
+    if(svEl&&sv){svEl.value=sv;const svValEl=document.getElementById('svol-ig-val');if(svValEl)svValEl.textContent=sv+'%';Snd.volume=+sv/100;}
     // Restore BGM state
     const bgmEnabled=localStorage.getItem('mj_bgm_v1')==='1';
     const bgmTgl=document.getElementById('bgm-ig-toggle');
@@ -5482,7 +5889,7 @@ const Game={
     this._syncBgmVolRow();
     const bv=localStorage.getItem('mj_bgm_vol_v1');
     const bgmVolEl=document.getElementById('bgm-ig-vol');
-    if(bgmVolEl&&bv){bgmVolEl.value=Math.round(+bv*100);document.getElementById('bgm-ig-vol-val').textContent=Math.round(+bv*100)+'%';}
+    if(bgmVolEl&&bv){bgmVolEl.value=Math.round(+bv*100);const bvValEl=document.getElementById('bgm-ig-vol-val');if(bvValEl)bvValEl.textContent=Math.round(+bv*100)+'%';}
   },
   // ── 自動打牌選牌策略 ─────────────────────────────────────
   // 情境A（聽牌）：摸啥打啥，絕不拆牌
@@ -5856,6 +6263,9 @@ const Game={
     const bar=document.getElementById('hand-bar');
     const lbl=document.getElementById('hb-label');
     const tiles=document.getElementById('hb-tiles');
+    // 3D 版 ghost-dom 可能未提供 hb-label/hb-tiles 子元素，缺任一即靜默 return
+    // 防止 tiles.innerHTML 對 null 操作導致 startTimer/render 流程中斷
+    if(!bar||!lbl||!tiles)return;
     const wt=this._tenpaiWaiting;
     const s=this.st;
     tiles.innerHTML='';
@@ -5875,7 +6285,8 @@ const Game={
     } else {
       lbl.textContent='';
       // Show bar only if timer is active
-      if(document.getElementById('tbadge').style.display==='flex'){
+      const tbadge=document.getElementById('tbadge');
+      if(tbadge&&tbadge.style.display==='flex'){
         bar.classList.add('show');
       } else {
         bar.classList.remove('show');
@@ -5952,11 +6363,11 @@ const Game={
   },
   _showMatchSummary(){
     const s=this.st;
-    document.getElementById('wov').style.display='none';
+    const wov=document.getElementById('wov'); if(wov) wov.style.display='none';
     const ranked=[0,1,2,3].sort((a,b)=>s.money[b]-s.money[a]);
     const medals=['🥇','🥈','🥉','　'];
     const ranks=document.getElementById('match-ranks');
-    ranks.innerHTML=ranked.map((pi,ri)=>{
+    if(ranks) ranks.innerHTML=ranked.map((pi,ri)=>{
       const m=s.money[pi];
       const delta=m-(this.settings.money||10000);
       return`<div class="rank-row">
@@ -5981,7 +6392,7 @@ const Game={
       return`<rect x="${x}" y="${H-h-8}" width="${barW}" height="${h}" rx="4" fill="${color}" opacity=".8"/>
              <text x="${x+barW/2}" y="${H-2}" text-anchor="middle" font-size="9" fill="rgba(212,168,67,.7)">${s.names[pi].slice(0,4)}</text>`;
     }).join('');
-    chart.innerHTML=`<svg width="${W}" height="${H}" style="margin:12px auto;display:block">${bars}</svg>`;
+    if(chart) chart.innerHTML=`<svg width="${W}" height="${H}" style="margin:12px auto;display:block">${bars}</svg>`;
     // P2P 非房主：隱藏「再來一局」，由房主控制
     if(this._online&&!this._isHost){
       const pa=document.querySelector('#match-ov .btn.bp');if(pa)pa.style.display='none';
@@ -5996,7 +6407,7 @@ const Game={
       const pa=document.querySelector('#match-ov .btn.bp');if(pa)pa.style.display='';
       const wl=document.getElementById('match-wait-lbl');if(wl)wl.remove();
     }
-    document.getElementById('match-ov').style.display='flex';
+    const mov=document.getElementById('match-ov'); if(mov) mov.style.display='flex';
   },
   playAgain(){
     // 非房主：不可自行開新局，等房主廣播
@@ -6145,14 +6556,20 @@ const Game={
     if(sayMap[type]) setTimeout(()=>Snd.say(sayMap[type]),80);
   },
   showAnn(txt,cls){
-    const el=document.getElementById('ann');el.textContent=txt;el.className=cls;el.classList.add('on');
+    // 3D 版 HTML 未提供 #ann 元素，靜默跳過避免 doMeld → ann → showAnn 整條鏈 throw 卡死
+    const el=document.getElementById('ann');
+    if(!el)return;
+    el.textContent=txt;el.className=cls;el.classList.add('on');
     setTimeout(()=>el.classList.remove('on'),txt==='胡牌！'?2200:900);
   },
 
   // ── HELPERS ───────────────────────────────────────────
   log(msg){this.st.log.push(msg);},
   toast(msg,dur=2000){
-    const t=document.getElementById('toast');t.textContent=msg;t.classList.add('on');
+    // 防禦性 guard：即使 #toast 移除也不要 throw 中斷遊戲流程
+    const t=document.getElementById('toast');
+    if(!t)return;
+    t.textContent=msg;t.classList.add('on');
     clearTimeout(this._toastT);this._toastT=setTimeout(()=>t.classList.remove('on'),dur);
   },
 
@@ -6590,17 +7007,91 @@ function _showCandidateTooltipHtml(mesh, info, disc) {
 function onResize() {
   const w = window.innerWidth, h = window.innerHeight;
   renderer.setSize(w, h, false);
-  camera.aspect = w / h;
-  camera.fov = w/h < 1.4 ? 34 : w/h < 1.8 ? 28 : 26;
+  const aspect = w / h;
+  camera.aspect = aspect;
+  // 【策略】桌面盡量填滿視窗,絕不因視窗縮小而變得很小
+  //
+  // 桌面世界座標範圍大約 X ±15、Z ±15(含牌牆)
+  // Three.js 的 camera.fov 是「垂直 fov」,水平 fov = vertical fov * aspect
+  //
+  // 固定 camera 位置與 lookAt,只調 fov 補償 aspect 差異
+  // 目標:讓 vertical 視野永遠剛好涵蓋桌深 ±15(讓桌上下幾乎貼視窗邊)
+  // 水平方向若 aspect < 1.5 會稍微裁掉桌邊(對手牌牆兩端),這是有意的 trade-off
+  // —— 寧可裁一點邊,也不要讓桌變得很小四周黑邊
+  camera.position.set(0, 22, 26);
+  camera.lookAt(0, 0, 2);
+  // fov 隨 aspect 微調,窄視窗 fov 略大讓垂直視野仍涵蓋全桌深
+  if (aspect >= 1.5)      camera.fov = 32;   // 寬螢幕
+  else if (aspect >= 1.0) camera.fov = 36;   // 中等
+  else                    camera.fov = 42;   // 窄/直立
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', onResize);
 onResize();
 
 /* ============================================================
+   HUD 位置同步：把中央圓形 + 四家玩家卡綁定到 3D 世界座標
+   每 frame 用 camera.project 算出 viewport 像素位置
+   ============================================================ */
+// 四家錨點 + 桌邊投影(讓卡片貼桌而非貼 viewport)
+const _hudWorldAnchors = [
+  { domId: 'hud-pp0', side:'south' },
+  { domId: 'hud-pp1', side:'east'  },
+  { domId: 'hud-pp2', side:'north' },
+  { domId: 'hud-pp3', side:'west'  },
+];
+// 用於投影出「桌邊在 viewport 上的位置」的探針
+const _edgeProbes = {
+  south: new THREE.Vector3(0, 0,  13.5),
+  north: new THREE.Vector3(0, 0, -13.5),
+  east:  new THREE.Vector3(13.5, 0, 0),
+  west:  new THREE.Vector3(-13.5, 0, 0),
+  // 中央圓形錨點:從桌中心略偏 -Z(往對家方向,viewport 顯示往上),離自家手牌遠一點
+  center:new THREE.Vector3(0, 0, -3.0),
+};
+const _tmpVec = new THREE.Vector3();
+function _projectToScreen(world3, w, h) {
+  _tmpVec.copy(world3).project(camera);
+  return { x: (_tmpVec.x + 1) * w / 2, y: (-_tmpVec.y + 1) * h / 2 };
+}
+function syncHudOverlays() {
+  const w = window.innerWidth, h = window.innerHeight;
+  // 桌邊四點在 viewport 的位置
+  const eSouth = _projectToScreen(_edgeProbes.south,  w, h);
+  const eNorth = _projectToScreen(_edgeProbes.north,  w, h);
+  const eEast  = _projectToScreen(_edgeProbes.east,   w, h);
+  const eWest  = _projectToScreen(_edgeProbes.west,   w, h);
+  const eCenter= _projectToScreen(_edgeProbes.center, w, h);
+  // 中央圓形 → 桌中心,且不出 viewport
+  const pill = document.getElementById('hud-center-pill');
+  if (pill) {
+    pill.style.left = Math.max(60, Math.min(w-60, eCenter.x)) + 'px';
+    pill.style.top  = Math.max(60, Math.min(h-60, eCenter.y)) + 'px';
+    pill.style.right = 'auto'; pill.style.bottom = 'auto';
+  }
+  // 四家卡 — 貼在「桌邊投影位置」加偏移,而非 viewport 邊
+  for (const a of _hudWorldAnchors) {
+    const el = document.getElementById(a.domId);
+    if (!el) continue;
+    el.classList.add('hud-pos');
+    let x, y;
+    if (a.side === 'south')      { x = eCenter.x; y = Math.min(h - 30, eSouth.y + 40); }
+    else if (a.side === 'north') { x = eCenter.x; y = Math.max(30, eNorth.y - 40); }
+    else if (a.side === 'east')  { x = Math.min(w - 90, eEast.x + 60); y = eCenter.y; }
+    else if (a.side === 'west')  { x = Math.max(90, eWest.x - 60); y = eCenter.y; }
+    // 安全 clamp(防極端視窗下飛出去)
+    x = Math.max(70, Math.min(w - 70, x));
+    y = Math.max(30, Math.min(h - 30, y));
+    el.style.left = x + 'px';
+    el.style.top  = y + 'px';
+  }
+}
+
+/* ============================================================
    Render loop
    ============================================================ */
 function tick() {
+  syncHudOverlays();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
@@ -6623,7 +7114,224 @@ if (Game) {
       btn.title = this.autoPlay ? '自動代打：ON' : '自動代打：OFF';
     }
     this.toast?.(this.autoPlay ? '🤖 自動代打開啟' : '🤖 自動代打關閉', 2000);
+    // 開啟代打時若剛好是玩家回合,立刻代打(原本要等下一輪)
+    if (this.autoPlay && this.st?.turn === 0 && this.st?.phase === 'playing' && !this._isDiscarding) {
+      try {
+        this.clearBtns?.();
+        const discId = this._autoPlayDiscard?.(0);
+        if (discId !== undefined) {
+          setTimeout(() => {
+            if (this.autoPlay && this.st?.phase === 'playing' && this.st?.turn === 0) {
+              this.doDiscard(0, discId);
+            }
+          }, this.spd?.('discard') || 400);
+        }
+      } catch(e) { console.warn('[toggleAutoPlay] immediate discard failed', e); }
+    }
   };
+
+  // 音效開關:有聲 🔊 / 靜音 🔇
+  Game.toggleAudioMute = function() {
+    Snd.volume = Snd.volume ? 0 : 0.5;
+    const btn = document.getElementById('hud-audio-btn');
+    if (btn) btn.textContent = Snd.volume ? '🔊' : '🔇';
+  };
+
+  // AI 速度循環切換：慢 → 正常 → 快 → 極快 → 慢
+  Game._speedMeta = {
+    slow:   { icon: '慢',   label: '慢' },
+    normal: { icon: '正常', label: '正常' },
+    fast:   { icon: '快',   label: '快' },
+    turbo:  { icon: '極快', label: '極快' },
+  };
+  Game.cycleSpeed = function() {
+    const order = ['slow','normal','fast','turbo'];
+    const cur = this.aiSpeed || 'normal';
+    const next = order[(order.indexOf(cur)+1) % order.length];
+    this.setSpeed(next);
+    this.syncSpeedBtn?.();
+    const meta = this._speedMeta[next];
+    this.toast?.(`AI 速度：${meta.label}`, 1500);
+  };
+  Game.syncSpeedBtn = function() {
+    const btn = document.getElementById('hud-speed-btn');
+    if (!btn) return;
+    const meta = this._speedMeta[this.aiSpeed || 'normal'];
+    btn.textContent = meta.icon;
+    btn.title = `AI 速度：${meta.label}（點擊切換）`;
+    // 兩字以上保持 ic-wide,單字也保持以免按鈕忽寬忽窄跳動
+    btn.classList.add('ic-wide');
+  };
+  // ── 聊天面板（從 2D 版移植，DOM id 用 -3d 後綴避免跟 ghost-dom 衝突）──
+  Game._chatAILines = [
+    '再想想吧！','哼，有意思。','這牌出得妙！','哦？要這樣嗎！','別想太久了！',
+    '加油喔～','我已經快聽了。','出錯牌了喔！','有眼光！','小心點！',
+    '你真的要這樣打？','我有好牌了！','哈，差點就胡了！','嗯，不錯。','你打這張？！',
+    '我看你是沒辦法了！','再一張！','要賭一把嗎？','好牌好牌！','嗯……',
+  ];
+  Game.toggleChat = function() {
+    const panel = document.getElementById('chat-panel');
+    if (!panel) return;
+    const isOpen = panel.classList.toggle('open');
+    if (isOpen) {
+      // 開啟時清除未讀標記(fab 跟舊 hud-chat-btn 都清)
+      document.getElementById('hud-chat-fab')?.classList.remove('has-unread');
+      document.getElementById('hud-chat-btn')?.classList.remove('has-unread');
+      const msgs = document.getElementById('chat-msgs');
+      if (msgs && !msgs.children.length) {
+        this._addChatMsg('sys', null, '（遊戲聊天室，對話只對本局可見）');
+      }
+      setTimeout(() => document.getElementById('chat-input')?.focus(), 80);
+    }
+  };
+  Game.sendChat = function() {
+    const inp = document.getElementById('chat-input');
+    if (!inp) return;
+    const txt = inp.value.trim();
+    if (!txt) return;
+    inp.value = '';
+    const s = this.st;
+    const myName = s?.names?.[0] || '玩家';
+    this._addChatMsg('self', myName, txt);
+    // 單機模式：隨機選一個 AI 回應
+    const respondP = 1 + Math.floor(Math.random() * 3);
+    const aiName = s?.names?.[respondP] || `電腦${respondP}`;
+    const line = this._chatAILines[Math.floor(Math.random() * this._chatAILines.length)];
+    setTimeout(() => this._addChatMsg('ai', aiName, line), 600 + Math.random() * 800);
+  };
+  Game._addChatMsg = function(type, from, text) {
+    const msgs = document.getElementById('chat-msgs');
+    if (!msgs) return;
+    const el = document.createElement('div');
+    el.className = 'chat-msg cm-' + type;
+    if (type === 'sys') {
+      el.textContent = text;
+    } else {
+      // 防 XSS：用 textContent 不用 innerHTML 寫使用者文字
+      const fromSp = document.createElement('span');
+      fromSp.className = 'cm-from';
+      fromSp.textContent = from + '：';
+      const txtSp = document.createElement('span');
+      txtSp.className = 'cm-txt';
+      txtSp.textContent = text;
+      el.appendChild(fromSp);
+      el.appendChild(txtSp);
+    }
+    msgs.appendChild(el);
+    msgs.scrollTop = msgs.scrollHeight;
+    // 面板關閉時亮紅點(chat-fab 跟舊版 hud-chat-btn 都同步)
+    const panel = document.getElementById('chat-panel');
+    if (panel && !panel.classList.contains('open') && type !== 'self' && type !== 'sys') {
+      document.getElementById('hud-chat-fab')?.classList.add('has-unread');
+      document.getElementById('hud-chat-btn')?.classList.add('has-unread');
+    }
+  };
+
+  // 語音聊天：切換語音輸入區
+  Game.toggleVoiceInput = function() {
+    const vrow = document.getElementById('chat-voice-row');
+    const mrow = document.getElementById('chat-input-row');
+    if (!vrow || !mrow) return;
+    const opening = !vrow.classList.contains('show');
+    vrow.classList.toggle('show', opening);
+    mrow.style.display = opening ? 'none' : 'flex';
+    if (opening) setTimeout(() => document.getElementById('chat-voice-input')?.focus(), 80);
+  };
+  // 送出語音訊息(會用 SpeechSynthesis 念出來)
+  Game.sendVoiceChat = function() {
+    const inp = document.getElementById('chat-voice-input');
+    if (!inp) return;
+    const txt = [...inp.value.trim()].slice(0, 3).join('');
+    if (!txt) return;
+    inp.value = '';
+    this.toggleVoiceInput();
+    const s = this.st;
+    const myName = s?.names?.[0] || '玩家';
+    this._addChatMsg('voice', myName, `🔊 ${txt}`);
+    this._sayChatTTS(txt);
+  };
+  // TTS:用 SpeechSynthesis 念出聊天文字
+  Game._sayChatTTS = function(text) {
+    if (!window.speechSynthesis) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'zh-TW';
+      u.rate = 0.85;
+      u.pitch = 1.4;
+      u.volume = 1.0;
+      speechSynthesis.cancel();
+      setTimeout(() => speechSynthesis.speak(u), 55);
+    } catch(e) { console.warn('[TTS] failed', e); }
+  };
+
+  // togglePause 直接覆寫（原版依賴 2D 版的 #pause-overlay/#pause-btn DOM，會 throw 卡死）
+  Game.togglePause = function() {
+    this.paused = !this.paused;
+    const fab  = document.getElementById('hud-pause-floating');
+    const ovly = document.getElementById('pause-overlay-3d');
+    if (fab)  fab.classList.toggle('paused', this.paused);
+    if (ovly) ovly.classList.toggle('show',  this.paused);
+    if (this.paused) {
+      // 停 timer 但保留 timerSec
+      if (this.timer) { clearInterval(this.timer); this._pausedTimerActive = true; this.timer = null; }
+      this.toast?.('⏸ 已暫停', 1500);
+    } else {
+      // 恢復 timer:重新跑 startTimer 而不複製計時邏輯
+      if (this._pausedTimerActive && this.st?.turn === 0 && this.st?.phase === 'playing') {
+        this._pausedTimerActive = false;
+        this.startTimer(0);
+      }
+      // 若 AI 回合被暫停時的 callback 暫存,繼續執行
+      if (this.pausedCb) { const cb = this.pausedCb; this.pausedCb = null; cb(); }
+      this.toast?.('▶ 繼續', 1500);
+    }
+  };
+
+  // 中央資訊膠囊同步（在 render 內呼叫）
+  Game.syncCenterPill = function() {
+    const s = this.st;
+    if (!s) return;
+    const roundEl = document.getElementById('ccp-round');
+    const deckEl = document.getElementById('ccp-deck');
+    if (roundEl) {
+      const rw = s.roundWind || '東';
+      const rn = s.roundNum || 1;
+      roundEl.textContent = `${rw}${rn === 1 ? '一' : rn === 2 ? '二' : rn === 3 ? '三' : '四'}局`;
+    }
+    if (deckEl) {
+      const len = s.deck ? s.deck.length : 0;
+      deckEl.textContent = len;
+      deckEl.className = 'ccp-deck' + (len <= 4 ? ' deck-crit' : len <= 10 ? ' deck-low' : '');
+    }
+  };
+  // 把 syncCenterPill 接到 render 後（裝飾 render 不影響原邏輯）
+  const _origRender = Game.render;
+  Game.render = function(...args) {
+    const r = _origRender.apply(this, args);
+    this.syncCenterPill?.();
+    return r;
+  };
+
+  // 開局/續局時同步一次按鈕顯示
+  const _origStart = Game.start;
+  Game.start = function(...args) {
+    const r = _origStart.apply(this, args);
+    this.syncSpeedBtn?.();
+    this.syncCenterPill?.();
+    // 清掉上局殘留的聊天記錄與未讀
+    const msgs = document.getElementById('chat-msgs');
+    if (msgs) msgs.innerHTML = '';
+    document.getElementById('hud-chat-btn')?.classList.remove('has-unread');
+    return r;
+  };
+  const _origResume = Game.resumeSavedGame;
+  if (_origResume) {
+    Game.resumeSavedGame = function(...args) {
+      const r = _origResume.apply(this, args);
+      this.syncSpeedBtn?.();
+      return r;
+    };
+  }
 }
 
 /* ============================================================
@@ -6638,6 +7346,20 @@ async function init() {
   }
   // 更新材質（背面）
   getBackMat();
+
+  // 桌面 plane（與牌共用 3D 座標系,縮放完全同步）
+  if (TEX['table']) {
+    const tableGeom = new THREE.PlaneGeometry(40, 40);
+    const tableMat = new THREE.MeshBasicMaterial({
+      map: TEX['table'],
+      depthWrite: false,
+    });
+    const tablePlane = new THREE.Mesh(tableGeom, tableMat);
+    tablePlane.rotation.x = -Math.PI / 2;  // 平躺
+    tablePlane.position.y = -0.02;          // 略低於牌底
+    tablePlane.renderOrder = -1;            // 確保最先繪製,牌一定在桌面上
+    scene.add(tablePlane);
+  }
 
   // 隱藏載入畫面
   const ld = document.getElementById('loader');
@@ -6676,6 +7398,32 @@ const Lobby = {
   showOnline(){ this._show('lobby-online'); },
 };
 
+// 連線對戰 stub：3D 版尚未實作連線功能，提供 stub 防止誤點導致 ReferenceError
+// 主機/客戶端真正連線邏輯需從 2D 版搬過來後再移除此 stub
+if (typeof window.Online === 'undefined') {
+  window.Online = {
+    showCreate(){ Game.toast?.('連線對戰尚未實作（3D 版）', 2200); },
+    showJoin(){ Game.toast?.('連線對戰尚未實作（3D 版）', 2200); },
+    doJoin(){ Game.toast?.('連線對戰尚未實作', 2000); },
+    startGame(){ Game.toast?.('連線對戰尚未實作', 2000); },
+    leave(){ Game.toast?.('連線對戰尚未實作', 2000); },
+    copyCode(){},
+    _syncJoinName(){},
+    broadcastState(){},  // 單機模式下會被呼叫但有 _online guard 護著
+    _rotateState(s){ return s; },
+  };
+}
+
+// MahjongNetwork stub：3D 版未載 P2P library,提供 stub 防 ReferenceError
+// 單機模式不會走到,但避免某個分支誤觸發
+if (typeof window.MahjongNetwork === 'undefined') {
+  window.MahjongNetwork = {
+    broadcast(){},
+    sendTo(){},
+    isConnected: false,
+  };
+}
+
 // 暴露全域到 window（讓 HTML onclick 屬性可呼叫）
 window.Game = Game;
 window.Snd = Snd;
@@ -6686,6 +7434,67 @@ window.Stats = Stats;
 
 // 暴露全域（除錯用）
 window.__mj3d = { scene, camera, renderer, THREE, TEX, Game, render3D, Groups };
+
+// ══════════════════════════════════════════════════════════
+// 鍵盤快捷鍵（從 2D 版移植，3D 版用 raycast 點手牌，所以略過 ←/→/Enter）
+// ══════════════════════════════════════════════════════════
+function _isTyping() {
+  const el = document.activeElement;
+  if (!el) return false;
+  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.id === 'chat-input';
+}
+
+// S → 整理手牌
+document.addEventListener('keydown', e => {
+  if ((e.key === 's' || e.key === 'S') && !_isTyping()) {
+    if (Game.st && Game.st.turn === 0) Game.sortHand?.();
+  }
+});
+
+// C → 切換聊天面板
+document.addEventListener('keydown', e => {
+  if ((e.key === 'c' || e.key === 'C') && !e.ctrlKey && !e.metaKey && !_isTyping()) {
+    if (Game.st) Game.toggleChat?.();
+  }
+});
+
+// P → 暫停 / 繼續
+document.addEventListener('keydown', e => {
+  if ((e.key === 'p' || e.key === 'P') && !_isTyping()) {
+    if (Game.st) Game.togglePause?.();
+  }
+});
+
+// H → 胡牌按鈕
+document.addEventListener('keydown', e => {
+  if ((e.key === 'h' || e.key === 'H') && !_isTyping()) {
+    const btn = document.querySelector('#ap .ab.aw');
+    if (btn) { e.preventDefault(); btn.click(); }
+  }
+});
+
+// Space → 跳過按鈕
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !_isTyping()) {
+    const btn = document.querySelector('#ap .ab.ask');
+    if (btn) { e.preventDefault(); btn.click(); }
+  }
+});
+
+// ESC → 關閉結算面板 / 切換 peek 模式
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const wov = document.getElementById('wov');
+    const retBtn = document.getElementById('peek-return-btn');
+    if (wov && wov.style.display === 'flex') {
+      wov.style.display = 'none';
+      if (retBtn) retBtn.style.display = 'block';
+    } else if (retBtn && retBtn.style.display === 'block') {
+      if (wov) wov.style.display = 'flex';
+      retBtn.style.display = 'none';
+    }
+  }
+});
 
 </script>
 </body>
