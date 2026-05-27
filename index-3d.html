@@ -1307,7 +1307,8 @@ const TW = 0.72, TD = 0.46, TH = 1.20;
    ============================================================ */
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// pixelRatio 上限放寬到 3,讓 retina/4K 螢幕能用更高解析度渲染,牌面更清晰
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1373,9 +1374,14 @@ async function sliceSprite(url, count, opts) {
     for (let y=0; y<slotH; y++) {
       for (let x=0; x<slotW; x++) {
         const a = id.data[(y*slotW + x)*4 + 3];
-        if (a > 32) { if (x<minX) minX=x; if (y<minY) minY=y; if (x>maxX) maxX=x; if (y>maxY) maxY=y; }
+        if (a > 8) { if (x<minX) minX=x; if (y<minY) minY=y; if (x>maxX) maxX=x; if (y>maxY) maxY=y; } // 閾值從 32 降到 8,避免淡色邊框被誤判透明而裁掉
       }
     }
+    // 邊界 padding 2px,避免「白板」、「八條」這種右側邊框淡色的牌右側被切
+    minX = Math.max(0, minX - 2);
+    minY = Math.max(0, minY - 2);
+    maxX = Math.min(slotW - 1, maxX + 2);
+    maxY = Math.min(slotH - 1, maxY + 2);
     const rawCw = Math.max(1, maxX-minX+1);
     const rawCh = Math.max(1, maxY-minY+1);
     // maskTopFrac:把藍頂條真的「裁掉」而非「填白」,讓牌面填滿整張 canvas(跟 2D sprite css 一致)
@@ -1707,12 +1713,16 @@ function buildHand3D(side, tiles, candidateIds) {
 
   // 對手手牌往各自牌牆靠（讓畫面中央留出空間,避免手牌伸進視野中央）
   const dist = side==='south'?11.4 : side==='north'?12.6 : 12.0;
+  // 左右家額外旋轉 10°(從俯視看):east 逆時鐘、west 順時鐘
+  const EXTRA = 10 * Math.PI / 180;
   if (side==='south')      { group.position.z = dist; }
   else if (side==='north') { group.position.z = -dist; group.rotation.y = Math.PI; }
-  // east/west 旋轉方向修正：原本 ±π/2 反過來,face 朝桌中央(背對玩家),改成 face 朝各自玩家方向
-  else if (side==='east')  { group.position.x = dist;  group.rotation.y =  Math.PI/2; }
-  else if (side==='west')  { group.position.x = -dist; group.rotation.y = -Math.PI/2; }
-  if (isSouth) group.scale.setScalar(1.22);
+  else if (side==='east')  { group.position.x = dist;  group.rotation.y =  Math.PI/2 + EXTRA; }
+  else if (side==='west')  { group.position.x = -dist; group.rotation.y = -Math.PI/2 - EXTRA; }
+  // 自家最大,對手稍微放大對抗透視縮小效果
+  if (isSouth)             group.scale.setScalar(1.22);
+  else if (side==='north') group.scale.setScalar(1.10);   // 對家最遠,放大多一點
+  else                     group.scale.setScalar(1.08);   // 左/右家放大一點
   return group;
 }
 
@@ -1768,7 +1778,9 @@ function buildFlowers3D(side, tiles) {
   const flowerLx = side==='east'?-3.4 : side==='west'?-6.2 : side==='south'?-6.2 : -7.2;
   const flowerLz = side==='south'?9.0 : side==='north'?11.0 : 10.0;
   placeBySide(group, side, flowerLx, flowerLz);
-  if (side==='south') group.scale.setScalar(1.22);
+  if (side==='south')      group.scale.setScalar(1.22);
+  else if (side==='north') group.scale.setScalar(1.12);
+  else                     group.scale.setScalar(1.10);
   return group;
 }
 
@@ -1794,7 +1806,10 @@ function buildMelds3D(side, melds) {
   const meldLx = side==='south'?12.1 : side==='west'?11.1 : side==='east'?12.7 : 12.7;
   const meldLz = side==='south'?10.4 : side==='north'?13.0 : side==='west'?11.5 : 12.09;
   placeBySide(group, side, meldLx, meldLz);
-  if (side==='south') group.scale.setScalar(1.22);
+  // 副露對視覺辨識最重要(玩家要看出對手吃了什麼),對手放大幅度比手牌更大
+  if (side==='south')      group.scale.setScalar(1.22);
+  else if (side==='north') group.scale.setScalar(1.18);
+  else                     group.scale.setScalar(1.15);
   return group;
 }
 
@@ -2094,6 +2109,7 @@ const Snd={
   init(){if(!this.ctx)this.ctx=new(window.AudioContext||window.webkitAudioContext)()},
   play(freq,dur,type='triangle',vol=0.18){
     if(this.theme==='mute')return;
+    if(this.volume===0)return; // volume 為 0 真靜音(原本 Math.max(0.001,...) 仍會有微弱聲)
     try{this.init();const o=this.ctx.createOscillator(),g=this.ctx.createGain();
       o.connect(g);g.connect(this.ctx.destination);o.type=type;o.frequency.value=freq;
       const v=Math.max(0.001,vol*this.volume);
@@ -2171,6 +2187,7 @@ const Snd={
   },
   say(tileName){
     if(!window.speechSynthesis)return;
+    if(this.volume===0||this.theme==='mute')return; // 靜音時也不要念
     const voicePref=Game?.settings?.voice||'auto';
     if(voicePref==='off')return;
     const u=new SpeechSynthesisUtterance(tileName);
@@ -3250,6 +3267,9 @@ const Game={
     this.autoPlay=false;
     const _apBtn=document.getElementById('autoplay-btn');
     if(_apBtn){_apBtn.classList.remove('on');_apBtn.textContent='🤖 自動';}
+    // 同步 3D HUD 代打按鈕(原本只動 ghost-dom 的 autoplay-btn,玩家看不到)
+    const _hudApBtn=document.getElementById('hud-autoplay-btn');
+    if(_hudApBtn){ _hudApBtn.style.color='#e5d49a'; _hudApBtn.title='自動代打：OFF'; }
     const deck=shuffle(mkDeck());
     const hands=[[],[],[],[]],flowers=[[],[],[],[]];
     let pos=0;
@@ -7130,11 +7150,22 @@ if (Game) {
     }
   };
 
-  // 音效開關:有聲 🔊 / 靜音 🔇
+  // 音效開關:有聲 🔊 / 靜音 🔇(同時也關 BGM,避免背景音樂繼續響)
   Game.toggleAudioMute = function() {
-    Snd.volume = Snd.volume ? 0 : 0.5;
+    const muting = Snd.volume > 0;
+    if (muting) {
+      this._lastSndVolume = Snd.volume;
+      this._lastBgmEnabled = Bgm.enabled;
+      Snd.volume = 0;
+      try { Bgm.stop?.(); Bgm.enabled = false; } catch(e){}
+    } else {
+      Snd.volume = this._lastSndVolume || 0.5;
+      if (this._lastBgmEnabled) {
+        try { Bgm.enabled = true; Bgm.start?.(); } catch(e){}
+      }
+    }
     const btn = document.getElementById('hud-audio-btn');
-    if (btn) btn.textContent = Snd.volume ? '🔊' : '🔇';
+    if (btn) btn.textContent = Snd.volume > 0 ? '🔊' : '🔇';
   };
 
   // AI 速度循環切換：慢 → 正常 → 快 → 極快 → 慢
