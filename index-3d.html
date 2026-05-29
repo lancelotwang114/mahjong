@@ -5595,15 +5595,28 @@ const Game={
       else if(_hasF(seatWindV+4)) add(1,'正花 +1台');
     }
 
-    // ② 門清/自摸相關台數（v1.6.57：門清一摸三含自摸+門清，不重複計算）
+    // ② 門清/自摸/天胡/地胡/天聽/地聽（門清一摸三含自摸+門清，不重複計算）
     const hasOpenMeld=melds.some(m=>!m.dark);
-    const isTianhu=selfDraw && s.discards.every(d=>d.length===0) && p===s.dealer;
-    const isMenqingZimo=!hasOpenMeld && selfDraw && !isTianhu;
-    if(isTianhu)                       add(16,'天胡 +16台');
+    const _totalDisc=(s.discards||[]).reduce((a,d)=>a+(d?d.length:0),0);
+    const _noMelds=(s.melds||[]).every(m=>m.length===0);
+    const isTianhu=selfDraw && _totalDisc===0 && p===s.dealer && _noMelds;
+    // 地胡：閒家第一巡內胡牌（含人胡；榮和或自摸皆可），不另計門清/自摸台
+    const isDihu=!isTianhu && p!==s.dealer && _noMelds && !hasOpenMeld
+      && (s.discards[p]?s.discards[p].length:0)===0 && _totalDisc<=3;
+    const tingType=(s._tingType&&s._tingType[p])||null;
+    const isMenqingZimo=!hasOpenMeld && selfDraw && !isTianhu && !isDihu;
+    if(isTianhu)                        add(16,'天胡 +16台');
+    else if(isDihu)                     add(16,'地胡 +16台');
     else if(!isMenqingZimo && selfDraw) add(1,'自摸 +1台');
+    // 天聽 +8 / 地聽 +4（天胡/地胡時不重複計）
+    if(!isTianhu && !isDihu){
+      if(tingType==='天聽')      add(8,'天聽 +8台');
+      else if(tingType==='地聽') add(4,'地聽 +4台');
+    }
 
-    // ③ 門清 +1（暗槓不算副露；門清一摸三時已含，跳過）
-    if(!hasOpenMeld && !isMenqingZimo) add(1,'門清 +1台');
+    // ③ 門清 +1（暗槓不算副露；門清一摸三/天胡/地胡/天聽/地聽不另計）
+    if(!hasOpenMeld && !isMenqingZimo && !isTianhu && !isDihu && tingType!=='天聽' && tingType!=='地聽')
+      add(1,'門清 +1台');
 
     // ④ 獨聽 +1
     const waitTiles=s.tenpaiT&&s.tenpaiT[p];
@@ -7113,6 +7126,16 @@ const Game={
     this.riichiWaiting=waiting;  // save for display
     // 本地同步 riichiPlayers（主機路徑）
     if(s.riichiPlayers) s.riichiPlayers[0]=true;
+    // 天聽/地聽：第一巡且全場無鳴牌時宣告聽牌即記錄（供 doWin；只在房主/單機端計分有效）
+    {
+      const _nm=(s.melds||[]).every(m=>m.length===0);
+      const _td=(s.discards||[]).reduce((a,d)=>a+(d?d.length:0),0);
+      if(!s._tingType) s._tingType=[null,null,null,null];
+      if(_nm){
+        if(s.dealer===0 && _td===0) s._tingType[0]='天聽';
+        else if(s.dealer!==0 && (s.discards[0]?s.discards[0].length:0)===0 && _td<=3) s._tingType[0]='地聽';
+      }
+    }
     document.getElementById('ht0').classList.remove('my-turn');
     this.clearBtns();
     this.ann('tenpai');
@@ -10382,6 +10405,16 @@ window.Online = {
           if(_rTing.length>0){
             if(!Game.st.riichiPlayers) Game.st.riichiPlayers=[false,false,false,false];
             Game.st.riichiPlayers[peerIdx]=true;
+            // 天聽/地聽：第一巡且全場無鳴牌時宣告聽牌即記錄（房主端計分用）
+            {
+              const _nm=(Game.st.melds||[]).every(m=>m.length===0);
+              const _td=(Game.st.discards||[]).reduce((a,d)=>a+(d?d.length:0),0);
+              if(!Game.st._tingType) Game.st._tingType=[null,null,null,null];
+              if(_nm){
+                if(Game.st.dealer===peerIdx && _td===0) Game.st._tingType[peerIdx]='天聽';
+                else if(Game.st.dealer!==peerIdx && (Game.st.discards[peerIdx]?Game.st.discards[peerIdx].length:0)===0 && _td<=3) Game.st._tingType[peerIdx]='地聽';
+              }
+            }
             // 【BROADCAST_TING】主機廣播聽牌語音封包給所有人
             const tingName=Game.st.names[peerIdx]||`玩家${peerIdx}`;
             MahjongNetwork.broadcast({type:'broadcast_ting',playerName:tingName,playerIdx:peerIdx});
