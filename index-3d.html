@@ -4853,6 +4853,8 @@ const Game={
     } else {
       Snd.say(tile.n);
     }
+    // 連線：房主把報牌語音廣播給所有客戶端（非房主只收 game_state，否則聽不到報牌）
+    if(this._online&&this._isHost) MahjongNetwork.broadcast({type:'discard_voice',n:tile.n});
     if(p===0){
       this._flyTile(tileId,'dc0',()=>{
         this._isDiscarding=false; // 【Task1】飛牌動畫結束，解除出牌鎖
@@ -4968,8 +4970,8 @@ const Game={
     const s=this.st;
     const peer=this._peers[p];
     if(!peer?.id){s.turn=(discP+1)%4;setTimeout(()=>this.doTurn(),220);return;}
-    const serOpts=opts.map(o=>({...o,tiles:(o.tiles||[]).map(t=>({id:t.id,n:t.n,suit:t.suit,v:t.v}))}));
-    const serTile={id:tile.id,n:tile.n,suit:tile.suit,v:tile.v};
+    const serOpts=opts.map(o=>({...o,tiles:(o.tiles||[]).map(t=>({id:t.id,n:t.n,s:t.s,v:t.v}))}));
+    const serTile={id:tile.id,n:tile.n,s:tile.s,v:tile.v};
     MahjongNetwork.sendTo(peer.id,{type:'meld_offer',opts:serOpts,tile:serTile,sentAt:Date.now()});
     this._waitingMeldFrom=p;
     clearTimeout(this._nhMeldTimeout);
@@ -5015,8 +5017,8 @@ const Game={
           this._submitMeldResponse(r.p,{type:'skip'});
           continue;
         }
-        const serOpts=r.opts.map(o=>({...o,tiles:(o.tiles||[]).map(t=>({id:t.id,n:t.n,suit:t.suit,v:t.v}))}));
-        const serTile={id:tile.id,n:tile.n,suit:tile.suit,v:tile.v};
+        const serOpts=r.opts.map(o=>({...o,tiles:(o.tiles||[]).map(t=>({id:t.id,n:t.n,s:t.s,v:t.v}))}));
+        const serTile={id:tile.id,n:tile.n,s:tile.s,v:tile.v};
         MahjongNetwork.sendTo(peer.id,{type:'meld_offer',opts:serOpts,tile:serTile,sentAt:Date.now()});
       }
     }
@@ -10395,6 +10397,10 @@ window.Online = {
             Game._proceedNewRound();
           }
         }
+        break;
+      case 'discard_voice':
+        // 連線：客戶端播放房主廣播的報牌語音
+        if(!Game._isHost && data.n) Snd.say(data.n);
         break;
       case 'broadcast_ting':
         // 【BROADCAST_TING】所有客戶端收到聽牌廣播後播語音
