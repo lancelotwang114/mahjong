@@ -1374,7 +1374,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div id="wmon"></div>
     <div id="whands"></div>
     <div class="wov-btns">
-      <button class="wov-btn primary" onclick="Game.newRound?.()">下一局</button>
+      <button class="wov-btn primary" id="wov-next-btn" onclick="Game.nextRoundFromOverlay?.()">下一局</button>
       <button class="wov-btn peek" onclick="Game.peekBoard?.()">👁 查看牌桌</button>
       <button class="wov-btn" onclick="Game.returnLobby?.()">返回大廳</button>
     </div>
@@ -1744,6 +1744,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div id="tenpai-select-panel"></div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
 <script type="importmap">
 { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
 </script>
@@ -9710,31 +9711,865 @@ const Lobby = {
   showOnline(){ this._show('lobby-online'); },
 };
 
-// 連線對戰 stub：3D 版尚未實作連線功能，提供 stub 防止誤點導致 ReferenceError
-// 主機/客戶端真正連線邏輯需從 2D 版搬過來後再移除此 stub
-if (typeof window.Online === 'undefined') {
-  window.Online = {
-    showCreate(){ Game.toast?.('連線對戰尚未實作（3D 版）', 2200); },
-    showJoin(){ Game.toast?.('連線對戰尚未實作（3D 版）', 2200); },
-    doJoin(){ Game.toast?.('連線對戰尚未實作', 2000); },
-    startGame(){ Game.toast?.('連線對戰尚未實作', 2000); },
-    leave(){ Game.toast?.('連線對戰尚未實作', 2000); },
-    copyCode(){},
-    _syncJoinName(){},
-    broadcastState(){},  // 單機模式下會被呼叫但有 _online guard 護著
-    _rotateState(s){ return s; },
-  };
-}
+// 連線層（自 2D index.html 移植；3D Game 已 online-aware，僅缺此傳輸/控制層）
+window.Online = {
+  peers: [],      // [{id, name}] — host's peer list
+  myIndex: 0,     // absolute seat index (0=host)
+  _inviteUrl: '',
+  _aiCount: 0,    // AI slots to fill (host only)
+  _aiNames: ['電腦A','電腦B','電腦C'],
+  _submitting: false, // 防重複連點鎖：建立/加入房間進行中時為 true
 
-// MahjongNetwork stub：3D 版未載 P2P library,提供 stub 防 ReferenceError
-// 單機模式不會走到,但避免某個分支誤觸發
-if (typeof window.MahjongNetwork === 'undefined') {
-  window.MahjongNetwork = {
-    broadcast(){},
-    sendTo(){},
-    isConnected: false,
-  };
-}
+  _status(msg){ const el=document.getElementById('ol-status'); if(el) el.textContent=msg; },
+
+  // 顯示或隱藏「建立房間」「加入房間」模式按鈕
+  _setModeBtnsVisible(v){
+    const d=document.querySelector('.online-mode-btns');
+    if(d) d.style.display=v?'flex':'none';
+  },
+
+  showCreate(){
+    // ── 防重複連點鎖 ─────────────────────────────────────────
+    if(this._submitting) return;
+    this._submitting=true;
+    this._setModeBtnsVisible(false); // 隱藏「建立/加入房間」按鈕，防止進房後再次誤觸
+    document.getElementById('ol-room-section').classList.add('show');
+    document.getElementById('ol-create-view').style.display='block';
+    document.getElementById('ol-join-view').style.display='none';
+    // v1.6.20: 房主建立房間時確保設定區可見
+    const _olhs=document.getElementById('ol-host-settings');
+    if(_olhs) _olhs.style.display='';
+    const _olsb=document.getElementById('ol-start-btn');
+    if(_olsb) _olsb.style.display='';
+    const name=(document.getElementById('pname')?.value.trim()||'玩家').substring(0,8);
+    this._status('連線中…');
+    MahjongNetwork.init(name).then(id=>{
+      MahjongNetwork.createRoom();
+      this.peers=[{id,name}];
+      this._inviteUrl=`${location.origin}${location.pathname}?room=${MahjongNetwork.roomId}&host=${id}`;
+      document.getElementById('ol-room-code').textContent=this._inviteUrl;
+      this._updatePlayerList();
+      this._status('等待玩家加入…');
+      this._submitting=false; // 成功後解鎖（房間建立完成，可正常操作）
+      MahjongNetwork.onPlayerJoin=(peerId,peerName)=>{
+        // 遊戲進行中：不走大廳邏輯，等候對方的 reconnect_request 訊息
+        if(Game._online&&Game._isHost&&Game.st?.phase==='playing') return;
+        if(this.peers.length>=4) return;
+        // ── 後端唯一性防禦：同一 peerId 不可重複加入 ────────────
+        if(this.peers.some(p=>p.id===peerId)) return;
+        this.peers.push({id:peerId,name:peerName.substring(0,8)});
+        this._updatePlayerList();
+        MahjongNetwork.broadcast({type:'player_list',peers:this.peers.map(p=>p.name)});
+        this._broadcastSettings(); // v1.6.65: 同步目前房主設定給所有訪客
+        this._status(`${peerName} 加入了 (${this.peers.length}/4)`);
+      };
+      MahjongNetwork.onPlayerLeave=(peerId)=>{
+        this.peers=this.peers.filter(p=>p.id!==peerId);
+        this._updatePlayerList();
+      };
+      MahjongNetwork.onMessage=(peerId,data)=>this._handleMsg(peerId,data);
+    }).catch(()=>{
+      this._status('連線失敗，請重試');
+      this._submitting=false;
+      this._setModeBtnsVisible(true); // 失敗時恢復按鈕
+    });
+  },
+
+  showJoin(){
+    document.getElementById('ol-room-section').classList.add('show');
+    document.getElementById('ol-join-view').style.display='block';
+    document.getElementById('ol-create-view').style.display='none';
+    // Pre-fill join name from home screen pname
+    const homeNameEl=document.getElementById('pname');
+    const joinNameEl=document.getElementById('ol-join-name');
+    if(joinNameEl&&homeNameEl&&!joinNameEl.value) joinNameEl.value=homeNameEl.value||'玩家';
+    setTimeout(()=>joinNameEl?.focus(),80);
+  },
+  _syncJoinName(val){
+    // Keep home pname in sync when user types in join name field
+    const el=document.getElementById('pname');if(el)el.value=val;
+  },
+
+  copyCode(){
+    const text=this._inviteUrl||document.getElementById('ol-room-code').textContent;
+    if(navigator.clipboard) navigator.clipboard.writeText(text);
+    this._status('✓ 已複製');
+    setTimeout(()=>this._status('等待玩家加入…'),2000);
+  },
+
+  doJoin(){
+    // ── 防重複連點鎖 ─────────────────────────────────────────
+    if(this._submitting) return;
+    const raw=document.getElementById('ol-join-code')?.value.trim();
+    if(!raw){ this._status('請貼上邀請連結'); return; }
+    // Accept full invite URL (preferred) or "CODE:PEERID" shorthand
+    let code, hostId;
+    try {
+      const u = raw.startsWith('http') ? new URL(raw) : new URL('https://x.x/?' + raw.replace(':','&host=').replace(/^/,'room='));
+      code = (u.searchParams.get('room')||'').toUpperCase();
+      hostId = u.searchParams.get('host')||'';
+    } catch(e) { code=''; hostId=''; }
+    if(!code||!hostId){ this._status('請貼上完整邀請連結（包含 ?room=...&host=...）'); return; }
+    // 鎖定按鈕，防止重複送出
+    this._submitting=true;
+    const joinBtn=document.getElementById('ol-join-btn');
+    if(joinBtn){ joinBtn.disabled=true; joinBtn.style.opacity='.45'; }
+    const joinNameEl=document.getElementById('ol-join-name');
+    const name=((joinNameEl?.value||document.getElementById('pname')?.value||'').trim()||'玩家').substring(0,8);
+    this._status('連線中…');
+    MahjongNetwork.init(name).then(()=>{
+      return MahjongNetwork.joinRoom(code, hostId.trim());
+    }).then(()=>{
+      MahjongNetwork.onMessage=(peerId,data)=>this._handleMsg(peerId,data);
+      MahjongNetwork.onPlayerLeave=()=>Game.toast('有玩家離線',2000);
+      this._setModeBtnsVisible(false); // 成功加入後隱藏「建立/加入房間」按鈕
+      document.getElementById('ol-join-view').style.display='none';
+      document.getElementById('ol-create-view').style.display='block';
+      document.getElementById('ol-room-code').textContent=code;
+      document.getElementById('ol-room-code').style.cursor='default';
+      // v1.6.65: 非房主顯示唯讀設定，隱藏開始按鈕
+      const olhs=document.getElementById('ol-host-settings');
+      if(olhs){
+        olhs.querySelectorAll('select').forEach(s=>{s.disabled=true;});
+        if(!olhs.querySelector('.guest-readonly-badge')){
+          const badge=document.createElement('div');
+          badge.className='guest-readonly-badge';
+          badge.style.cssText='font-size:.65rem;color:rgba(255,255,255,.35);text-align:center;margin-bottom:6px;margin-top:4px';
+          badge.textContent='\u2699 \u4ee5\u4e0b\u70ba\u623f\u4e3b\u8a2d\u5b9a\uff08\u552f\u8b80\uff09';
+          olhs.insertBefore(badge,olhs.firstChild);
+        }
+      }
+      const olsb=document.getElementById('ol-start-btn');
+      if(olsb) olsb.style.display='none';
+      this._submitting=false;
+      // ── 重連偵測：若 localStorage 有符合此房間的席位記錄，送出重連請求 ──
+      try {
+        const _rc=JSON.parse(localStorage.getItem('mj_reconnect_v1')||'{}');
+        const _age=Date.now()-(_rc.ts||0);
+        if(_rc.room===code&&_rc.host===hostId.trim()&&_rc.seat>0&&_age<6*3600*1000){
+          MahjongNetwork.broadcast({type:'reconnect_request',seat:_rc.seat,name:_rc.name});
+          this._status('重新連線中…');
+          return; // 跳過「等待房主開始」提示，等房主回應
+        }
+      } catch(e){}
+      this._status('等待房主開始…');
+    }).catch(()=>{
+      this._status('加入失敗，請確認代碼');
+      this._submitting=false;
+      if(joinBtn){ joinBtn.disabled=false; joinBtn.style.opacity=''; }
+    });
+  },
+
+  // v1.6.65: 廣播目前房主設定給所有訪客，並在房主 select 上加 onchange 監聽
+  _broadcastSettings(){
+    const ids=['sbase-online','stai-online','smoney-online','stime-online','squickstart-online','srounds-online'];
+    const settings={};
+    ids.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) settings[id.replace('-online','')]=el.value;
+    });
+    MahjongNetwork.broadcast({type:'settings_update',...settings});
+    // 確保房主 select 有 onchange 同步（只綁一次）
+    if(!this._settingsListenersBound){
+      this._settingsListenersBound=true;
+      ids.forEach(id=>{
+        const el=document.getElementById(id);
+        if(!el) return;
+        el.addEventListener('change',()=>this._broadcastSettings());
+      });
+    }
+  },
+
+  _updatePlayerList(){
+    const list=document.getElementById('ol-player-list');
+    if(!list) return;
+    const seats=['東（房主）','南','西','北'];
+    const isHost=MahjongNetwork.isHost;
+    this._aiCount=Math.min(this._aiCount, 4-this.peers.length);
+    list.innerHTML='';
+    for(let i=0;i<4;i++){
+      const p=this.peers[i];
+      const aiIdx=i-this.peers.length;
+      const isAi=!p&&aiIdx>=0&&aiIdx<this._aiCount;
+      const div=document.createElement('div');
+      if(p){
+        div.className='ol-player-slot filled';
+        div.textContent=`👤 ${seats[i]}：${p.name}`;
+      } else if(isAi){
+        div.className='ol-player-slot filled';
+        div.style.background='rgba(52,73,94,.35)';
+        div.style.color='rgba(200,200,200,.7)';
+        div.innerHTML=`🤖 ${seats[i]}：${this._aiNames[aiIdx]||'AI'}`;
+        if(isHost){
+          const rm=document.createElement('button');
+          rm.textContent='✕';
+          rm.style.cssText='margin-left:auto;background:none;border:none;color:rgba(255,100,100,.6);cursor:pointer;font-size:.85rem;padding:0 4px';
+          rm.onclick=()=>{ this._aiCount=Math.max(0,this._aiCount-1); this._updatePlayerList(); };
+          div.appendChild(rm);
+        }
+      } else {
+        div.className='ol-player-slot empty';
+        div.style.display='flex'; div.style.alignItems='center'; div.style.gap='6px';
+        div.innerHTML=`<span style="flex:1">${seats[i]}：等待中…</span>`;
+        if(isHost){
+          const ab=document.createElement('button');
+          ab.textContent='＋AI';
+          ab.style.cssText='background:rgba(52,73,94,.5);border:1px solid rgba(125,168,212,.4);border-radius:5px;color:rgba(125,200,255,.8);cursor:pointer;font-size:.72rem;padding:2px 8px;white-space:nowrap';
+          ab.onclick=()=>{ this._aiCount=Math.min(this._aiCount+1,4-this.peers.length); this._updatePlayerList(); };
+          div.appendChild(ab);
+        }
+      }
+      list.appendChild(div);
+    }
+    const total=this.peers.length+this._aiCount;
+    const btn=document.getElementById('ol-start-btn');
+    if(btn){
+      const ready=total>=4;
+      btn.disabled=!ready;
+      btn.style.opacity=ready?'1':'.45';
+      btn.textContent=ready?'▶ 開始遊戲':`▶ 開始遊戲 (${total}/4)`;
+    }
+  },
+
+  startGame(){
+    if(!MahjongNetwork.isHost) return;
+    const total=this.peers.length+this._aiCount;
+    if(total<4) return;
+    const names=Array.from({length:4},(_,i)=>{
+      if(this.peers[i]) return this.peers[i].name;
+      return this._aiNames[i-this.peers.length]||`AI${i}`;
+    });
+    // Generate dice once so all players see the same result
+    const diceVals=[1+~~(Math.random()*6),1+~~(Math.random()*6)];
+    // v1.6.18: 讀取房間設定並廣播給所有非房主玩家
+    const _ol=id=>+(document.getElementById(id)?.value??0)||0;
+    const timeLimit=_ol('stime-online')||15;
+    const base=_ol('sbase-online')||1;
+    const tai=_ol('stai-online')||100;
+    const money=_ol('smoney-online')||10000;
+    const quickStart=!!(+(document.getElementById('squickstart-online')?.value||0));
+    const maxRounds=_ol('srounds-online')||4;
+    const roomSettings={timeLimit,base,tai,money,quickStart,maxRounds};
+    Game._hostDice=diceVals;
+    this.peers.forEach((p,i)=>{
+      if(i===0||!p.id) return;
+      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals,hostId:MahjongNetwork.playerId,...roomSettings});
+    });
+    Game._online=true; Game._isHost=true; Game._myIndex=0;
+    Game._peers=this.peers;
+    // 遊戲開始後：覆蓋 onPlayerLeave，保留席位供重連，不移除 _peers 陣列元素
+    MahjongNetwork.onPlayerLeave=(peerId)=>{
+      const lp=Game._peers.find(p=>p.id===peerId);
+      Game.toast(`${lp?.name||'玩家'} 離線中…`,2000);
+      DbgLog.log('LEAVE',`${lp?.name||'?'} (${peerId}) disconnected`);
+    };
+    document.getElementById('pname').value=names[0]||'玩家';
+    Game.start('east');
+    // 房主套用自己設定的房間參數（start() 後才覆蓋，確保覆蓋 solo 預設值）
+    if(Game.settings){
+      Game.settings.time=timeLimit;
+      Game.settings.base=base;
+      Game.settings.tai=tai;
+      Game.settings.money=money;
+      Game.settings.quickStart=quickStart;
+      Game.settings.maxRounds=maxRounds;
+    }
+    const aiIndices=Array.from({length:4},(_,i)=>i).filter(i=>!this.peers[i]);
+    if(Game.settings) Game.settings.aiStyle=Array.from({length:4},(_,i)=>aiIndices.includes(i)?'balanced':null);
+    if(Game.st){ Game.st.ai=aiIndices; Game.st.names=names; }
+  },
+
+  leave(){
+    MahjongNetwork.disconnect();
+    try { localStorage.removeItem('mj_reconnect_v1'); } catch(e){} // 離開房間時清除重連資訊
+    this.peers=[]; this._aiCount=0;
+    this._submitting=false; // 解除任何殘留鎖定
+    document.getElementById('ol-create-view').style.display='none';
+    document.getElementById('ol-join-view').style.display='none';
+    document.getElementById('ol-room-section').classList.remove('show');
+    // 恢復「建立房間」「加入房間」按鈕
+    this._setModeBtnsVisible(true);
+    const joinBtn=document.getElementById('ol-join-btn');
+    if(joinBtn){ joinBtn.disabled=false; joinBtn.style.opacity=''; }
+    this._status('');
+    Game._online=false; Game._isHost=false; Game._myIndex=0;
+    Lobby.showHome();
+  },
+
+  _handleMsg(peerId,data){
+    switch(data.type){
+      case 'player_list':
+        if(data.peers){
+          this.peers=data.peers.map((name,i)=>({id:i===0?null:'?',name}));
+          this._updatePlayerList();
+        }
+        break;
+      case 'settings_update': { // v1.6.65: 訪客接收房主設定並更新顯示
+        const keys=['sbase','stai','smoney','stime','squickstart','srounds'];
+        keys.forEach(k=>{
+          const el=document.getElementById(`${k}-online`);
+          if(el&&el.disabled&&data[k]!==undefined) el.value=data[k];
+        });
+        break;
+      }
+      case 'game_start':
+        this.myIndex=data.playerIndex;
+        Game._online=true; Game._isHost=false; Game._myIndex=data.playerIndex;
+        document.getElementById('pname').value=data.names[data.playerIndex]||'玩家';
+        if(data.dice) Game._hostDice=data.dice; // use host's dice so all players see same result
+        Game.start('east');
+        // v1.6.18: 套用房主廣播的所有房間設定
+        if(Game.settings){
+          if(data.timeLimit!==undefined) Game.settings.time=data.timeLimit;
+          if(data.base!==undefined) Game.settings.base=data.base;
+          if(data.tai!==undefined) Game.settings.tai=data.tai;
+          if(data.money!==undefined) Game.settings.money=data.money;
+          if(data.quickStart!==undefined) Game.settings.quickStart=!!data.quickStart;
+          if(data.maxRounds!==undefined) Game.settings.maxRounds=data.maxRounds;
+        }
+        if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
+        if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
+        Game._applyOnlineRole(); // hide speed/pause for guests
+        // 儲存重連資訊（房間 + 席位 + 房主 peer ID），供斷線後重連使用
+        try {
+          localStorage.setItem('mj_reconnect_v1',JSON.stringify({
+            room:MahjongNetwork.roomId,host:data.hostId||'',
+            seat:data.playerIndex,name:data.names[data.playerIndex]||'玩家',ts:Date.now()
+          }));
+        } catch(e){}
+        break;
+      case 'game_rejoin': // 斷線重連：不 reset 遊戲，直接顯示遊戲畫面等 game_state 填充
+        Game._online=true; Game._isHost=false; Game._myIndex=data.playerIndex;
+        document.getElementById('pname').value=data.names[data.playerIndex]||'玩家';
+        if(Game.settings){
+          if(data.timeLimit!==undefined) Game.settings.time=data.timeLimit;
+          if(data.base!==undefined) Game.settings.base=data.base;
+          if(data.tai!==undefined) Game.settings.tai=data.tai;
+          if(data.money!==undefined) Game.settings.money=data.money;
+          if(data.maxRounds!==undefined) Game.settings.maxRounds=data.maxRounds;
+        }
+        if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
+        // 顯示遊戲畫面（不呼叫 start()，不 reset 狀態）
+        document.getElementById('lobby').style.display='none';
+        document.getElementById('game')?.classList.add('show');
+        document.getElementById('game-topbar').style.display='flex';
+        document.getElementById('pause-btn').style.display='block';
+        document.getElementById('leave-btn').style.display='block';
+        document.getElementById('autoplay-btn').style.display='block';
+        document.getElementById('audio-btn').style.display='block';
+        Game._applyOnlineRole();
+        Game.toast('重新連線成功！',2500);
+        try {
+          localStorage.setItem('mj_reconnect_v1',JSON.stringify({
+            room:MahjongNetwork.roomId,host:data.hostId||'',
+            seat:data.playerIndex,name:data.names[data.playerIndex]||'玩家',ts:Date.now()
+          }));
+        } catch(e){}
+        DbgLog.log('REJOIN','game_rejoin ok, waiting for game_state');
+        break;
+      case 'host_speed':
+        if(!Game._isHost) Game.setSpeed(data.speed);
+        break;
+      case 'host_pause':
+        if(!Game._isHost && Game.paused!==data.paused) Game.togglePause();
+        break;
+      case 'host_restart':
+        if(!Game._isHost) Game.toast('房主重啟牌局中…',2000);
+        break;
+      case 'host_restart_round':
+        if(!Game._isHost){
+          // Non-host: reset UI state, re-init same round, wait for game_state
+          Game.riichiMode=false; Game.riichiTile=null; Game._isDiscarding=false;
+          clearTimeout(Game._riichiDiscardTimer); Game._riichiDiscardTimer=null;
+          Game._killAllTimers();
+          Game.clearBtns();
+          Game.hideTenpai();
+          document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+          document.getElementById('wov').style.display='none';
+          const _nb3=document.getElementById('wov-next-btn');if(_nb3)_nb3.style.display='';
+          const _wb3=document.getElementById('wov-wait-lbl');if(_wb3)_wb3.remove();
+          if(Game.st){
+            Game.st.phase='between_rounds'; // 解除 phase guard，允許接收新 game_state
+            const s=Game.st;
+            Game.initRound(
+              data.names||s.names, data.ai||s.ai, null,
+              data.dealer??s.dealer, data.roundNum??s.roundNum,
+              data.roundWind||s.roundWind, data.honba??s.honba
+            );
+          }
+          Game.toast('房主重開此把！',2000);
+        }
+        break;
+      case 'host_play_again':
+        if(!Game._isHost){
+          // 房主重開整場：關閉結算 overlay，等待 game_state 廣播同步新局
+          document.getElementById('match-ov').style.display='none';
+          document.getElementById('wov').style.display='none';
+          const _mwl=document.getElementById('match-wait-lbl');if(_mwl)_mwl.remove();
+          Game.winStats=[0,0,0,0];Game.rounds=0;
+          Game.riichiMode=false;Game.riichiTile=null;Game._isDiscarding=false;
+          clearTimeout(Game._riichiDiscardTimer);Game._riichiDiscardTimer=null;
+          Game._killAllTimers();Game.clearBtns();Game.hideTenpai();
+          document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+          if(Game.st)Game.st.phase='between_rounds'; // 解除 phase guard 等候 game_state
+          Game.toast('房主開始新局！',1500);
+        }
+        break;
+      case 'host_start_round':
+        if(!Game._isHost){
+          // v1.6.20: 解除 'ended' 鎖再 newRound，確保後續 game_state 可通過 phase guard
+          if(Game.st&&Game.st.phase==='ended') Game.st.phase='between_rounds';
+          // v1.6.22: 同 ready_check，清除上一局殘留狀態
+          Game.riichiMode=false;
+          Game.riichiTile=null;
+          Game._isDiscarding=false;
+          clearTimeout(Game._riichiDiscardTimer);
+          Game._riichiDiscardTimer=null;
+          Game._killAllTimers();
+          Game.clearBtns();
+          Game.hideTenpai();
+          document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+          document.getElementById('wov').style.display='none';
+          const _nb2=document.getElementById('wov-next-btn');if(_nb2)_nb2.style.display='';
+          const _wb2=document.getElementById('wov-wait-lbl');if(_wb2)_wb2.remove();
+          Game.toast('房主已開始下一局！',1500); // 清除等待提示
+          Game.newRound();
+        }
+        break;
+      case 'game_state':
+        if(!Game._isHost && data.state){
+          DbgLog.log('GSTATE',`recv phase=${data.state.phase} turn=${data.state.turn} myPhase=${Game.st?.phase}`);
+          // 【Bug1修復】局已結算（phase=ended）時，game_state 廣播可能帶著 winData，
+          // 但不可覆蓋已由 game_over 封包正確設定好的本地狀態，否則會抹去正確的贏家資訊
+          if(Game.st&&Game.st.phase==='ended') break;
+          Game._isDiscarding=false; // 【Task1】主機已處理出牌，解除客戶端鎖
+          // 【v1.6.58】若正在顯示鳴牌 offer（吃/碰/槓），跳過 clearBtns；
+          // 正確清除時機是 action_resolved，此處強清會導致 offer 瞬間消失
+          if(!(Game._candidateMap&&Game._candidateMap.size>0)) Game.clearBtns();
+          Game.st=data.state;
+          Game.render();
+          // Set up interactive turn UI when it's our turn (tile already in hand)
+          if(data.state.phase==='playing'&&data.state.turn===0&&!data.state.ai?.includes(0)){
+            Game._setupNonHostTurn();
+          } else if(data.state.phase==='playing'){
+            // v1.6.17: 輪到對手時，仍需即時更新聽牌剩餘張數（v1.6.14 只修了單機路徑）
+            const _gs=data.state;
+            if(_gs.tenpai&&_gs.tenpai[0]&&_gs.tenpaiT&&_gs.tenpaiT[0]){
+              Game.showTenpai(_gs.tenpaiT[0]);
+            } else {
+              Game.hideTenpai();
+            }
+          }
+        }
+        break;
+      case 'meld_offer':
+        if(!Game._isHost){
+          DbgLog.log('MELD_OFFER',`recv tile=${data.tile?.n}${data.tile?.suit} opts=${(data.opts||[]).map(o=>o.type).join(',')}`);
+          // Calculate elapsed time to sync countdown with host's timer
+          const elapsed=data.sentAt?Math.round((Date.now()-data.sentAt)/1000):0;
+          // 此值來自「本機時鐘 − 房主時鐘」，跨裝置時鐘偏移會污染它；只用來補償網路延遲，
+          // 故上限改為 2 秒，避免時鐘差把鳴牌/胡牌倒數砍到剩 1 秒導致來不及按
+          Game._meldOfferElapsed=Math.max(0,Math.min(elapsed,2));
+          Game.offerMeld(0,data.opts,data.tile);
+        }
+        break;
+      case 'reconnect_request': // 非房主重連時送來，房主驗證後回送 game_rejoin
+        if(Game._isHost&&Game.st?.phase==='playing'){
+          const {seat,name}=data;
+          if(seat>0&&seat<4&&Game._peers[seat]&&Game._peers[seat].name===name){
+            Game._peers[seat].id=peerId; // 更新席位的 peer ID
+            const _rs=Game.st;
+            MahjongNetwork.sendTo(peerId,{
+              type:'game_rejoin',playerIndex:seat,names:_rs.names,
+              hostId:MahjongNetwork.playerId,
+              timeLimit:Game.settings?.time,base:Game.settings?.base,
+              tai:Game.settings?.tai,money:Game.settings?.money,maxRounds:Game.settings?.maxRounds,
+            });
+            setTimeout(()=>Online.broadcastState(),300); // 推送當前狀態讓對方渲染
+            Game.toast(`${name} 重新連線`,2000);
+            DbgLog.log('REJOIN',`p${seat} ${name} reconnected peerId=${peerId}`);
+          } else {
+            DbgLog.log('REJOIN',`rejected seat=${seat} name=${name}`);
+          }
+        }
+        break;
+      case 'action':
+        if(Game._isHost) this._processAction(peerId,data);
+        break;
+      case 'action_resolved':
+        DbgLog.log('RESOLVED',`winner=${data.winner??'-'} action=${data.action?.type||'-'}`);
+        // 非主機客戶端收到裁定結果：清除自己的 meld UI，等待下一次 game_state 廣播
+        if(!Game._isHost){ Game.clearBtns(); Game.hideTenpai(); }
+        break;
+      case 'game_over':
+        // 【BROADCAST_GAME_OVER / Task2 處理】非主機客戶端：強制中斷所有動作並等待結算畫面
+        if(!Game._isHost&&Game.st){
+          // 設定 isRoundOver 鎖（phase='ended'）並清掃計時器
+          Game.st.phase='ended';
+          Game._killAllTimers();
+          Game.clearBtns();Game.hideTenpai();
+          // 【Task2】直接套用主機傳來的旋轉後金錢數值，無需客戶端自行計算
+          if(data.money) Game.st.money=data.money;
+          Game.render();
+          // 若 winData 已在封包中，立即顯示結算（含已更新金錢）
+          if(data.winData&&Game.st){
+            // 【Bug6】保留封包帶來的字串欄位，合併進 winData 供 showWin 使用
+            Game.st.winData={...data.winData,winnerName:data.winnerName||'',loserName:data.loserName||''};
+            if(data.winner!=null) Game.st.turn=data.winner;
+            setTimeout(()=>Game.showWin(data.winner==null),800);
+          } else {
+            setTimeout(()=>Game.showWin(data.winner==null),800);
+          }
+        }
+        break;
+      case 'next_round':
+        if(!Game._isHost && data.state){ Game.st=data.state; Game.render(); }
+        break;
+      case 'ready_check':
+        // 【Task3】主機準備開新局，回傳就緒訊號
+        if(!Game._isHost){
+          // v1.6.20: 解除 'ended' 鎖，讓後續 game_state 廣播能通過 phase guard
+          if(Game.st&&Game.st.phase==='ended') Game.st.phase='between_rounds';
+          // v1.6.22: 清除上一局殘留的遊戲狀態，避免 riichiMode/計時器流入新局卡死非房主
+          Game.riichiMode=false;
+          Game.riichiTile=null;
+          Game.riichiWaiting=null;
+          Game._tenpaiWaiting=null;
+          Game._isDiscarding=false;
+          clearTimeout(Game._riichiDiscardTimer);
+          Game._riichiDiscardTimer=null;
+          clearTimeout(Game._riichiModeTimer);
+          Game._riichiModeTimer=null;
+          Game._killAllTimers();
+          Game.clearBtns();
+          Game.hideTenpai();
+          document.getElementById('ht0')?.classList.remove('riichi-mode','my-turn');
+          // 關閉結算 overlay，還原「下一局」按鈕供下次使用
+          document.getElementById('wov').style.display='none';
+          const _nb=document.getElementById('wov-next-btn');if(_nb)_nb.style.display='';
+          const _wb=document.getElementById('wov-wait-lbl');if(_wb)_wb.remove();
+          Game.toast('準備下一局中…',2000);
+          MahjongNetwork.broadcast({type:'client_ready'});
+        }
+        break;
+      case 'client_ready':
+        // 【Task3】主機收集客戶端就緒確認，全部到齊後開局
+        if(Game._isHost&&Game._readyPlayers){
+          const rIdx=Game._peers.findIndex(peer=>peer.id===peerId);
+          if(rIdx>0) Game._readyPlayers.add(rIdx);
+          if(Game._readyPlayers.size>=Game._readyTotal){
+            clearTimeout(Game._readyCheckTimeout);Game._readyCheckTimeout=null;
+            Game._readyPlayers=null;
+            Game._proceedNewRound();
+          }
+        }
+        break;
+      case 'broadcast_ting':
+        // 【BROADCAST_TING】所有客戶端收到聽牌廣播後播語音
+        if(!Game._isHost){
+          Game.speakTing(data.playerName||`玩家${data.playerIdx}`);
+        }
+        break;
+      case 'chat':
+        if(data.from&&data.text) Game._addChatMsg('peer',data.from,data.text);
+        break;
+      case 'voice_chat':
+        // v1.6.18: 收到語音聊天 — 顯示訊息並播放 TTS
+        if(data.from&&data.text){
+          Game._addChatMsg('voice',data.from,`🔊 ${data.text}`);
+          Game._sayChatTTS(data.text);
+        }
+        break;
+    }
+  },
+
+  _processAction(peerId,data){
+    const peerIdx=Game._peers.findIndex(p=>p.id===peerId);
+    DbgLog.log('RECV',`p${peerIdx} action=${data.action||data.type||'?'} selfDraw=${data.selfDraw??'-'} tileId=${data.tileId||'-'}`);
+    if(peerIdx<0) return;
+    // isRoundOver guard：局已結束，丟棄任何後到的出牌封包（防止勝負後繼續出牌）
+    if(!Game.st||Game.st.phase!=='playing'){
+      if(data.action==='discard'||data.action==='meld'||data.action==='selfkong')return;
+    }
+    // 【H1】記錄是否有合法的 legacy 鳴牌等待情境，供後面 skip 授權驗證使用（必須在清除前記錄）
+    const _wasLegacyWaiting=Game._waitingMeldFrom===peerIdx;
+    // Clear pending non-host meld wait when peer responds (legacy single-wait path)
+    if(_wasLegacyWaiting){
+      Game._waitingMeldFrom=null;
+      clearTimeout(Game._nhMeldTimeout);
+    }
+    // Resolve {id}-only tile stubs to full tile objects from host's game state
+    const resolveTiles=(idArr)=>{
+      if(!idArr||!Game.st) return idArr;
+      const hand=Game.st.hands[peerIdx]||[];
+      const all=[...hand,...(Game.st.discards||[]).flat(),...(Game.st.melds||[]).flat().flatMap(m=>m.tiles||[])];
+      return idArr.map(t=>all.find(h=>h.id===t.id)||t);
+    };
+    // 若鳴牌併發鎖正在等待此玩家（peerIdx）的回應，路由至 lock 而非直接執行
+    if(Game._meldPendingSet&&Game._meldPendingSet.has(peerIdx)){
+      switch(data.action){
+        case 'meld': Game._submitMeldResponse(peerIdx,{type:data.meldType,tiles:resolveTiles(data.tiles)}); break;
+        case 'win':  Game._submitMeldResponse(peerIdx,{type:'win',selfDraw:data.selfDraw}); break;
+        case 'skip':
+          // 【過水】meld lock 路徑：非房主跳過放槍胡機會
+          if(data.guoShui&&Game.st?.guoShui) Game.st.guoShui[peerIdx]=true;
+          Game._submitMeldResponse(peerIdx,{type:'skip'}); break;
+        default:
+          if(data.guoShui&&Game.st?.guoShui) Game.st.guoShui[peerIdx]=true;
+          Game._submitMeldResponse(peerIdx,{type:'skip'}); break;
+      }
+      return;
+    }
+    switch(data.action){
+      case 'discard':
+        // 【防雙打序號驗證】序號不符代表重複或過期點擊，直接丟棄
+        if(Game.st&&data.turnSeq!=null&&data.turnSeq!==Game.st.turnSeq){
+          console.warn(`[turnSeq] discard rejected: got ${data.turnSeq}, current ${Game.st.turnSeq}`);
+          break;
+        }
+        // 【C1】回合歸屬驗證：確認現在是 peerIdx 的回合，防止越回合出牌污染狀態
+        if(Game.st&&Game.st.turn!==peerIdx){
+          console.warn(`[discard] out-of-turn from p${peerIdx}, turn=${Game.st.turn}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          return;
+        }
+        // 【主機防相公】discard 前確認手牌應有17張（已摸牌待出）
+        if(Game.st&&!Game.validateHandSize(peerIdx,'drawn')){
+          // 張數異常：拒絕執行，強制同步正確狀態回客戶端
+          setTimeout(()=>Online.broadcastState(),50);
+          return;
+        }
+        // v1.6.27【出牌 tileId 驗證】確認被打出的牌真的在手牌裡，防客戶端偽造 tileId
+        if(Game.st&&!Game.st.hands[peerIdx].some(t=>t.id===data.tileId)){
+          console.warn(`[discard] tileId ${data.tileId} not in p${peerIdx} hand, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          return;
+        }
+        // 【H4】宣告聽牌前先驗證：打出該牌後手牌真的能聽，防虛假宣告鎖定 riichiPlayers
+        if(data.declareRiichi&&Game.st){
+          const _rAfterHand=Game.st.hands[peerIdx].filter(x=>!x.fl&&x.id!==data.tileId);
+          const _rTing=tenpaiTiles(_rAfterHand,Game.st.melds[peerIdx]);
+          if(_rTing.length>0){
+            if(!Game.st.riichiPlayers) Game.st.riichiPlayers=[false,false,false,false];
+            Game.st.riichiPlayers[peerIdx]=true;
+            // 【BROADCAST_TING】主機廣播聽牌語音封包給所有人
+            const tingName=Game.st.names[peerIdx]||`玩家${peerIdx}`;
+            MahjongNetwork.broadcast({type:'broadcast_ting',playerName:tingName,playerIdx:peerIdx});
+            Game.speakTing(tingName); // 主機自己也播
+          } else {
+            console.warn(`[riichi] p${peerIdx} declared riichi but not tenpai after discard, ignoring`);
+          }
+        }
+        Game.doDiscard(peerIdx,data.tileId);
+        break;
+      case 'meld': {
+        // 【M1】null guard：Game.st 為 null 時直接拒絕，不呼叫 doMeld
+        if(!Game.st){ console.warn(`[meld] Game.st is null, rejecting`); break; }
+        const _mt=data.meldType, _rt=resolveTiles(data.tiles);
+        const _ms=Game.st;
+        const _disc=_ms.last, _mHand=_ms.hands[peerIdx].filter(x=>!x.fl);
+        // 【H2】已宣告聽牌的玩家不可鳴牌（只能胡牌），防止破壞聽牌限制
+        if(_ms.riichiPlayers?.[peerIdx]){
+          console.warn(`[meld] p${peerIdx} is in riichi, meld rejected`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // v1.6.27【鳴牌合法性驗證】以主機端當前牌局狀態重新計算可鳴選項，核實請求型別合法
+        const _legal=meldOpts(_mHand,_disc,peerIdx,_ms.lastP,_ms.melds[peerIdx]);
+        if(!_legal.some(o=>o.type===_mt)){
+          console.warn(`[meld] illegal ${_mt} from p${peerIdx}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // 進一步驗證：claimed hand tiles 必須都在主機端手牌中
+        const _hIds=new Set(_ms.hands[peerIdx].map(t=>t.id));
+        if(_rt.some(t=>t.id!==_disc?.id&&!_hIds.has(t.id))){
+          console.warn(`[meld] tile not in hand for p${peerIdx}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        Game.doMeld(peerIdx,_mt,_rt);
+        break;
+      }
+      case 'selfkong': {
+        // 【C2】selfkong 完整驗證：null guard + 回合驗證 + 槓牌合法性
+        if(!Game.st){ console.warn(`[selfkong] Game.st is null, rejecting`); break; }
+        const _sks=Game.st;
+        // 回合驗證：只有輪到自己才能宣告暗槓/加槓
+        if(_sks.turn!==peerIdx){
+          console.warn(`[selfkong] out-of-turn from p${peerIdx}, turn=${_sks.turn}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // 合法性驗證：用主機端 AI.selfKong 重新計算可槓的牌組（不信任客戶端回報的 tile IDs）
+        const _skHand=_sks.hands[peerIdx].filter(x=>!x.fl);
+        const _skValid=AI.selfKong(_skHand,_sks.melds[peerIdx]);
+        if(!_skValid){
+          console.warn(`[selfkong] no valid kong for p${peerIdx}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // 使用主機端計算的牌組執行，完全忽略客戶端回報的 tile IDs
+        Game.doSelfKong(peerIdx,_skValid);
+        break;
+      }
+      case 'win': {
+        // 【M1】null guard
+        if(!Game.st){ console.warn(`[win] Game.st is null, rejecting`); break; }
+        const _ws=Game.st;
+        // 【H3a】榮和處理：若來自 legacy _offerNonHostMeld 等待情境，直接執行胡牌
+        if(!data.selfDraw){
+          if(_wasLegacyWaiting){
+            const _wHand=_ws.hands[peerIdx].filter(x=>!x.fl);
+            if(!canWin(_wHand,_ws.last,_ws.melds[peerIdx].length)){
+              console.warn(`[win] invalid Ron claim from p${peerIdx}, rejecting`);
+              setTimeout(()=>Online.broadcastState(),50);
+              break;
+            }
+            Game.doWin(peerIdx,false);
+            break;
+          }
+          console.warn(`[win] non-selfDraw win from p${peerIdx} outside meld response context, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // 【H3b】自摸必須是此玩家的回合
+        if(_ws.turn!==peerIdx){
+          console.warn(`[win] selfDraw win from p${peerIdx} but turn=${_ws.turn}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        // v1.6.27【胡牌驗證】以主機端手牌狀態呼叫 canWin() 核實胡牌合法性
+        const _wHand=_ws.hands[peerIdx].filter(x=>!x.fl);
+        if(!canWin(_wHand,null,_ws.melds[peerIdx].length)){
+          console.warn(`[win] invalid win claim from p${peerIdx}, rejecting`);
+          setTimeout(()=>Online.broadcastState(),50);
+          break;
+        }
+        Game.doWin(peerIdx,data.selfDraw);
+        break;
+      }
+      case 'skip':
+        // 【H1】skip 只在有合法的 legacy 鳴牌等待情境時才允許，防止任意 spam 推進回合
+        if(_wasLegacyWaiting){
+          // 【過水】非房主跳過放槍胡機會，標記主機端 guoShui
+          if(data.guoShui&&Game.st?.guoShui) Game.st.guoShui[peerIdx]=true;
+          Game.nextTurn();
+        } else {
+          console.warn(`[skip] unauthorized skip from p${peerIdx}, ignoring`);
+          setTimeout(()=>Online.broadcastState(),50);
+        }
+        break;
+      case 'request_sync':
+        // 非主機請求重新同步（手牌張數異常時發送）
+        setTimeout(()=>Online.broadcastState(),50);
+        break;
+    }
+  },
+
+  broadcastState(){
+    if(!Game._isHost||!Game.st) return;
+    const s=Game.st;
+    Game._peers.forEach((p,i)=>{
+      if(i===0||!p.id) return;
+      const rotated=Online._rotateState(s,i);
+      MahjongNetwork.sendTo(p.id,{type:'game_state',state:rotated});
+    });
+  },
+
+  _rotateState(state,absIdx){
+    if(absIdx===0) return state;
+    const n=4;
+    const unrot=i=>(i+absIdx)%n;
+    const rot=i=>(i-absIdx+n)%n;
+    const reorder=arr=>Array.from({length:n},(_,i)=>arr[unrot(i)]);
+    // 【Bug1修復】winData 內的 p/payer 也必須跟著旋轉，否則 game_state 廣播後客戶端看到錯誤贏家
+    let rotatedWinData=state.winData||null;
+    if(state.winData){
+      rotatedWinData={
+        ...state.winData,
+        p:rot(state.winData.p),
+        payer:state.winData.payer>=0?rot(state.winData.payer):state.winData.payer,
+      };
+    }
+    return {
+      ...state,
+      winData:rotatedWinData,
+      hands:reorder(state.hands),
+      melds:reorder(state.melds),
+      discards:reorder(state.discards),
+      flowers:reorder(state.flowers||[[],[],[],[]]),
+      names:reorder(state.names),
+      tenpai:reorder(state.tenpai||[false,false,false,false]),
+      tenpaiT:reorder(state.tenpaiT||[[],[],[],[]]),
+      riichiPlayers:reorder(state.riichiPlayers||[false,false,false,false]),
+      scores:state.scores?reorder(state.scores):state.scores,
+      pending:reorder(state.pending||[0,0,0,0]),
+      money:reorder(state.money||[0,0,0,0]),
+      aiStyle:state.aiStyle?reorder(state.aiStyle):state.aiStyle,
+      ai:(state.ai||[]).map(rot),
+      turn:rot(state.turn),
+      dealer:rot(state.dealer),
+      lastP:state.lastP!=null?rot(state.lastP):state.lastP,
+    };
+  }
+};
+
+// PeerJS P2P 包裝（自 2D index.html 移植）
+window.MahjongNetwork = {
+  peer:null, connections:[], roomId:null, isHost:false,
+  playerId:null, playerName:null,
+  onMessage:null, onPlayerJoin:null, onPlayerLeave:null,
+
+  init(playerName){
+    this.playerName=playerName;
+    this.playerId='mj_'+Math.random().toString(36).substr(2,9);
+    return new Promise((resolve,reject)=>{
+      this.peer=new Peer(this.playerId,{
+        host:'peerjs.92k.de',port:443,secure:true,
+        config:{iceServers:[{urls:'stun:stun.l.google.com:19302'}]}
+      });
+      this.peer.on('open',id=>{resolve(id);});
+      this.peer.on('error',()=>{
+        this.peer=new Peer(this.playerId);
+        this.peer.on('open',id=>resolve(id));
+        this.peer.on('error',err=>reject(err));
+        this.peer.on('connection',conn=>this._handleIncoming(conn));
+      });
+      this.peer.on('connection',conn=>this._handleIncoming(conn));
+    });
+  },
+  createRoom(){
+    this.isHost=true;
+    this.roomId=Math.random().toString(36).substr(2,6).toUpperCase();
+    return this.roomId;
+  },
+  joinRoom(roomId,hostId){
+    this.roomId=roomId; this.isHost=false;
+    return new Promise((resolve,reject)=>{
+      const conn=this.peer.connect(hostId,{reliable:true,metadata:{name:this.playerName,roomId}});
+      conn.on('open',()=>{this._setupConn(conn);resolve(conn);});
+      conn.on('error',reject);
+    });
+  },
+  _handleIncoming(conn){
+    conn.on('open',()=>{
+      this._setupConn(conn);
+      if(this.onPlayerJoin) this.onPlayerJoin(conn.peer,conn.metadata?.name||'玩家');
+    });
+  },
+  _setupConn(conn){
+    this.connections.push(conn);
+    conn.on('data',data=>{if(this.onMessage) this.onMessage(conn.peer,data);});
+    conn.on('close',()=>{
+      this.connections=this.connections.filter(c=>c!==conn);
+      if(this.onPlayerLeave) this.onPlayerLeave(conn.peer);
+    });
+  },
+  broadcast(data){this.connections.forEach(c=>{if(c.open)c.send(data);});},
+  sendTo(peerId,data){const c=this.connections.find(c=>c.peer===peerId);if(c&&c.open)c.send(data);},
+  disconnect(){this.connections.forEach(c=>c.close());if(this.peer)this.peer.destroy();this.connections=[];this.peer=null;}
+};
 
 // 暴露全域到 window（讓 HTML onclick 屬性可呼叫）
 window.Game = Game;
