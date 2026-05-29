@@ -2522,10 +2522,10 @@ let MELD_ROT_AS_GROUP = true;
 
 // 各家鳴牌世界座標微調 (user debug panel 調整後)
 const MELD_OFFSET = {
-  east:  { x: -0.2, z:  1.1 },
-  west:  { x: -3.6, z: -2.9 },
-  north: { x:  2.8, z: -3.2 },
-  south: { x:  0,   z:  0   },
+  east:  { x: -0.1, z: -3.7 },
+  west:  { x: -3.3, z: -0.6 },
+  north: { x: -0.3, z: -2.8 },
+  south: { x:  3.2, z:  0   },
 };
 // 各家手牌世界座標微調
 const HAND_OFFSET = {
@@ -2554,7 +2554,7 @@ const DISCARD_ROT_DEG = {
 const MELD_ROT_DEG = {
   south: { x: 0, y:  0, z:  0 },
   north: { x: 3, y: -1, z: -1 },
-  east:  { x: 3, y:  1, z:  3 },
+  east:  { x: 0, y:  1, z: -1 },
   west:  { x: 0, y:  0, z:  0 },
 };
 
@@ -2604,7 +2604,7 @@ const WALL_ROT_DEG = {
 };
 
 // 各元素四家縮放 (1.0 = 原始大小)
-const MELD_SCALE    = { south: 1.22, north: 1.54, east: 1.49, west: 1.15 };
+const MELD_SCALE    = { south: 1.22, north: 1.64, east: 1.69, west: 1.15 };
 const HAND_SCALE    = { south: 1.66, north: 1.10, east: 1.08, west: 1.08 };
 const FLOWER_SCALE  = { south: 1.22, north: 1.12, east: 1.10, west: 1.10 };
 const DISCARD_SCALE = { south: 1.00, north: 1.00, east: 1.00, west: 1.00 };
@@ -2686,6 +2686,7 @@ function buildMelds3D(side, melds) {
   //   south/west 預設 0 (平躺)，north -6° / east +6° (朝玩家立)
   // v1.7.9 wide mode 預算：所有 meld 寬度 + gap 累積寬
   const meldWidthsArr = melds.map(m => m.length * TW + (m.length - 1) * TILE_GAP);
+  const slotW = melds.length ? Math.max(...meldWidthsArr) : 0; // grid 邊緣錨點：以最寬一組當欄寬
   // v1.7.12: wide / grid 模式組間距 0.6→0.1（user 反映太鬆，組與組要靠很近）
   const COL_GAP_WIDE = 0.1;
   const totalWideWidth = meldWidthsArr.reduce((a,b)=>a+b, 0) + Math.max(0, melds.length-1) * COL_GAP_WIDE;
@@ -2718,8 +2719,11 @@ function buildMelds3D(side, melds) {
       const col = mi % 2;
       const row = Math.floor(mi / 2);
       const COL_GAP = 0.1;   // v1.7.12: 0.6→0.1 縮組間距
-      // 順序：第1組右前、第2組左前、第3組右後、第4組左後 → 偶數組(col0)放右、奇數組(col1)放左
-      xLeft = col === 0 ? COL_GAP/2 : -totalW - COL_GAP/2;
+      // 邊緣錨點：整塊「右緣」固定在 local x=0、向 -X 展開；每組在欄內右對齊、欄寬用 slotW 統一。
+      //   經各家 placeBySide 旋轉後外緣貼桌邊：east→上緣、west→下緣、south→右緣、north→左緣。
+      //   組序：第1組右前、第2組左前、第3組右後、第4組左後（col0=右欄、col1=左欄）。
+      const colRightEdge = (col === 0) ? 0 : -(slotW + COL_GAP);
+      xLeft = colRightEdge - totalW;
       localZ = -row * (TH + ROW_GAP);
     } else if (MELD_LAYOUT_MODE === 'wide') {
       // 4 個 meld 全部同 row，沿 X 軸排
@@ -9833,6 +9837,8 @@ async function init() {
       Online.showJoin();
     }
   } catch (e) {}
+  // ?layoutqa：載入版面 QA 測試局面（四家副露），方便用 Ctrl+D 調鳴牌位置（對齊 2D 觸發）
+  try { if (new URLSearchParams(location.search).has('layoutqa')) Game.loadLayoutQaTemplate?.(); } catch(e){}
   console.log('🀄 台灣麻將 3D 整合版啟動完成');
 }
 
