@@ -5581,10 +5581,19 @@ const Game={
     // ① 花牌：每朵 +1台；花槓（四君子/四季）+2台
     const seatWindV=(p-(s.dealer??0)+4)%4;
     const myFlowers=s.flowers[p];
-    if(myFlowers.length>0) add(myFlowers.length,`花牌 ${myFlowers.length}台`);
     const flowerVals=new Set(myFlowers.map(f=>f.v));
-    if([0,1,2,3].every(v=>flowerVals.has(v))) add(2,'四君子 花槓 +2台');
-    if([4,5,6,7].every(v=>flowerVals.has(v))) add(2,'四季 花槓 +2台');
+    const _hasF=v=>flowerVals.has(v);
+    // 八仙過海：集滿八花 +8（取代正花/花槓）
+    if(myFlowers.length===8){
+      add(8,'八仙過海 +8台');
+    } else {
+      // 正花：對應自己門風位置之花，每隻 +1（至多2台：梅蘭竹菊組與春夏秋冬組各一）
+      // 花槓：集滿一整組 +2，取代該組正花（rule9 不另計花位）
+      if([0,1,2,3].every(_hasF))  add(2,'四花（梅蘭竹菊）+2台');
+      else if(_hasF(seatWindV))   add(1,'正花 +1台');
+      if([4,5,6,7].every(_hasF))  add(2,'四花（春夏秋冬）+2台');
+      else if(_hasF(seatWindV+4)) add(1,'正花 +1台');
+    }
 
     // ② 門清/自摸相關台數（v1.6.57：門清一摸三含自摸+門清，不重複計算）
     const hasOpenMeld=melds.some(m=>!m.dark);
@@ -5604,10 +5613,10 @@ const Game={
     // ⑤ 搶槓 +1
     if(s._robKong) add(1,'搶槓 +1台');
 
-    // ⑥⑦ 莊家台 + 連莊台合併（避免同場兩個 +1 chip 並列）
-    if(p===s.dealer){
+    // ⑥⑦ 莊家台 / 連莊台：莊家不論胡牌或放槍皆計；連n拉n = 2n+1 台
+    if(p===s.dealer || (!selfDraw && s.lastP===s.dealer)){
       const hb=s.honba||0;
-      if(hb>0) add(1+hb,`連莊 ×${1+hb}台`);
+      if(hb>0) add(2*hb+1,`連${hb}拉${hb} ×${2*hb+1}台`);
       else     add(1,'莊家台 +1台');
     }
 
@@ -5624,15 +5633,17 @@ const Game={
       const seqs     =allGroups.filter(isSeq);
       const nGroups  =allGroups.length;
 
-      // 全求人 +2（所有副露皆公開、只剩對子、非自摸）
-      if(melds.length===5&&melds.every(m=>!m.dark)&&!selfDraw&&hand.length===2)
-        add(2,'全求人 +2台');
+      // 全求人 +2（吃碰僅剩單吊對子、放槍胡）；自摸版為半求 +1（另計自摸+單吊）
+      if(melds.length===5&&melds.every(m=>!m.dark)&&hand.length===2){
+        if(!selfDraw) add(2,'全求人 +2台');
+        else          add(1,'半求 +1台');
+      }
 
       // 碰碰胡 +4
       if(triplets.length===nGroups) add(4,'碰碰胡 +4台');
 
-      // 平胡 +2（全順子、門清、無字牌、非獨聽）
-      if(seqs.length===nGroups&&!hasOpenMeld
+      // 平胡 +2（全順子、門清、無字牌、非獨聽、非自摸）
+      if(seqs.length===nGroups&&!hasOpenMeld&&!selfDraw
          &&!allTiles.some(t=>t.s==='honor')&&!isDokutan)
         add(2,'平胡 +2台');
 
@@ -5649,11 +5660,16 @@ const Game={
       else if(dragonTrip.length===2&&dragonPair) add(4,'小三元 +4台');
 
       // 暗刻：五暗刻 +8 / 四暗刻 +5 / 三暗刻 +2（互斥，取最高）
-      const concealedTrips=handMelds.filter(g=>g.type==='set'&&g.triple).length
+      // 放槍胡牌時，胡牌張補成的刻子視為明刻，不計暗刻
+      let concealedTrips=handMelds.filter(g=>g.type==='set'&&g.triple).length
                            +melds.filter(m=>m.dark).length;
-      if(triplets.length===nGroups&&!hasOpenMeld) add(16,'五暗刻 +16台');
-      else if(concealedTrips>=4)                  add(5,'四暗刻 +5台');
-      else if(concealedTrips>=3)                  add(2,'三暗刻 +2台');
+      if(!selfDraw&&s.last){
+        const _wg=handMelds.find(g=>g.type==='set'&&g.triple&&g.tiles&&g.tiles.some(t=>t.id===s.last.id));
+        if(_wg) concealedTrips-=1;
+      }
+      if(concealedTrips>=5)      add(8,'五暗刻 +8台');
+      else if(concealedTrips>=4) add(5,'四暗刻 +5台');
+      else if(concealedTrips>=3) add(2,'三暗刻 +2台');
 
       // 混一色 +4 / 清一色 +8
       const numSuits=new Set(allTiles.filter(t=>t.s!=='honor').map(t=>t.s));
@@ -5675,18 +5691,22 @@ const Game={
         const windNames=['東','南','西','北'];
         const dragonNames={4:'中',5:'白',6:'發'};
         const roundWindV=windNames.indexOf(s.roundWind||'東');
+        const _smallWind=windTripVals.size===3&&pairIsWind;
+        const _bigDragon=dragonTrip.length===3;
+        const _smallDragon=dragonTrip.length===2&&dragonPair;
         triplets.forEach(g=>{
           const t=g.tiles&&g.tiles[0];
           if(!t||t.s!=='honor')return;
           if(t.v<=3){
-            // 風牌役牌（大四喜時不重複計）
-            if(windTripVals.size<4){
+            // 風牌役牌（大四喜/小四喜不另計風牌台）
+            if(windTripVals.size<4&&!_smallWind){
               if(t.v===roundWindV) add(1,`圈風（${windNames[t.v]}）刻子 +1台`);
               if(t.v===seatWindV)  add(1,`自風（${windNames[t.v]}）刻子 +1台`);
             }
           } else {
-            // 三元牌役牌 +1（大三元時仍各計1，大三元是額外加分）
-            add(1,`${dragonNames[t.v]||'三元'}刻子 +1台`);
+            // 三元牌役牌 +1（大三元/小三元不另計三元牌台）
+            if(!_bigDragon&&!_smallDragon)
+              add(1,`${dragonNames[t.v]||'三元'}刻子 +1台`);
           }
         });
       }
