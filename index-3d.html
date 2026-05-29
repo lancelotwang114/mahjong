@@ -2718,7 +2718,8 @@ function buildMelds3D(side, melds) {
       const col = mi % 2;
       const row = Math.floor(mi / 2);
       const COL_GAP = 0.1;   // v1.7.12: 0.6→0.1 縮組間距
-      xLeft = col === 0 ? -totalW - COL_GAP/2 : COL_GAP/2;
+      // 順序：第1組右前、第2組左前、第3組右後、第4組左後 → 偶數組(col0)放右、奇數組(col1)放左
+      xLeft = col === 0 ? COL_GAP/2 : -totalW - COL_GAP/2;
       localZ = -row * (TH + ROW_GAP);
     } else if (MELD_LAYOUT_MODE === 'wide') {
       // 4 個 meld 全部同 row，沿 X 軸排
