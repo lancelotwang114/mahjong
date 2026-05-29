@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻將 3D Demo · v3 (拉遠視角＋疏排)</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; overflow:hidden;
+               background:#0a0604;
+               font-family:"Noto Sans TC", system-ui, sans-serif; color:#f3e8c8; user-select:none; }
+  /* 桌面圖：用 % 大小，跟著 3D 鏡頭距離一起縮 */
+  body::before {
+    content:"";
+    position:fixed; inset:0;
+    background:url('assets/table.png') 50% 28%/95% no-repeat;
+    z-index:0;
+    pointer-events:none;
+  }
+  #scene { display:block; width:100vw; height:100vh; position:absolute; inset:0; z-index:1; }
+
+  /* ========================= HUD ========================= */
+  .hud { position:fixed; inset:0; pointer-events:none; z-index:10; }
+  .hud > * { pointer-events:auto; }
+
+  /* ------- 玩家面板 ------- */
+  .pp { position:absolute; min-width:160px; padding:8px 14px 9px 50px;
+        background:linear-gradient(180deg, rgba(28,19,10,.92) 0%, rgba(16,9,5,.92) 100%);
+        border:1px solid #5c4419; border-radius:10px;
+        box-shadow:0 4px 14px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,210,140,.12);
+        backdrop-filter: blur(4px); }
+  .pp .av { position:absolute; left:5px; top:50%; transform:translateY(-50%);
+            width:38px; height:38px; border-radius:50%;
+            background:#2a1a0c; border:1.5px solid #8a6a30;
+            display:flex; align-items:center; justify-content:center; font-size:22px;
+            box-shadow:inset 0 0 6px rgba(0,0,0,.6); }
+  .pp .name { font-size:13px; font-weight:700; color:#f8e9c4; letter-spacing:.5px; }
+  .pp .score { font-size:13px; font-weight:600; color:#ffd76b; margin-top:1px; line-height:1.1; }
+  .pp .delta { font-size:11px; line-height:1.1; margin-top:1px; }
+  .pp .delta.up { color:#5fcf6e; }
+  .pp .delta.dn { color:#ff7474; }
+  .pp .windbadge { position:absolute; right:-6px; top:-6px; width:22px; height:22px;
+                   background:linear-gradient(180deg, #c84747, #7a1f1f); color:#fff;
+                   border:1px solid #f5cc6a; border-radius:50%;
+                   font-size:12px; font-weight:900; display:flex; align-items:center; justify-content:center;
+                   box-shadow:0 2px 4px rgba(0,0,0,.5); }
+
+  /* 四家：依麻將座次擺位（你=東在下，南右，西上，北左）*/
+  .pp.east   { left:14px;  bottom:64px; }                              /* 你 - 左下角 */
+  .pp.south  { right:14px; top:50%; transform:translateY(-50%); }      /* 南 - 右中 */
+  .pp.west   { right:14px; top:60px; }                                 /* 西 - 右上（在工具列下方）*/
+  .pp.north  { left:14px;  top:50%; transform:translateY(-50%); }      /* 北 - 左中 */
+
+  /* ------- 局數面板（左上） ------- */
+  .roundcard { position:absolute; left:14px; top:14px; width:170px; padding:10px 12px;
+               background:linear-gradient(180deg, rgba(28,19,10,.92) 0%, rgba(16,9,5,.92) 100%);
+               border:1px solid #5c4419; border-radius:10px;
+               box-shadow:0 4px 14px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,210,140,.12);
+               backdrop-filter: blur(4px); }
+  .roundcard .hd { font-family:"Noto Serif TC"; font-weight:700; font-size:15px; color:#f5e2a8;
+                   border-bottom:1px solid #43321a; padding-bottom:6px; margin-bottom:7px; letter-spacing:1px; }
+  .roundcard .row { display:flex; align-items:center; gap:14px; font-size:12px; color:#d8c89a; }
+  .roundcard .chip { display:inline-flex; align-items:center; gap:5px; }
+  .roundcard .chip .dot { width:11px; height:11px; border-radius:50%; background:linear-gradient(135deg, #f3f2ee, #c8c2ad); border:1px solid #6e6045; }
+  .roundcard .chip .bdot { background:linear-gradient(135deg, #555, #1a1a1a); border-color:#000; }
+  .roundcard .baostrip { display:flex; gap:3px; margin-top:8px; }
+  .roundcard .baostrip .b { flex:1; height:14px; border:1px solid #5c4419; border-radius:2px;
+                            background:linear-gradient(180deg, #2a1f0e, #1a1208); }
+  .roundcard .baostrip .b.lit { background:linear-gradient(180deg, #f6dc88, #c89320); border-color:#f5e2a8; }
+  .roundcard .baostrip .b .lab { display:block; text-align:center; font-size:10px; color:#3a2a10; font-weight:700; line-height:14px; }
+
+  /* ------- 右上工具 ------- */
+  .tools { position:absolute; right:14px; top:14px; display:flex; gap:8px; }
+  .tools .ic { width:36px; height:36px; border-radius:8px;
+               background:linear-gradient(180deg, rgba(28,19,10,.92) 0%, rgba(16,9,5,.92) 100%);
+               border:1px solid #5c4419; display:flex; align-items:center; justify-content:center;
+               color:#e5d49a; font-size:16px; cursor:pointer;
+               backdrop-filter: blur(4px); }
+  .tools .ic:hover { color:#fff; border-color:#a07a30; }
+
+  /* 西家在右上角，需要寬一點以免裝不下名字 */
+  .pp.west { min-width:140px; padding:6px 12px 7px 46px; }
+  .pp.west .av { width:32px; height:32px; font-size:18px; }
+
+  /* ------- 中央剧本資訊：只留「剩牌」微型胸牌，避免遮牌堆 ------- */
+  .center-info { position:absolute; left:50%; top:14px; transform:translateX(-50%);
+                 display:flex; align-items:center; gap:8px;
+                 background:linear-gradient(180deg, rgba(28,19,10,.92) 0%, rgba(16,9,5,.92) 100%);
+                 border:1px solid #5c4419; border-radius:999px;
+                 padding:7px 16px;
+                 font-family:"Noto Sans TC"; pointer-events:none;
+                 box-shadow:0 3px 12px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,210,140,.1); }
+  .center-info .big  { font-family:"Noto Serif TC"; font-size:14px; color:#f5cc6a; letter-spacing:2px; font-weight:700; }
+  .center-info .sep  { width:1px; height:14px; background:#5c4419; }
+  .center-info .lbl  { font-size:11px; color:#a89868; letter-spacing:1px; }
+  .center-info .val  { font-size:13px; color:#e8d49a; font-weight:700; }
+
+  /* ------- 動作按鈕：橫排、下中，坐在你手牌上方但不遮牌桌 ------- */
+  .actions { position:absolute; left:50%; bottom:64px; transform:translateX(-50%);
+             display:flex; flex-direction:row; gap:10px; z-index:5; }
+  .actions .btn { min-width:58px; padding:7px 16px; border-radius:6px;
+                  background:linear-gradient(180deg, rgba(28,19,10,.95) 0%, rgba(10,6,4,.95) 100%);
+                  border:1px solid #5c4419; color:#e8d49a;
+                  font-family:"Noto Serif TC"; font-size:17px; font-weight:700; letter-spacing:3px;
+                  cursor:pointer; box-shadow:0 3px 8px rgba(0,0,0,.55); }
+  /* 動作按鈕金色「胡」略大 */
+  .actions .btn { font-size:16px; letter-spacing:3px; }
+  .actions .btn:hover { color:#fff; border-color:#a07a30; }
+  .actions .btn.hot { background:linear-gradient(180deg, #d59933, #8c5a14);
+                      color:#fff8e0; border-color:#f5cc6a; box-shadow:0 0 14px rgba(245,200,90,.4), 0 3px 8px rgba(0,0,0,.55); }
+
+  /* ------- 底部工具 ------- */
+  .bottomleft  { position:absolute; left:18px;  bottom:18px; }
+  .bottomright { position:absolute; right:18px; bottom:18px; display:flex; gap:8px; }
+  .bottomleft .btn-eye, .bottomright .ic {
+    height:34px; padding:0 12px; border-radius:6px; display:inline-flex; align-items:center; gap:6px;
+    background:rgba(20,12,6,.6); border:1px solid #5c4419; color:#e8d49a; font-size:13px; cursor:pointer;
+    backdrop-filter: blur(4px); }
+  .bottomright .ic { padding:0; width:34px; justify-content:center; font-size:16px; }
+
+  /* 載入畫面 */
+  .loader { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+            background:rgba(10,6,4,.85); z-index:100;
+            font-family:"Noto Serif TC", serif; font-size:20px; color:#f5cc6a; letter-spacing:8px; }
+  .loader.gone { opacity:0; pointer-events:none; transition:opacity .5s ease; }
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div class="hud">
+
+  <!-- 局數面板 -->
+  <div class="roundcard">
+    <div class="hd">東二局</div>
+    <div class="row">
+      <span class="chip"><span class="dot"></span>×0</span>
+      <span class="chip"><span class="dot bdot"></span>×2</span>
+    </div>
+    <div class="baostrip">
+      <div class="b lit"><span class="lab">發</span></div>
+      <div class="b"></div>
+      <div class="b"></div>
+      <div class="b"></div>
+      <div class="b"></div>
+    </div>
+  </div>
+
+  <!-- 右上工具 -->
+  <div class="tools">
+    <div class="ic" title="設定">⚙</div>
+    <div class="ic" title="幫助">?</div>
+    <div class="ic" title="選單">≡</div>
+  </div>
+
+  <!-- 四家面板 -->
+  <div class="pp east">
+    <div class="av">🐕</div>
+    <div class="name">東家 (你)</div>
+    <div class="score">$ 23,400</div>
+    <div class="delta up">+3,400</div>
+    <div class="windbadge">東</div>
+  </div>
+  <div class="pp north">
+    <div class="av">🐼</div>
+    <div class="name">北家</div>
+    <div class="score">$ 12,500</div>
+    <div class="delta dn">-2,500</div>
+    <div class="windbadge">北</div>
+  </div>
+  <div class="pp west">
+    <div class="av">🐱</div>
+    <div class="name">西家</div>
+    <div class="score">$ 18,900</div>
+    <div class="delta up">+1,900</div>
+    <div class="windbadge">西</div>
+  </div>
+  <div class="pp south">
+    <div class="av">🐰</div>
+    <div class="name">南家</div>
+    <div class="score">$ 15,200</div>
+    <div class="delta dn">-2,800</div>
+    <div class="windbadge">南</div>
+  </div>
+
+  <!-- 中央局況：頂部金色膠囊，不擋牌桌 -->
+  <div class="center-info">
+    <div class="big">你的回合</div>
+    <div class="sep"></div>
+    <div class="lbl">剩牌</div><div class="val">35</div>
+    <div class="sep"></div>
+    <div class="lbl">出牌</div><div class="val" style="color:#5fcf6e">12s</div>
+  </div>
+
+  <!-- 動作按鈕 -->
+  <div class="actions">
+    <div class="btn">吃</div>
+    <div class="btn">碰</div>
+    <div class="btn">槓</div>
+    <div class="btn hot">胡</div>
+  </div>
+
+  <!-- 底部工具 -->
+  <div class="bottomleft">
+    <div class="btn-eye">👁 切換視角</div>
+  </div>
+  <div class="bottomright">
+    <div class="ic">💬</div>
+    <div class="ic">😊</div>
+  </div>
+</div>
+
+<div class="loader" id="loader">載入素材中…</div>
+
+<!-- ============================== Three.js ============================== -->
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ============================================================
+   牌尺寸（依照 sprite 比例：71×134，aspect 0.53）
+   ============================================================ */
+const TW = 0.72, TD = 0.46, TH = 1.20;
+
+/* ============================================================
+   Renderer / Scene / Camera
+   ============================================================ */
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true, preserveDrawingBuffer:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.0;
+
+const scene = new THREE.Scene();
+// background 透明，CSS 的 table.png 顯示在後面
+
+const camera = new THREE.PerspectiveCamera(28, 16/9, 0.1, 200);
+camera.position.set(0, 28, 32);
+camera.lookAt(0, 0, 3);
+
+/* ============================================================
+   Lighting — 由於背景是已經有光的桌面圖，這裡光線比較柔
+   ============================================================ */
+scene.add(new THREE.HemisphereLight(0xfff2d4, 0x3a2a18, 0.65));
+
+const key = new THREE.DirectionalLight(0xfff3cf, 0.95);
+key.position.set(5, 16, 9);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -12; key.shadow.camera.right = 12;
+key.shadow.camera.top  = 12;  key.shadow.camera.bottom = -12;
+key.shadow.camera.near = 1;   key.shadow.camera.far = 40;
+key.shadow.bias = -0.00015;
+key.shadow.radius = 5;
+scene.add(key);
+
+const fill = new THREE.DirectionalLight(0xa7c4ff, 0.25);
+fill.position.set(-6, 8, -5);
+scene.add(fill);
+
+/* 桌面接收陰影用的隱形地板 */
+const shadowPlane = new THREE.Mesh(
+  new THREE.PlaneGeometry(40, 40),
+  new THREE.ShadowMaterial({ opacity: 0.45 })
+);
+shadowPlane.rotation.x = -Math.PI/2;
+shadowPlane.position.y = -0.001;
+shadowPlane.receiveShadow = true;
+scene.add(shadowPlane);
+
+/* ============================================================
+   素材載入
+   ============================================================ */
+function loadImage(url) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => res(img);
+    img.onerror = () => rej(new Error('load fail: '+url));
+    img.src = url;
+  });
+}
+
+/* 把一張 sprite 圖切成 N 個獨立 CanvasTexture，每個 slot 寬 = img.w/N
+   slot 內含透明 padding；自動裁切到不透明範圍。 */
+async function sliceSprite(url, count, opts) {
+  opts = opts || {};
+  const maskTopFrac = opts.maskTop || 0;
+  const img = await loadImage(url);
+  const slotW = Math.floor(img.width / count);
+  const slotH = img.height;
+  const tmp = document.createElement('canvas');
+  tmp.width = slotW; tmp.height = slotH;
+  const tg = tmp.getContext('2d');
+
+  const out = [];
+  for (let i = 0; i < count; i++) {
+    tg.clearRect(0, 0, slotW, slotH);
+    tg.drawImage(img, i*slotW, 0, slotW, slotH, 0, 0, slotW, slotH);
+    // 找不透明 bbox
+    const id = tg.getImageData(0, 0, slotW, slotH);
+    let minX=slotW, minY=slotH, maxX=0, maxY=0;
+    for (let y=0; y<slotH; y++) {
+      for (let x=0; x<slotW; x++) {
+        const a = id.data[(y*slotW + x)*4 + 3];
+        if (a > 32) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    const cw = Math.max(1, maxX - minX + 1);
+    const ch = Math.max(1, maxY - minY + 1);
+    const c = document.createElement('canvas');
+    c.width = cw; c.height = ch;
+    const cctx = c.getContext('2d');
+    cctx.drawImage(img, i*slotW + minX, minY, cw, ch, 0, 0, cw, ch);
+    // 完全裁掉牌面頂部那一帶（藍色 strip + 內框上邊），改用純白覆蓋
+    if (maskTopFrac > 0) {
+      const stripH = Math.round(ch * maskTopFrac);
+      cctx.fillStyle = '#ffffff';
+      cctx.fillRect(0, 0, cw, stripH);
+    }
+    // 把全張牌的「淺色像素」一律推成純白，深色（漢字/圖案）保留 → 牌身一致純白
+    {
+      const id0 = cctx.getImageData(0, 0, cw, ch);
+      const d0 = id0.data;
+      for (let p = 0; p < d0.length; p += 4) {
+        const a = d0[p+3];
+        if (a < 8) continue;
+        const minC = Math.min(d0[p], d0[p+1], d0[p+2]);
+        if (minC > 180) {
+          d0[p] = 255; d0[p+1] = 255; d0[p+2] = 255;
+        } else if (minC > 100) {
+          const t = (minC - 100) / 80;
+          d0[p]   = Math.round(d0[p]   + (255 - d0[p])   * t);
+          d0[p+1] = Math.round(d0[p+1] + (255 - d0[p+1]) * t);
+          d0[p+2] = Math.round(d0[p+2] + (255 - d0[p+2]) * t);
+        }
+      }
+      cctx.putImageData(id0, 0, 0);
+    }
+    // 掃描左右邊：若有相鄰牌切片時殘留的深色直條 → 用白色覆蓋
+    {
+      const id0 = cctx.getImageData(0, 0, cw, ch);
+      const d0 = id0.data;
+      const isDarkCol = (x) => {
+        let dc = 0;
+        for (let y = 0; y < ch; y++) {
+          const i = (y*cw + x) * 4;
+          if (Math.min(d0[i], d0[i+1], d0[i+2]) < 100 && d0[i+3] > 50) dc++;
+        }
+        return dc > ch * 0.5;
+      };
+      let trimL = 0;
+      for (let x = 0; x < Math.floor(cw * 0.2); x++) if (isDarkCol(x)) trimL = x + 1;
+      let trimR = 0;
+      for (let x = cw - 1; x > Math.floor(cw * 0.8); x--) if (isDarkCol(x)) trimR = cw - x;
+      if (trimL > 0) { cctx.fillStyle = '#ffffff'; cctx.fillRect(0, 0, trimL + 1, ch); }
+      if (trimR > 0) { cctx.fillStyle = '#ffffff'; cctx.fillRect(cw - trimR - 1, 0, trimR + 1, ch); }
+    }
+    // 把象牙底色與「內框邊」推成純白：只保留深色像素（漢字／圖案）
+    {
+      const id = cctx.getImageData(0, 0, cw, ch);
+      const d = id.data;
+      for (let p = 0; p < d.length; p += 4) {
+        const minC = Math.min(d[p], d[p+1], d[p+2]);
+        if (minC > 205) {
+          d[p] = 255; d[p+1] = 255; d[p+2] = 255;
+        } else if (minC > 150) {
+          const t = (minC - 150) / 55;
+          d[p]   = Math.round(d[p]   + (255 - d[p])   * t);
+          d[p+1] = Math.round(d[p+1] + (255 - d[p+1]) * t);
+          d[p+2] = Math.round(d[p+2] + (255 - d[p+2]) * t);
+        }
+      }
+      cctx.putImageData(id, 0, 0);
+    }
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    tex.minFilter = THREE.LinearMipMapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    out.push(tex);
+  }
+  return out;
+}
+
+function loadTex(url) {
+  return new Promise((res, rej) => {
+    new THREE.TextureLoader().load(url, tex => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      res(tex);
+    }, undefined, rej);
+  });
+}
+
+const TEX = {};
+async function loadAllTextures() {
+  // sprite order
+  // honor sprite 順序: 東南西北中發白 (7)
+  // flower sprite 順序: 梅蘭菊竹春夏秋冬 (8)
+  const [man, pin, sou, honor, flower, backTex, woodBackTex] = await Promise.all([
+    sliceSprite('assets/man.png', 9, {maskTop:0.30}),
+    sliceSprite('assets/pin.png', 9, {maskTop:0.30}),
+    sliceSprite('assets/sou.png', 9, {maskTop:0.30}),
+    sliceSprite('assets/honor.png', 7, {maskTop:0.30}),
+    sliceSprite('assets/flower.png', 8),
+    loadTex('assets/tile-back-tex.png'),
+    loadTex('assets/tile-back-style2.png'),
+  ]);
+  for (let i = 1; i <= 9; i++) {
+    TEX[`man-${i}`] = man[i-1];
+    TEX[`pin-${i}`] = pin[i-1];
+    TEX[`sou-${i}`] = sou[i-1];
+  }
+  ['東','南','西','北','中','發','白'].forEach((ch, i) => TEX[`honor-${ch}`] = honor[i]);
+  ['梅','蘭','菊','竹','春','夏','秋','冬'].forEach((ch, i) => TEX[`flower-${ch}`] = flower[i]);
+  TEX['wood-back'] = woodBackTex;
+  TEX['back'] = TEX['wood-back'];   // 對家／左右家手牌（面 = 'back'）也用新木紋
+}
+
+/** 程序化生成「風格二：細緻木紋」牌背：外側淺木 + 內側深木方框 + 木紋條紋 */
+function makeWoodBackTexture() {
+  const cw = 256, ch = 470;     // 牌面寬高比 ≈ 1 : 1.84
+  const cv = document.createElement('canvas');
+  cv.width = cw; cv.height = ch;
+  const ctx = cv.getContext('2d');
+
+  // 1. 外側淺木背景（橫向漸層補光感）
+  const og = ctx.createLinearGradient(0, 0, 0, ch);
+  og.addColorStop(0, '#dbb079');
+  og.addColorStop(0.5, '#caa069');
+  og.addColorStop(1, '#dbb079');
+  ctx.fillStyle = og;
+  ctx.fillRect(0, 0, cw, ch);
+
+  // 2. 內框：圓角矩形（深木色底）
+  const pad = 22, r = 20;
+  ctx.beginPath();
+  ctx.moveTo(pad + r, pad);
+  ctx.lineTo(cw - pad - r, pad);
+  ctx.quadraticCurveTo(cw - pad, pad, cw - pad, pad + r);
+  ctx.lineTo(cw - pad, ch - pad - r);
+  ctx.quadraticCurveTo(cw - pad, ch - pad, cw - pad - r, ch - pad);
+  ctx.lineTo(pad + r, ch - pad);
+  ctx.quadraticCurveTo(pad, ch - pad, pad, ch - pad - r);
+  ctx.lineTo(pad, pad + r);
+  ctx.quadraticCurveTo(pad, pad, pad + r, pad);
+  ctx.closePath();
+  const ig = ctx.createLinearGradient(0, pad, 0, ch - pad);
+  ig.addColorStop(0, '#c89568');
+  ig.addColorStop(0.5, '#b8854f');
+  ig.addColorStop(1, '#c89568');
+  ctx.fillStyle = ig;
+  ctx.fill();
+
+  // 3. 內框木紋：細直紋
+  ctx.save();
+  ctx.clip();
+  for (let x = pad; x < cw - pad; x += 2) {
+    const v = Math.sin(x * 0.18) * 0.08 + Math.sin(x * 0.07 + 1.3) * 0.06;
+    ctx.fillStyle = `rgba(90, 60, 30, ${0.10 + v})`;
+    ctx.fillRect(x, pad, 1, ch - 2 * pad);
+  }
+  // 偶發深色木節紋（直長橢圓）
+  ctx.fillStyle = 'rgba(80, 55, 25, 0.12)';
+  for (let i = 0; i < 6; i++) {
+    const x = pad + 20 + ((i * 41) % (cw - 2 * pad - 40));
+    const y = pad + ((i * 97) % (ch - 2 * pad));
+    ctx.beginPath();
+    ctx.ellipse(x, y, 3, 22, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // 4. 內框細邊框
+  ctx.strokeStyle = 'rgba(70, 45, 20, 0.45)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 5. 細高光（內框上緣）
+  ctx.strokeStyle = 'rgba(255, 230, 180, 0.20)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(pad + r, pad + 1);
+  ctx.lineTo(cw - pad - r, pad + 1);
+  ctx.stroke();
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace || THREE.sRGBEncoding;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/* ============================================================
+   牌的材質
+   ============================================================ */
+// 牌體各面：一律象牙白單色
+// 牌側 / 牌底 / 上下邊：象牙白；只有牌背 (-Y) 是木紋 → 看到的是「短短一層」木邊
+const matSideWood = new THREE.MeshStandardMaterial({ color: 0xf5eedc, roughness:0.40, metalness:0.03 });
+const matBottom   = new THREE.MeshStandardMaterial({ color: 0xece6d2, roughness:0.42, metalness:0.04 });
+const matTopIvory = new THREE.MeshStandardMaterial({ color: 0xf5eedc, roughness:0.40, metalness:0.03 });
+
+/** 麻將牌幾何：只把 4 條「垂直邊」（X-Z 平面四角）倒圓；
+ *  Y 軸（厚度）不動，牌面與牌底完全平整。
+ *  仍是 BoxGeometry，所以 6-material slot 相容。 */
+function makeTileGeometry(w, h, d, radius) {
+  // w = X, h = Y(厚度), d = Z
+  const segs = 8;
+  const g = new THREE.BoxGeometry(w, h, d, segs, 1, segs);
+  const pos = g.attributes.position;
+  const ix = Math.max(0, w/2 - radius);
+  const iz = Math.max(0, d/2 - radius);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const cx = Math.max(-ix, Math.min(ix, x));
+    const cz = Math.max(-iz, Math.min(iz, z));
+    const dx = x - cx, dz = z - cz;
+    const len = Math.sqrt(dx*dx + dz*dz);
+    if (len > 1e-6) {
+      const k = radius / len;
+      pos.setXYZ(i, cx + dx*k, y, cz + dz*k);
+    }
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+const tileGeom = makeTileGeometry(TW, TD, TH, 0.07);
+
+/** 一般牌：牌面 = TEX[key]，背面 = TEX.back */
+function makeTile(faceKey) {
+  const faceTex = TEX[faceKey] || TEX['back'];
+  const matFace = new THREE.MeshStandardMaterial({
+    map: faceTex, color: 0xffffff, roughness:0.36, metalness:0.04,
+  });
+  // 牌背：細緻木紋（風格二）
+  const matBack = new THREE.MeshStandardMaterial({
+    map: TEX['wood-back'], roughness:0.38, metalness:0.05,
+  });
+  // material 順序: +X, -X, +Y(頂), -Y(底), +Z(前), -Z(後)
+  // 牌面放在 +Y（這樣站起來後牌面朝相機）
+  const mats = [
+    matSideWood,  // +X
+    matSideWood,  // -X
+    matFace,      // +Y  ← 牌面（含 sprite 的藍頂條）
+    matBack,      // -Y  ← 牌背 amber
+    matTopIvory,  // +Z
+    matTopIvory,  // -Z
+  ];
+  const mesh = new THREE.Mesh(tileGeom, mats);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/** 牌牆專用：背朝上、四側 amber 木紋 */
+const matWallTop = new THREE.MeshStandardMaterial({
+  color: 0xffffff, roughness:0.38, metalness:0.05,
+});
+const matWallSide = new THREE.MeshStandardMaterial({
+  color: 0xffffff, roughness:0.40, metalness:0.06,
+});
+const matWallEnd = new THREE.MeshStandardMaterial({
+  color: 0xffffff, roughness:0.40, metalness:0.06,
+});
+function makeWallTile() {
+  // 頂面：用木紋貼圖（風格二，與牌背統一）
+  if (!matWallTop.map) {
+    matWallTop.map = TEX['wood-back'];
+    matWallTop.needsUpdate = true;
+  }
+  const mat = matWallTop;
+  // 牌牆躺平、面朝下，最上面看到的是「背面」(原本 -Y 的位置)
+  // 但我們直接讓 +Y = 背面 amber，避免多一層 rotation
+  const mats = [
+    matWallSide,   // +X
+    matWallSide,   // -X
+    mat,           // +Y  amber top
+    matBottom,     // -Y
+    matWallEnd,    // +Z  端面象牙
+    matWallEnd,    // -Z
+  ];
+  const m = new THREE.Mesh(tileGeom, mats);
+  m.castShadow = true;
+  m.receiveShadow = true;
+  return m;
+}
+
+/* ============================================================
+   建場景物件 — 牌牆 / 手牌 / 棄牌 / 花牌
+   ============================================================ */
+function buildWall(side) {
+  const group = new THREE.Group();
+  const N = 18;
+  const GAP = 0.03;                       // 加大牌縫 → 牌敦看得出一張一張
+  const len = N * (TW + GAP);
+  for (let i = 0; i < N; i++) {
+    for (let layer = 0; layer < 2; layer++) {
+      const tile = makeWallTile();
+      const x = -len/2 + i*(TW+GAP) + TW/2;
+      tile.position.set(x, TD/2 + layer*(TD+0.015), 0);   // 上下兩層也稍微分離
+      group.add(tile);
+    }
+  }
+  const dist = side === 'south' ? 6.7 : side === 'north' ? 8.6 : 8.0;
+  if (side === 'south') group.position.z = dist;
+  else if (side === 'north') { group.position.z = -dist; group.rotation.y = Math.PI; }
+  else if (side === 'east')  { group.position.x = dist; group.rotation.y = -Math.PI/2; }
+  else if (side === 'west')  { group.position.x = -dist; group.rotation.y = Math.PI/2; }
+
+  // 抽牌依照南→東→北→西順序。牌牆從一端往另一端抽，剩餘必為連續一段。
+  // 目前狀態：剩牌 42 張 = 北牆 6 + 西牆 36（含王牌16）
+  const drop = side === 'south' ? 36 :
+               side === 'east'  ? 36 :
+               side === 'north' ? 36 :
+               1;
+  for (let i = 0; i < drop; i++) {
+    const t = group.children[group.children.length - 1];
+    if (t) group.remove(t);
+  }
+  return group;
+}
+
+function buildHand(side, tiles) {
+  const group = new THREE.Group();
+  const N = tiles.length;
+  const GAP = 0.01;
+  const len = N * (TW + GAP);
+  const isSouth = side === 'south';
+  // 南家（你）手牌：後靠 12° → 牌面佝寫對攝影機、頂部頏見一條牌背 3D
+  const tiltX = isSouth ? Math.PI*0.43 : Math.PI/2;
+  const posY = isSouth ? (TD/2*Math.cos(tiltX) + TH/2*Math.sin(tiltX)) : (TH/2 - 0.02);
+  tiles.forEach((key, i) => {
+    const t = makeTile(key);
+    t.rotation.x = tiltX;
+    const x = -len/2 + i*(TW+GAP) + TW/2;
+    t.position.set(x, posY, -TD/2);
+    group.add(t);
+  });
+  // 南家推到靠近桌子木邊；其他三家不動
+  const dist = side === 'south' ? 11.4 : side === 'north' ? 12.0 : 11.0;
+  if (side === 'south') group.position.z = dist;
+  else if (side === 'north') { group.position.z = -dist; group.rotation.y = Math.PI; }
+  else if (side === 'east')  { group.position.x = dist; group.rotation.y = -Math.PI/2; }
+  else if (side === 'west')  { group.position.x = -dist; group.rotation.y = Math.PI/2; }
+  if (isSouth) group.scale.setScalar(1.22);
+  return group;
+}
+
+function buildDiscard(side, tiles) {
+  const group = new THREE.Group();
+  const cols = 6;
+  const COL_GAP = 0.04, ROW_GAP = 0.06;
+  // 棄牌後仰 10°：牌面朝攝影機略抬，讀牌更清楚
+  const DTILT = Math.PI / 18;
+  const TILT_Y_X = TD/2*Math.cos(DTILT) + TH/2*Math.sin(DTILT);
+  const TILT_Y_Z = TD/2*Math.cos(DTILT) + TW/2*Math.sin(DTILT);
+  tiles.forEach((key, i) => {
+    const t = makeTile(key);
+    const r = Math.floor(i / cols);
+    const c = i % cols;
+    const x = (c - (cols-1)/2) * (TW + COL_GAP);
+    const z = r * (TH + ROW_GAP);
+    if (side === 'south')      { t.rotation.x = -DTILT; t.position.set(x, TILT_Y_X, z); }
+    else if (side === 'north') { t.rotation.x = +DTILT; t.position.set(x, TILT_Y_X, z); }
+    else if (side === 'east')  { t.rotation.set(0, Math.PI, +DTILT); t.position.set(x, TILT_Y_Z, z); }
+    else if (side === 'west')  { t.rotation.set(0, Math.PI, -DTILT); t.position.set(x, TILT_Y_Z, z); }
+    group.add(t);
+  });
+  const dist = side === 'south' ? 2.7 : side === 'north' ? 4.6 : 4.0;
+  if (side === 'south') group.position.z = dist;
+  else if (side === 'north') { group.position.z = -dist; group.rotation.y = Math.PI; }
+  else if (side === 'east')  { group.position.set(dist, 0, -0.7); group.rotation.y = -Math.PI/2; }
+  else if (side === 'west')  { group.position.set(-dist, 0, -0.7); group.rotation.y = Math.PI/2; }
+  return group;
+}
+
+/** 在玩家局部坐標下「位置 + 朝向」：
+ *  local +X = 玩家的右手邊
+ *  local +Z = 玩家的背後（靠桌木邊的方向） */
+function placeBySide(group, side, lx, lz) {
+  if (side === 'south')      { group.position.set(lx, 0, lz); }
+  else if (side === 'east')  { group.position.set(lz, 0, -lx); group.rotation.y = Math.PI/2; }
+  else if (side === 'north') { group.position.set(-lx, 0, -lz); group.rotation.y = Math.PI; }
+  else if (side === 'west')  { group.position.set(-lz, 0, lx); group.rotation.y = -Math.PI/2; }
+}
+
+function buildFlowers(side, list) {
+  const group = new THREE.Group();
+  list.forEach((key, i) => {
+    const t = makeTile(key);
+    // tiles 起點靠左，往右排
+    t.position.set(i * (TW+0.04), TD/2, 0);
+    group.add(t);
+  });
+  // 手牌與牌增中間、靠玩家自己的左邊；各家可個別調位
+  const flowerLx = side === 'east' ? -3.4 :
+                   side === 'west' ? -6.2 :
+                   side === 'south' ? -6.2 :
+                   -7.2;
+  const flowerLz = side === 'south' ? 9.0 : side === 'north' ? 11.0 : 10.0;
+  placeBySide(group, side, flowerLx, flowerLz);
+  if (side === 'south') group.scale.setScalar(1.22);
+  return group;
+}
+
+/** 鳴牌：二各家的右下角貼齊，多組往上疊 */
+function buildMelds(side, melds) {
+  const group = new THREE.Group();
+  const TILE_GAP = 0.03;
+  const ROW_GAP = 0.03;
+  melds.forEach((meld, mi) => {
+    let totalW = 0;
+    meld.forEach((key, ti) => { totalW += (ti === 0) ? TH : TW; });
+    totalW += (meld.length - 1) * TILE_GAP;
+    let xLeft = -totalW;
+    meld.forEach((key, ti) => {
+      const t = makeTile(key);
+      const isCalled = ti === 0;
+      const tw = isCalled ? TH : TW;
+      if (isCalled) t.rotation.y = Math.PI/2;
+      const localZ = -mi * (TH + ROW_GAP) + (isCalled ? (TH - TW) / 2 : 0);
+      t.position.set(xLeft + tw/2, TD/2, localZ);
+      xLeft += tw + TILE_GAP;
+      group.add(t);
+    });
+  });
+  // 貼玩家的右邊木邊、貼桌邊；高低與內外依各家個別調
+  const meldLx = side === 'south' ? 12.1 :
+                 side === 'west'  ? 11.1 :
+                 side === 'east'  ? 12.7 :
+                 side === 'north' ? 12.7 :
+                 11.7;
+  const meldLz = side === 'south' ? 10.4 :
+                 side === 'north' ? 13.0 :
+                 side === 'west'  ? 11.5 :
+                 side === 'east'  ? 12.09 : 12.29;
+  placeBySide(group, side, meldLx, meldLz);
+  if (side === 'south') group.scale.setScalar(1.22);
+  return group;
+}
+
+/* ============================================================
+   啟動：載入素材 → 建立場景
+   ============================================================ */
+async function init() {
+  await loadAllTextures();
+  const ld = document.getElementById('loader');
+  ld.style.opacity = '0';
+  setTimeout(() => { ld.style.display = 'none'; }, 500);
+
+  // 牌牆 ×4
+  ['south','east','north','west'].forEach(s => scene.add(buildWall(s)));
+
+  // 手牌：你有 3 組鳴牌，隱藏手牌 7 張（+1 剛摸）
+  const youHand = ['man-7','man-8','pin-2','pin-8','sou-3','sou-6','sou-6'];
+  scene.add(buildHand('south', youHand));
+
+  // 其他三家：依鳴牌數量調手牌長度
+  const backRow = (n) => new Array(n).fill('back');
+  scene.add(buildHand('east',  backRow(9)));     // 2 鳴牌 → 13-4=9
+  scene.add(buildHand('north', backRow(11)));    // 1 鳴牌 → 13-2=11
+  scene.add(buildHand('west',  backRow(7)));     // 3 鳴牌 → 13-6=7
+
+  // 棄牌
+  scene.add(buildDiscard('south', ['pin-2','pin-7','sou-2','pin-3','pin-3','honor-中','sou-9','honor-東','sou-2','pin-6','honor-中','pin-4']));
+  scene.add(buildDiscard('north', ['honor-中','pin-5','sou-3','sou-3','honor-東','honor-東','man-1','man-7','pin-2','sou-5']));
+  scene.add(buildDiscard('east',  ['sou-6','pin-3','honor-發','honor-東','man-3','man-4','sou-7','sou-8','sou-9','sou-2','pin-1']));
+  scene.add(buildDiscard('west',  ['honor-發','sou-4','pin-7','sou-7','man-6','honor-北','honor-北','honor-北']));
+
+  // 花牌：隨機分配，總 6 張
+  scene.add(buildFlowers('south', ['flower-春','flower-夏']));
+  scene.add(buildFlowers('east',  ['flower-秋']));
+  scene.add(buildFlowers('north', []));
+  scene.add(buildFlowers('west',  ['flower-冬','flower-梅','flower-蘭']));
+
+  // 鳴牌：南 3 組、西 3 組、東 2 組、北 1 組
+  scene.add(buildMelds('south', [
+    ['honor-中','honor-中','honor-中'],         // 碰中
+    ['man-3','man-4','man-5'],                  // 吃 3-4-5萬
+    ['sou-2','sou-2','sou-2'],                  // 碰 2索
+  ]));
+  scene.add(buildMelds('east', [
+    ['sou-7','sou-8','sou-9'],                  // 吃 7-8-9索
+    ['honor-發','honor-發','honor-發'],         // 碰發
+  ]));
+  scene.add(buildMelds('north', [
+    ['pin-9','pin-9','pin-9'],                  // 碰 9筒
+  ]));
+  scene.add(buildMelds('west', [
+    ['pin-5','pin-6','pin-7'],                  // 吃 5-6-7筒
+    ['honor-東','honor-東','honor-東'],         // 碰東
+    ['man-5','man-5','man-5'],                  // 碰 5萬
+  ]));
+
+  // 剛摸那張：跟手牌一樣後倾 30° + 放大 1.22
+  const drawn = makeTile('honor-發');
+  drawn.rotation.x = Math.PI*0.43;
+  drawn.scale.setScalar(1.22);
+  const tilt = Math.PI*0.43;
+  const drawnPosY = (TD/2*Math.cos(tilt) + TH/2*Math.sin(tilt)) * 1.22;
+  drawn.position.set(6.5, drawnPosY, 11.4 - TD/2*1.22);
+  scene.add(drawn);
+}
+init().catch(e => {
+  console.error(e);
+  document.getElementById('loader').textContent = '載入失敗：' + e.message;
+});
+
+/* ============================================================
+   Resize
+   ============================================================ */
+function onResize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  if (w/h < 1.4) camera.fov = 34;
+  else if (w/h < 1.8) camera.fov = 28;
+  else camera.fov = 26;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', onResize);
+onResize();
+
+/* ============================================================
+   Render loop
+   ============================================================ */
+function tick() {
+  renderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+tick();
+
+window.__demo = { scene, camera, renderer, THREE, TEX };
+</script>
+</body>
+</html>

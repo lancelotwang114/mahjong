@@ -7,6 +7,10 @@ layout_actual.png
 layout_preview.png
 preview_v2.png
 
+# README 用到的預覽圖：必須追蹤
+# preview.jpg：在下方明確不 ignore（沒列就會被追蹤，所以不用 !）
+# images/sample.png：在「牌圖素材」段用 images/* + ! exception 救回來
+
 # 開發用暫時預覽頁面
 layout-preview.html
 sprite-preview.html
@@ -17,7 +21,9 @@ flower-preview.html
 .idea/
 
 # 牌圖素材（已內嵌進 mahjong-solo.html，不對外公開）
-images/
+# 用 images/* 而非 images/，這樣 README 用的 sample.png 才能用 ! exception 救回來
+images/*
+!images/sample.png
 tiles-sprite.css
 
 # AI 開發指引（本地用，不進 repo）
@@ -34,9 +40,9 @@ ziChN8IB
 zikIe0bP
 
 
-# 3D 版備份與整合前 demo（不進 repo）
+# 3D 版備份（不進 repo）
 index-3d.bak.html
-mahjong-3d-demo.html
+# mahjong-3d-demo.html 在 README-3D.md 有引用，必須追蹤
 
 # 排版檢查工具（本地除錯用）
 final_runs/
@@ -53,8 +59,7 @@ mahjong-solo.bak.html
 flat_table.webp
 flat_table_preview.png
 
-# 開發階段預覽圖 / HTML
-preview.jpg
+# 開發階段預覽圖 / HTML（preview.jpg 已在頂部 exception 開放）
 preview.png
 dice-animation.html
 discard-preview.html
