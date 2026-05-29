@@ -5156,7 +5156,7 @@ const Game={
     if(winOpt){
       const b=document.createElement('button');b.className='ab aw';b.textContent='胡！';
       b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,s.drawnId!=null);};
+        document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,false);}; // offerMeld 一律為榮和(ron)，固定 selfDraw=false（修正非房主 drawnId 殘留誤判為自摸被房主拒絕）
       ap.appendChild(b);
     }
     // v1.7.13: 移除碰/吃/明槓按鈕 — 改成只能點手牌候選或 popup 字卡確認
@@ -9801,4 +9801,13 @@ document.addEventListener('keydown', e => {
     if (wov && wov.style.display === 'flex') {
       wov.style.display = 'none';
       if (retBtn) retBtn.style.display = 'block';
-    } else if (retBtn && retB
+    } else if (retBtn && retBtn.style.display === 'block') {
+      if (wov) wov.style.display = 'flex';
+      retBtn.style.display = 'none';
+    }
+  }
+});
+
+</script>
+</body>
+</html>

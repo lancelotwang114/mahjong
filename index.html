@@ -7037,7 +7037,7 @@ const Game={
     if(winOpt){
       const b=document.createElement('button');b.className='ab aw';b.textContent='胡！';
       b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,s.drawnId!=null);};
+        document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,false);}; // offerMeld 一律為榮和(ron)，固定 selfDraw=false（修正非房主 drawnId 殘留誤判為自摸被房主拒絕）
       ap.appendChild(b);
     }
     if(pongOpt){
@@ -10283,7 +10283,9 @@ const Online = {
           DbgLog.log('MELD_OFFER',`recv tile=${data.tile?.n}${data.tile?.suit} opts=${(data.opts||[]).map(o=>o.type).join(',')}`);
           // Calculate elapsed time to sync countdown with host's timer
           const elapsed=data.sentAt?Math.round((Date.now()-data.sentAt)/1000):0;
-          Game._meldOfferElapsed=Math.max(0,Math.min(elapsed,9));
+          // 此值來自「本機時鐘 − 房主時鐘」，跨裝置時鐘偏移會污染它；只用來補償網路延遲，
+          // 故上限改為 2 秒，避免時鐘差把鳴牌/胡牌倒數砍到剩 1 秒導致來不及按
+          Game._meldOfferElapsed=Math.max(0,Math.min(elapsed,2));
           Game.offerMeld(0,data.opts,data.tile);
         }
         break;
