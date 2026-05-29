@@ -4454,6 +4454,7 @@ const Game={
       }
       s.hands[p]=sortH(s.hands[p]);
     }
+    if(this._checkFlowerWin(-1))return; // 初始補花後檢查八仙/七搶一
     if(hadFlowers){
       // 防禦：Snd.say / toast / render 若任一 throw，必須仍把 done 排上，
       // 否則 closeDice → doTurn 整條鏈會斷,遊戲卡在「補花完成不開始」
@@ -4515,6 +4516,7 @@ const Game={
     const preFlowerCount=s.flowers[p].length;
     let t=s.deck.shift(); // 正常摸牌：從頭端
     while(t){if(!t.fl)break;s.flowers[p].push(t);this.log(`${s.names[p]} 槓上補花: ${t.n}`);Snd.play(520,.12,'sine',.14);s.wallTailDrawn=(s.wallTailDrawn||0)+1;this.render();t=s.deck.pop();} // 槓上補花：從尾端
+    if(this._checkFlowerWin(p))return; // 八仙/七搶一：花出齊即判胡
     if(!t){this.endDraw();return;}
     s.hands[p].push(t);s.drawnId=t.id;
 
@@ -5795,6 +5797,83 @@ const Game={
         MahjongNetwork.sendTo(pConn.id,{type:'game_over',winner:rot.turn,selfDraw,winData:wd,money:rot.money,winnerName,loserName});
       });
       setTimeout(()=>Online.broadcastState(),100); // 額外同步一次完整 state
+    }
+    setTimeout(()=>this.showWin(),1400);
+  },
+
+  // ── 花牌特殊胡（八仙過海 / 七搶一）──────────────────────────
+  // 八張花出齊時：某家 8 花 → 八仙過海(各家付)；某家 7 花+另一家 1 花 → 七搶一(持7花者搶胡，持1花者放槍)
+  // curP：觸發補花的玩家（七搶一 payer fallback），初始補花傳 -1
+  _checkFlowerWin(curP){
+    const s=this.st;
+    if(!s||s.phase!=='playing')return false;
+    if(this._online&&!this._isHost)return false; // 僅房主/單機判定
+    const counts=s.flowers.map(f=>f.length);
+    const total=counts.reduce((a,b)=>a+b,0);
+    if(total<8)return false;
+    const eight=counts.findIndex(c=>c>=8);
+    if(eight>=0){ this.doFlowerWin(eight,'八仙',-1); return true; }
+    const seven=counts.findIndex(c=>c===7);
+    if(seven>=0){
+      let payer=counts.findIndex((c,i)=>i!==seven&&c>=1);
+      if(payer<0)payer=(curP>=0?curP:seven);
+      this.doFlowerWin(seven,'七搶一',payer);
+      return true;
+    }
+    return false;
+  },
+
+  // 執行花牌特殊胡：八仙(各家付) / 七搶一(放槍者付)；不另計其他台（八仙若同時成牌則走正常 doWin）
+  doFlowerWin(p,type,payer){
+    const s=this.st;
+    if(!s||s.phase!=='playing')return;
+    if(type==='八仙'&&canWin(s.hands[p].filter(x=>!x.fl),null,s.melds[p].length)){
+      return this.doWin(p,true); // 八仙且手牌成胡：正常計分（花路徑會 +8 並另計牌型台）
+    }
+    s.phase='ended';s.turn=p;
+    this._killAllTimers();this.clearBtns();this.hideTenpai();
+    const base=this.settings.base||1;
+    const tai=base+8;
+    const bon=[`底 ${base}台`,`${type} +8台`];
+    const perTai=this.settings.tai||100;
+    const total=tai*perTai;
+    const zimo=(type==='八仙');
+    if(zimo){ for(let i=0;i<4;i++) if(i!==p){s.money[i]-=total;s.money[p]+=total;} }
+    else { s.money[payer]-=total;s.money[p]+=total; }
+    const honba=s.honba||0;
+    if(honba>0){
+      const hp=honba*100;
+      if(zimo){ for(let i=0;i<4;i++) if(i!==p){s.money[i]-=hp;s.money[p]+=hp;} }
+      else { s.money[payer]-=hp;s.money[p]+=hp; }
+      bon.push(`本場 ${honba}本 ×100`);
+    }
+    const flowers=(s.flowers&&s.flowers[p])?[...s.flowers[p]]:[];
+    s.winData={p,selfDraw:zimo,tai,bon,perTai,total,payer:zimo?-1:payer,honba,winTile:null,flowers};
+    this.winStats[p]=(this.winStats[p]||0)+1;this.rounds++;
+    this.log(`🎉 ${s.names[p]} ${type}！${tai}台`);
+    {
+      let chipChange=0;
+      if(p===0) chipChange=total*3;
+      else if(zimo) chipChange=-total;
+      else if(payer===0) chipChange=-total*3;
+      Stats.record(p===0,chipChange,p===0?tai:0);
+    }
+    this.clearSave();
+    if(p===0)setTimeout(()=>this._burstConfetti(),600);
+    if(s.ai.includes(p))this._aiQuip(p,'win');
+    this.ann('win');Snd.win();
+    setTimeout(()=>this.speakWin(s.names[p]||`玩家${p}`,zimo),300);
+    this.render();
+    if(this._online&&this._isHost){
+      this._peers.forEach((pConn,idx)=>{
+        if(idx===0||!pConn.id)return;
+        const rot=Online._rotateState(s,idx);
+        const wd=s.winData?{...s.winData,p:(s.winData.p-idx+4)%4,payer:s.winData.payer>=0?(s.winData.payer-idx+4)%4:s.winData.payer}:null;
+        const winnerName=s.names[s.winData.p]||'';
+        const loserName=s.winData.payer>=0?(s.names[s.winData.payer]||''):'';
+        MahjongNetwork.sendTo(pConn.id,{type:'game_over',winner:rot.turn,selfDraw:zimo,winData:wd,money:rot.money,winnerName,loserName});
+      });
+      setTimeout(()=>Online.broadcastState(),100);
     }
     setTimeout(()=>this.showWin(),1400);
   },
