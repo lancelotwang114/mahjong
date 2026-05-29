@@ -5951,20 +5951,12 @@ const Game={
     this._myTurnSeq=s.turnSeq||0; // v1.6.9：必須在分支前更新，確保 autoPlay/riichiMode/一般三條路徑都帶正確序號
     // 【過水重設】非房主摸牌時解除過水限制
     if(s.guoShui) s.guoShui[0]=false;
-    const nonFl=s.hands[0].filter(x=>!x.fl);
-    // 判斷目前是「摸牌後出牌」還是「鳴牌後出牌」
-    // 摸牌後：手牌張數 = (16 - melds*3) + 1（多出一張摸牌）
-    // 鳴牌後：手牌張數 = (16 - melds*3)（不多不少，直接出牌）
-    const expBase=16-s.melds[0].length*3;
-    const isAfterDraw=nonFl.length===expBase+1;
-    const isAfterMeld=nonFl.length===expBase;
-    if(isAfterDraw){
-      // 摸牌情境：最後一張視為進牌
-      s.drawnId=nonFl[nonFl.length-1].id;
-    } else {
-      // 鳴牌後出牌情境：無進牌，drawnId 應為 null
-      s.drawnId=null;
-    }
+    // 摸牌 vs 鳴牌：直接信任房主廣播的 s.drawnId（doTurn 設進牌、doMeld 設 null）
+    // 【BUG修復】不可用「手牌張數」推斷：碰/槓後待出牌張數 = (16-melds*3)+1，與摸牌後相同，
+    //   會把鳴牌後誤判成摸牌、把最後一張錯標為進牌（在 3D 會明顯浮起發亮）
+    const isAfterDraw=!!(s.drawnId&&s.hands[0].some(h=>h.id===s.drawnId&&!h.fl));
+    const isAfterMeld=!isAfterDraw;
+    if(!isAfterDraw) s.drawnId=null;
     this.checkTenpai(0);
     const drawnTile=s.drawnId?s.hands[0].find(h=>h.id===s.drawnId):null;
     const rest=drawnTile?s.hands[0].filter(h=>h.id!==s.drawnId):s.hands[0];
