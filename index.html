@@ -7053,14 +7053,12 @@ const Game={
     if(chiOpts.length){
       const b=document.createElement('button');b.className='ab ach';b.textContent='吃';
       b.onclick=()=>{
-        clearTimeout(this._meldTimeout);this.stopTimer();
+        clearTimeout(this._meldTimeout);this.stopTimer();this.hideMeldPreview();
         if(chiOpts.length===1){
-          this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',chiOpts[0].tiles);
+          this.clearBtns();this.doMeld(0,'chi',chiOpts[0].tiles);
         } else {
-          // Multi-chi: pick the combo leaving the best block score in remaining hand
-          const s=this.st;let bestOpt=chiOpts[0];let bestSc=-Infinity;
-          chiOpts.forEach(opt=>{const rem=s.hands[0].filter(h=>!opt.tiles.some(o=>o.id===h.id));const sc=calcBlockScore(rem);if(sc>bestSc){bestSc=sc;bestOpt=opt;}});
-          this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',bestOpt.tiles);
+          // 方案A：多吃法跳出選單讓玩家選（不自動代選）
+          this.showChiPicker(chiOpts,tile);
         }
       };
       ap.appendChild(b);
@@ -7102,14 +7100,9 @@ const Game={
       const _act=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',chiOpts[0].tiles);};
       this.showMeldPreview(sortH([...chiOpts[0].tiles,tile]),'吃 ▶ 點擊確認',_act);
     } else if(chiOpts.length>1){
-      // 多種吃法：點字卡用最佳組合執行
-      const _act=()=>{
-        clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        const ss=this.st;let bestOpt=chiOpts[0];let bestSc=-Infinity;
-        chiOpts.forEach(opt=>{const rem=ss.hands[0].filter(h=>!opt.tiles.some(o=>o.id===h.id));const sc=calcBlockScore(rem);if(sc>bestSc){bestSc=sc;bestOpt=opt;}});
-        this.doMeld(0,'chi',bestOpt.tiles);
-      };
-      this.showMeldPreview(sortH([...chiOpts[0].tiles,tile]),`吃 ${chiOpts.length}種 ▶ 點擊確認`,_act);
+      // 方案A：多吃法點字卡開啟選單讓玩家選（不自動代選）
+      const _act=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.hideMeldPreview();this.showChiPicker(chiOpts,tile);};
+      this.showMeldPreview(sortH([...chiOpts[0].tiles,tile]),`吃 ${chiOpts.length}種 ▶ 點擊選擇`,_act);
     }
 
     // C4: 鳴牌倒數 — 固定 10 秒自動跳過（含視覺進度條）
@@ -7170,9 +7163,9 @@ const Game={
       });
       el.onclick=()=>{
         if(info.chiOpts&&info.chiOpts.length>1){
-          // Multi-chi: clicking tile keeps/shows tooltip for row selection
-          clearTimeout(this._tipLeaveTimer);
-          this._showCandidateTooltip(el,info,disc);
+          // 方案A：多吃法點候選牌 → 開啟吃法選單（與「吃」按鈕一致）
+          this._hideCandidateTooltip();
+          this.showChiPicker(info.chiOpts,disc);
         } else {
           this._hideCandidateTooltip();
           info.action();
