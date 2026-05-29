@@ -37,3 +37,28 @@ zikIe0bP
 # 3D 版備份與整合前 demo（不進 repo）
 index-3d.bak.html
 mahjong-3d-demo.html
+
+# 排版檢查工具（本地除錯用）
+final_runs/
+layout_check_console.js
+layout_check_playwright.py
+
+# 設計素材壓縮包（不進 repo）
+Mahjong Design System.zip
+
+# 舊版備份檔
+mahjong-solo.bak.html
+
+# 桌面圖預覽（已內嵌進 html）
+flat_table.webp
+flat_table_preview.png
+
+# 開發階段預覽圖 / HTML
+preview.jpg
+preview.png
+dice-animation.html
+discard-preview.html
+meld-corner-preview.html
+reform-preview.html
+square-layout-preview.html
+square-preview.html

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>台灣麻將 3D · v1.7.0</title>
+<title>台灣麻將 3D · v1.7.1</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <!-- 牌面 sprite 樣式：結算畫面、聽牌選擇、鳴牌 tooltip 中的 mkTile 用 -->
 <link rel="stylesheet" href="tiles-sprite.css">
@@ -19,11 +19,22 @@ body::before {
   background:radial-gradient(ellipse at center, #1a1410 0%, #060403 70%);
   z-index:0; pointer-events:none;
 }
-#scene { display:block; width:100vw; height:100vh; position:absolute; inset:0; z-index:1; }
+/* ========================= 1920×1080 設計畫布 ========================= */
+/* v1.7.8: 整個 3D 場景 + HUD 裝進 #tbl-3d，CSS scale 適應 viewport (同 2D 版) */
+#tbl-3d {
+  position: absolute;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  overflow: hidden;
+  /* updateTblVars JS 設定 transform: scale(...) 跟 left/top */
+}
+#scene { display:block; width:1920px; height:1080px; position:absolute; inset:0; z-index:1; }
 
 /* ========================= HUD ========================= */
-.hud { position:fixed; inset:0; pointer-events:none; z-index:10; }
-/* 3D 版：大廳需蓋住 canvas，強制 fixed + 高 z-index */
+/* HUD 改 absolute in #tbl-3d，跟著 #tbl-3d 一起等比例縮放 */
+.hud { position:absolute; inset:0; width:1920px; height:1080px; pointer-events:none; z-index:10; }
+/* 3D 版：大廳是全螢幕 overlay 在 #tbl-3d 外，仍用 fixed */
 #lobby { position:fixed !important; z-index:300 !important; }
 .hud > * { pointer-events:auto; }
 
@@ -54,19 +65,16 @@ body::before {
 .pp.tenpai .tenpai-badge { display:block; }
 .pp.active-turn { border-color:#f5cc6a; box-shadow:0 0 12px rgba(245,200,90,.4), 0 4px 14px rgba(0,0,0,.55); }
 
-/* 四家位置：left/top 由 JS syncHudOverlays() 用 3D 投影計算填入 */
-/* 仍保留 fallback 在 JS 還沒跑時用 */
-.pp.east   { left:1.5vw;  bottom:3vh; }
-.pp.south  { right:1.5vw; top:50%; transform:translateY(-50%); }
-.pp.west   { right:1.5vw; top:3vh; min-width:140px; padding:6px 12px 7px 46px; }
+/* v1.7.8: 四家位置改用 id 寫死座標 (in #tbl-3d 1920×1080 內，center anchor) */
+#hud-pp0 { left:1001px; top:1057px; transform: translate(-50%, -50%); }   /* 玩家底中央 */
+#hud-pp1 { left:1800px; top:429px;  transform: translate(-50%, -50%); }   /* 右家右中央 */
+#hud-pp2 { left:1001px; top:32px;   transform: translate(-50%, -50%); }   /* 對家頂中央 */
+#hud-pp3 { left:120px;  top:429px;  transform: translate(-50%, -50%); }   /* 左家左中央 */
 .pp.west .av { width:32px; height:32px; font-size:18px; }
-.pp.north  { left:1.5vw; top:50%; transform:translateY(-50%); }
-/* JS 接管後加 .hud-pos class 拿掉 right/bottom */
-.pp.hud-pos { right:auto !important; bottom:auto !important; transform:translate(-50%, -50%) !important; }
 
 /* ── 左上獨立暫停浮動按鈕 ── */
 .pause-fab {
-  position:fixed; left:200px; top:14px; z-index:50;
+  position:absolute; left:200px; top:14px; z-index:50;
   display:flex; align-items:center; gap:6px;
   padding:8px 14px; border-radius:22px;
   background:linear-gradient(180deg, rgba(28,19,10,.95) 0%, rgba(16,9,5,.95) 100%);
@@ -88,7 +96,7 @@ body::before {
 /* ── 暫停遮罩（全螢幕霧面 + 中央卡片）── */
 #pause-overlay-3d {
   display:none;
-  position:fixed; inset:0; z-index:9000;
+  position:absolute; inset:0; z-index:9000;
   background:rgba(8,5,3,.55); backdrop-filter:blur(10px);
   align-items:center; justify-content:center;
   pointer-events:auto;
@@ -114,10 +122,39 @@ body::before {
 }
 .po3-resume:hover { transform:translateY(-2px); box-shadow:0 5px 18px rgba(212,168,67,.5); }
 
+/* v1.7.12: 輔助面板（從 2D 版移植） */
+#assist-panel {
+  position:fixed; right:14px; top:170px;
+  width:170px; background:rgba(8,4,2,.92);
+  border:1px solid rgba(212,168,67,.4); border-radius:10px;
+  padding:10px 12px; z-index:9000; display:none; flex-direction:column; gap:8px;
+  pointer-events:auto;
+}
+#assist-panel.open { display:flex; }
+.assist-row {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12px; color:rgba(245,236,215,.88);
+}
+.assist-toggle-sw {
+  position:relative; width:32px; height:17px; flex-shrink:0;
+}
+.assist-toggle-sw input { opacity:0; width:0; height:0; }
+.assist-toggle-sw .sw-slider {
+  position:absolute; inset:0; border-radius:17px;
+  background:rgba(255,255,255,.18); cursor:pointer; transition:.3s;
+}
+.assist-toggle-sw .sw-slider:before {
+  content:''; position:absolute; width:13px; height:13px; border-radius:50%;
+  background:#fff; left:2px; bottom:2px; transition:.3s;
+}
+.assist-toggle-sw input:checked + .sw-slider { background:#d4a843; }
+.assist-toggle-sw input:checked + .sw-slider:before { transform:translateX(15px); }
+
 /* ── 中央圓形資訊膠囊（位置由 JS syncHudOverlays() 算 3D 桌中心）── */
 #hud-center-pill {
-  position:fixed; top:50%; left:50%; transform:translate(-50%, -50%);
-  z-index:8; will-change: left, top;
+  /* v1.7.8: 放大 1.5×、往上 80px */
+  position:absolute; left:960px; top:460px; transform:translate(-50%, -50%) scale(1.5);
+  z-index:8;
   width:96px; height:96px; border-radius:50%;
   background:radial-gradient(circle at 50% 30%, rgba(40,28,15,.85), rgba(16,9,5,.92));
   border:2px solid rgba(245,200,90,.55);
@@ -231,14 +268,8 @@ body::before {
 @keyframes dotPulse { 0%,100%{opacity:.3;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)} }
 
 /* 聽牌橫幅 */
-#tenpai-banner { position:fixed; left:50%; bottom:185px; transform:translateX(-50%) translateY(20px);
-                 opacity:0; transition:opacity .3s, transform .3s;
-                 background:linear-gradient(90deg,rgba(20,40,20,.95),rgba(10,30,10,.95));
-                 border:1px solid #2ecc71; border-radius:8px; padding:6px 20px;
-                 font-family:"Noto Serif TC"; font-size:14px; color:#2ecc71;
-                 pointer-events:none; white-space:nowrap; z-index:20;
-                 box-shadow:0 0 16px rgba(46,204,113,.3); }
-#tenpai-banner.show { opacity:1; transform:translateX(-50%) translateY(0); }
+/* v1.7.13: 聽牌橫幅停用 — 跟 #tpanel 重複 */
+#tenpai-banner { display:none !important; }
 
 /* 鳴牌預覽 */
 #meld-preview { position:absolute; left:50%; bottom:120px; transform:translateX(-50%);
@@ -249,7 +280,7 @@ body::before {
 .mp-label { font-size:13px; color:#d4a843; font-family:"Noto Serif TC"; font-weight:700; margin-right:4px; }
 
 /* 鳴牌 Tooltip */
-#meld-tooltip { position:fixed; display:none; flex-direction:column; gap:4px; z-index:50;
+#meld-tooltip { position:absolute; display:none; flex-direction:column; gap:4px; z-index:50;
                 background:rgba(16,9,5,.97); border:1px solid #5c4419; border-radius:8px;
                 padding:10px 12px; min-width:120px; pointer-events:none; }
 #meld-tooltip.show { display:flex; }
@@ -267,7 +298,7 @@ body::before {
 #hand-bar.show { display:flex; }
 
 /* Toast */
-#toast { position:fixed; bottom:130px; left:50%; transform:translateX(-50%);
+#toast { position:absolute; bottom:130px; left:50%; transform:translateX(-50%);
          background:rgba(20,12,6,.92); border:1px solid #5c4419; border-radius:8px;
          padding:8px 20px; font-size:13px; color:#f5e2a8;
          opacity:0; pointer-events:none; transition:opacity .3s; z-index:100;
@@ -276,7 +307,7 @@ body::before {
 
 /* ── 左下聊天 FAB ── */
 .chat-fab {
-  position:fixed; left:20px; bottom:20px; z-index:50;
+  position:absolute; left:20px; bottom:20px; z-index:50;
   display:flex; align-items:center; gap:6px;
   padding:9px 16px; border-radius:22px;
   background:linear-gradient(180deg, rgba(28,19,10,.95) 0%, rgba(16,9,5,.95) 100%);
@@ -296,7 +327,7 @@ body::before {
 
 /* ── 3D 版聊天面板（移到左下） ── */
 #chat-panel {
-  position:fixed; left:20px; bottom:80px;
+  position:absolute; left:20px; bottom:80px;
   width:260px; height:340px;
   background:rgba(6,16,10,.94); border:1.5px solid rgba(93,173,226,.35);
   border-radius:10px; display:none; flex-direction:column; z-index:250;
@@ -376,7 +407,7 @@ body::before {
 
 /* ── 大字鳴牌/胡牌宣告（從 2D 版搬） ── */
 #ann{
-  position:fixed; top:30%; left:50%;
+  position:absolute; top:30%; left:50%;
   transform:translate(-50%,-50%) scale(.5); opacity:0; pointer-events:none;
   z-index:500;
   font-family:'Noto Serif TC',serif; font-weight:900;
@@ -688,14 +719,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 /* ═══════════════════════════════════════════════════════════════════
 
 /* ── 聽牌面板 ── */
-#tpanel{
-  position:fixed; left:8px; bottom:185px;
-  background:linear-gradient(160deg,rgba(4,18,8,.97),rgba(8,28,12,.94));
-  border:1.5px solid #2ecc71;
-  border-radius:10px; padding:10px; min-width:110px;
-  z-index:500; box-shadow:0 0 20px rgba(46,204,113,.25),0 4px 12px rgba(0,0,0,.5);
-  display:none;
-}
+/* v1.7.13: 聽牌面板停用 — 跟 #tenpai-banner 一樣不需要 */
+#tpanel{ display:none !important; }
 #tpanel .tpt{color:#2ecc71;font-weight:900;font-size:.82rem;text-align:center;margin-bottom:6px;letter-spacing:.1em}
 #tptiles{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
 
@@ -743,10 +768,11 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   100% { transform:translateY(var(--dy,200px)) translateX(var(--dx,0)) rotate(var(--dr,360deg)); opacity:0; }
 }
 
-/* .t 牌面（結算/tooltip 用，比例對齊 2D 版 sprite 預設 62×86） */
+/* .t 牌面（結算/tooltip 用，對齊 2D 版 58×80 才能讓 tiles-sprite.css bg-position 算對） */
+/* v1.7.13: 從 42×58 改成 58×80，原本 sprite 偏移是為 2D 58×80 校準，導致 popup 牌只顯示上半部 */
 .t { display:inline-flex; align-items:center; justify-content:center;
-     width:42px; height:58px; background:linear-gradient(135deg,#f8f4ea,#ede5cc);
-     border:1px solid #ccc; border-radius:4px; font-size:13px; flex-shrink:0;
+     width:58px; height:80px; background:linear-gradient(135deg,#f8f4ea,#ede5cc);
+     border:1px solid #ccc; border-radius:4px; font-size:18px; flex-shrink:0;
      box-shadow:1px 1px 3px rgba(0,0,0,.2); position:relative; overflow:hidden; }
 .t.sm { width:34px; height:46px; font-size:11px; }
 .t.ti { width:22px; height:30px; font-size:9px; }
@@ -755,6 +781,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 </style>
 </head>
 <body>
+
+<!-- v1.7.8: 1920×1080 固定設計尺寸容器，CSS transform: scale 適應 viewport (跟 2D 版同 pattern) -->
+<div id="tbl-3d">
 
 <!-- Three.js Canvas -->
 <canvas id="scene"></canvas>
@@ -798,13 +827,12 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <!-- 右上工具 -->
   <div class="tools">
     <div class="ic" data-label="提示" title="出牌提示 (H)" id="hud-hint-btn" onclick="Game.showHint?.()">提</div>
-    <div class="ic" data-label="整理" title="整理手牌 (S)" id="hud-sort-btn" onclick="Game.sortHand?.()">排</div>
     <div class="ic" data-label="輔助" title="輔助面板（聽牌計算 / 危險牌 / 牌追蹤）" id="hud-assist-btn" onclick="Game.toggleAssistPanel?.()">輔</div>
     <div class="ic ic-wide" data-label="AI 速度" title="AI 速度：正常" id="hud-speed-btn" onclick="Game.cycleSpeed?.()">正常</div>
     <div class="ic" data-label="代打" title="自動代打" id="hud-autoplay-btn" onclick="Game.toggleAutoPlay?.()">代</div>
     <div class="ic" data-label="音效" title="音效開關" id="hud-audio-btn" onclick="Game.toggleAudioMute?.()">🔊</div>
     <div class="ic" data-label="返回大廳" title="返回大廳" onclick="Game.returnLobby?.()">廳</div>
-    <div class="ic" data-label="存檔離開" title="離開（自動存檔）" onclick="Game.leaveAndSave?.()">出</div>
+    <div class="ic" data-label="存檔離開" title="離開（自動存檔）" onclick="Game.leaveAndSave?.()" style="display:none">出</div>
   </div>
 
   <!-- 左下聊天 FAB -->
@@ -907,19 +935,23 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="hb-tiles" id="hb-tiles"></div>
   </div>
 
+  <!-- 聽牌橫幅 -->
+  <div id="tenpai-banner"></div>
+
+  <!-- 鳴牌 Tooltip -->
+  <div id="meld-tooltip"></div>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- 大字鳴牌/胡牌宣告（從 2D 版補回） -->
+  <div id="ann"></div>
+
 </div><!-- /.hud -->
 
-<!-- 聽牌橫幅 -->
-<div id="tenpai-banner"></div>
+</div><!-- /#tbl-3d -->
+<!-- ↑ lobby / match-ov 等全螢幕 overlay 留在 tbl-3d 外，跟 2D 版一致 -->
 
-<!-- 鳴牌 Tooltip -->
-<div id="meld-tooltip"></div>
-
-<!-- Toast -->
-<div id="toast"></div>
-
-<!-- 大字鳴牌/胡牌宣告（從 2D 版補回） -->
-<div id="ann"></div>
 
 <!-- 東風局完賽結算 overlay（從 ghost-dom 拉出來） -->
 <div id="match-ov">
@@ -966,7 +998,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="ldeco">🀇🀙🀅</div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
-    <div class="lver">v1.7.0</div>
+    <div class="lver">v1.7.1</div>
 
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
@@ -1276,7 +1308,30 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   <div id="shanten-label"></div>
   <div id="tile-tracker"></div>
   <div id="host-round-start-btn"></div>
-  <div id="assist-panel"></div>
+  <!-- v1.7.12: 輔助面板（從 2D 版移植，移除自動整牌 row） -->
+  <div id="assist-panel">
+    <div class="assist-row">
+      <span>向聽數顯示</span>
+      <label class="assist-toggle-sw">
+        <input type="checkbox" id="assist-shanten" onchange="Game.saveAssist()">
+        <span class="sw-slider"></span>
+      </label>
+    </div>
+    <div class="assist-row">
+      <span>危險牌警示</span>
+      <label class="assist-toggle-sw">
+        <input type="checkbox" id="assist-danger" onchange="Game.saveAssist()">
+        <span class="sw-slider"></span>
+      </label>
+    </div>
+    <div class="assist-row">
+      <span>剩餘牌追蹤</span>
+      <label class="assist-toggle-sw">
+        <input type="checkbox" id="assist-tracker" onchange="Game.onTrackerToggle(this.checked)">
+        <span class="sw-slider"></span>
+      </label>
+    </div>
+  </div>
   <div id="assist-toggle"></div>
   <div id="fld"></div>
   <div id="tbl"></div>
@@ -1307,8 +1362,10 @@ const TW = 0.72, TD = 0.46, TH = 1.20;
    ============================================================ */
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
-// pixelRatio 上限放寬到 3,讓 retina/4K 螢幕能用更高解析度渲染,牌面更清晰
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 3));
+// pixelRatio：SSAA 超採樣到 4 倍像素，牌面才夠銳利
+// （v1.7.3 實測 devicePixelRatio×1~2 都霧霧的；×4 OK）
+// cap 4 避免低階 GPU / 高 DPR 螢幕（DPR≥2）GPU 負擔過重
+renderer.setPixelRatio(Math.min(window.devicePixelRatio * 4, 4));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1317,12 +1374,14 @@ renderer.toneMappingExposure = 1.0;
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(28, 16/9, 0.1, 200);
-camera.position.set(0, 28, 32);
-camera.lookAt(0, 0, 3);
+camera.position.set(0, 25, 24);
+camera.lookAt(0, 0, 0);
 
-/* 燈光 */
-scene.add(new THREE.HemisphereLight(0xfff2d4, 0x3a2a18, 0.65));
-const key = new THREE.DirectionalLight(0xfff3cf, 0.95);
+/* 燈光 v1.7.8: 全部改中性白光，不再染黃 */
+//   HemisphereLight 上色暖白→純白；下色暖棕→中灰
+scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 0.75));
+//   key 主光暖黃→純白，強度略升
+const key = new THREE.DirectionalLight(0xffffff, 1.1);
 key.position.set(5, 16, 9);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -1331,11 +1390,17 @@ key.shadow.camera.top  = 12;  key.shadow.camera.bottom = -12;
 key.shadow.camera.near = 1;   key.shadow.camera.far = 40;
 key.shadow.bias = -0.00015; key.shadow.radius = 5;
 scene.add(key);
-const fill = new THREE.DirectionalLight(0xa7c4ff, 0.25);
+//   fill 補光：冷藍弱→中性白略強，平衡 shadow
+const fill = new THREE.DirectionalLight(0xffffff, 0.5);
 fill.position.set(-6, 8, -5);
 scene.add(fill);
+// v1.7.12: 桌面尺寸（D 面板「相機」tab 可調）
+//   width = X 軸寬度（左右家方向）
+//   depth = Z 軸深度（自家↔對家方向）
+//   user 反映 40×40 在透視下顯得「上下太長」，預設 40×32 把深度縮 20%
+const TABLE_SIZE = { width: 43.5, depth: 41 };
 const shadowPlane = new THREE.Mesh(
-  new THREE.PlaneGeometry(40, 40),
+  new THREE.PlaneGeometry(TABLE_SIZE.width, TABLE_SIZE.depth),
   new THREE.ShadowMaterial({ opacity: 0.45 })
 );
 shadowPlane.rotation.x = -Math.PI/2;
@@ -1358,14 +1423,45 @@ function loadImage(url) {
 
 async function sliceSprite(url, count, opts) {
   opts = opts || {};
-  const maskTopFrac = opts.maskTop || 0;
+  const maskTopFrac    = opts.maskTop    || 0;
+  const maskBottomFrac = opts.maskBottom || 0;
+  // v1.7.8: raw=true 跳過所有 image processing，純切 slot region (給 CSS sprite 用)
+  //   slotStride / tileWidth 可選：CSS sprite 用 80/72 (man/pin/sou/honor)、160/158 (flower)
+  //   不傳就用 img.width / count（適合 assets/ 等沒 padding 的 sprite）
+  const raw = !!opts.raw;
   const img = await loadImage(url);
-  const slotW = Math.floor(img.width / count);
+  const slotStride = opts.slotStride || Math.floor(img.width / count);
+  const tileWidth  = opts.tileWidth  || slotStride;
+  const slotW = slotStride;  // 給後面非-raw pipeline 用
   const slotH = img.height;
   const tmp = document.createElement('canvas');
   tmp.width = slotW; tmp.height = slotH;
   const tg = tmp.getContext('2d');
   const out = [];
+
+  // raw 模式：用正確 slot stride 切 tileWidth 寬，可選 maskTop / maskBottom 裁上下邊條
+  if (raw) {
+    const drawY = Math.round(slotH * maskTopFrac);
+    const drawBottom = Math.round(slotH * maskBottomFrac);
+    const drawH = Math.max(1, slotH - drawY - drawBottom);
+    for (let i = 0; i < count; i++) {
+      const c = document.createElement('canvas');
+      c.width = tileWidth; c.height = drawH;
+      c.getContext('2d').drawImage(img, i*slotStride, drawY, tileWidth, drawH, 0, 0, tileWidth, drawH);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+      // v1.7.13: 改回 trilinear（LinearMipMapLinearFilter）
+      //   先前 LinearFilter + 無 mipmap 在斜視角度（西/東家鳴牌）會把 texel 跟透明背景平均 → 看起來半透明
+      //   trilinear + 高 anisotropy 既保留遠處平滑度又避免角度洗白
+      tex.minFilter = THREE.LinearMipMapLinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.generateMipmaps = true;
+      out.push(tex);
+    }
+    return out;
+  }
+
   for (let i = 0; i < count; i++) {
     tg.clearRect(0, 0, slotW, slotH);
     tg.drawImage(img, i*slotW, 0, slotW, slotH, 0, 0, slotW, slotH);
@@ -1426,26 +1522,64 @@ async function sliceSprite(url, count, opts) {
       if (trimL > 0) { cctx.fillStyle='#ffffff'; cctx.fillRect(0,0,trimL+1,ch); }
       if (trimR > 0) { cctx.fillStyle='#ffffff'; cctx.fillRect(cw-trimR-1,0,trimR+1,ch); }
     }
-    // 象牙底色推白
+    // v1.7.8: 象牙底色推白 + 提升對比 + 飽和度 boost
+    //   - 淺色背景 → 純白
+    //   - 灰黑字 → 推更黑
+    //   - 彩色字（紅綠藍）→ 飽和度 boost，色彩更鮮豔
     {
       const id = cctx.getImageData(0, 0, cw, ch); const d = id.data;
+      const SAT_BOOST = 1.5;   // 飽和度增強係數（1=不動，1.5=強化 50%）
       for (let p = 0; p < d.length; p += 4) {
-        const minC = Math.min(d[p], d[p+1], d[p+2]);
-        if (minC > 205) { d[p]=255; d[p+1]=255; d[p+2]=255; }
-        else if (minC > 150) {
-          const t = (minC-150)/55;
-          d[p]=Math.round(d[p]+(255-d[p])*t);
-          d[p+1]=Math.round(d[p+1]+(255-d[p+1])*t);
-          d[p+2]=Math.round(d[p+2]+(255-d[p+2])*t);
+        const r = d[p], g = d[p+1], b = d[p+2], a = d[p+3];
+        if (a < 50) continue;
+        const minC = Math.min(r, g, b);
+        const maxC = Math.max(r, g, b);
+        const range = maxC - minC;
+
+        // 淺色 → 純白（背景）
+        if (minC > 180) { d[p]=255; d[p+1]=255; d[p+2]=255; continue; }
+        if (minC > 130) {
+          const t = (minC-130)/50;
+          d[p]=Math.round(r+(255-r)*t);
+          d[p+1]=Math.round(g+(255-g)*t);
+          d[p+2]=Math.round(b+(255-b)*t);
+          continue;
+        }
+
+        // 彩色像素（紅綠藍主導）→ 飽和度 boost
+        if (range > 40) {
+          // 對每個 channel：以中值為軸放大跟中值的差距
+          const mid = (maxC + minC) / 2;
+          let nr = mid + (r - mid) * SAT_BOOST;
+          let ng = mid + (g - mid) * SAT_BOOST;
+          let nb = mid + (b - mid) * SAT_BOOST;
+          // 同時推暗側往更暗（增強對比）
+          if (maxC < 200) {
+            const dim = 0.85;
+            nr *= dim; ng *= dim; nb *= dim;
+          }
+          d[p]   = Math.max(0, Math.min(255, Math.round(nr)));
+          d[p+1] = Math.max(0, Math.min(255, Math.round(ng)));
+          d[p+2] = Math.max(0, Math.min(255, Math.round(nb)));
+          continue;
+        }
+
+        // 灰黑字 → 推更深
+        if (maxC < 120) {
+          d[p]   = Math.max(0, Math.round(r * 0.45));
+          d[p+1] = Math.max(0, Math.round(g * 0.45));
+          d[p+2] = Math.max(0, Math.round(b * 0.45));
         }
       }
       cctx.putImageData(id, 0, 0);
     }
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    // v1.7.13: trilinear filtering — 兼顧遠處清晰度跟斜角度不洗白
     tex.minFilter = THREE.LinearMipMapLinearFilter;
     tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
     out.push(tex);
   }
   return out;
@@ -1459,16 +1593,96 @@ function loadTex(url) {
   });
 }
 
+// Sprite 切割設定（user 可改後 reload 看效果）
+//   slotStride  = 每張牌在 sprite 內的間距 (px)
+//   tileWidth   = 實際切出的寬度 (px)，太小會截斷字邊、太大會吃到隔壁牌
+//   maskTop     = 從頂部裁掉的比例 (0~1) — 移除藍頂條
+//   maskBottom  = 從底部裁掉的比例 (0~1) — 移除黑底條
+const SPRITE_OPTS = {
+  man:    { slotStride: 80,  tileWidth: 72,  maskTop: 0.18, maskBottom: 0.15 },
+  pin:    { slotStride: 80,  tileWidth: 72,  maskTop: 0.18, maskBottom: 0.15 },
+  sou:    { slotStride: 80,  tileWidth: 72,  maskTop: 0.24, maskBottom: 0.23 },
+  honor:  { slotStride: 80,  tileWidth: 72,  maskTop: 0.22, maskBottom: 0.20 },
+  flower: { slotStride: 160, tileWidth: 158, maskTop: 0,    maskBottom: 0    },
+};
+
 const TEX = {};
+// v1.7.8: 從 tiles-sprite.css 提取 sprite base64 URL，跟 2D 版用同一套素材
+//   (assets/ 內的 PNG 是較舊版本，顏色偏淡；2D 版內嵌 sprite 較鮮豔)
+//   抓不到 CSS sprite 就 fallback 到 assets/ 確保不 break
+function findCssSpriteUrl(selectorRegex) {
+  for (const sheet of document.styleSheets) {
+    let rules;
+    try { rules = sheet.cssRules || sheet.rules; } catch (e) { continue; }
+    if (!rules) continue;
+    for (const rule of rules) {
+      if (!rule.selectorText) continue;
+      if (!selectorRegex.test(rule.selectorText)) continue;
+      const bg = rule.style && rule.style.backgroundImage;
+      if (!bg) continue;
+      const m = bg.match(/url\(['"]?(data:[^'")]+)['"]?\)/);
+      if (m) return m[1];
+    }
+  }
+  return null;
+}
+
+// v1.7.10: reload sprites 不用 reload 整個頁面（給 debug panel 改 SPRITE_OPTS 用）
+async function reloadSprites() {
+  try {
+    // regex 注意：sprite 在 `.t.sou` (base) rule 而非 `.t.sou.v1`（v1 只有 bg-position）
+    //   negative lookahead 排除 `.t.man.v1` 之類，但允許 `.t.sou` 跟 `.t.sou,.t.man` 開頭
+    const cssMan    = findCssSpriteUrl(/^\.t\.man(?![a-z\-])/);
+    const cssPin    = findCssSpriteUrl(/^\.t\.pin(?![a-z\-])/);
+    const cssSou    = findCssSpriteUrl(/^\.t\.sou(?![a-z\-])/);
+    const cssHonor  = findCssSpriteUrl(/^\.t\.honor(?![a-z\-])/);
+    const cssFlower = findCssSpriteUrl(/^\.t\.flower(?![a-z\-])/);
+    const mkOpts = (key) => ({ raw:true, ...SPRITE_OPTS[key] });
+    const [man, pin, sou, honor, flower] = await Promise.all([
+      sliceSprite(cssMan    || 'assets/man.png',    9, cssMan    ? mkOpts('man')    : { maskTop:0.20 }),
+      sliceSprite(cssPin    || 'assets/pin.png',    9, cssPin    ? mkOpts('pin')    : { maskTop:0.20 }),
+      sliceSprite(cssSou    || 'assets/sou.png',    9, cssSou    ? mkOpts('sou')    : { maskTop:0.20 }),
+      sliceSprite(cssHonor  || 'assets/honor.png',  7, cssHonor  ? mkOpts('honor')  : { maskTop:0.20 }),
+      sliceSprite(cssFlower || 'assets/flower.png', 8, cssFlower ? mkOpts('flower') : { maskTop:0    }),
+    ]);
+    // dispose 舊 texture
+    const oldKeys = Object.keys(TEX).filter(k => /^(man|pin|sou|honor|flower)-/.test(k));
+    for (const k of oldKeys) { TEX[k]?.dispose?.(); }
+    for (let i = 1; i <= 9; i++) { TEX[`man-${i}`] = man[i-1]; TEX[`pin-${i}`] = pin[i-1]; TEX[`sou-${i}`] = sou[i-1]; }
+    ['東','南','西','北','中','發','白'].forEach((ch, i) => TEX[`honor-${ch}`] = honor[i]);
+    ['梅','蘭','菊','竹','春','夏','秋','冬'].forEach((ch, i) => TEX[`flower-${ch}`] = flower[i]);
+    // 清 material cache
+    try { _matCache.clear(); } catch(e) { console.warn('[reloadSprites] _matCache not accessible:', e.message); }
+    // 重 build 3D 場景（render3D 重建所有 mesh，會用新 texture/material）
+    if (typeof render3D === 'function') {
+      render3D();
+      console.log('[reloadSprites] done — rebuilt 3D scene');
+    } else {
+      console.warn('[reloadSprites] render3D not found, mesh 還是舊 texture');
+    }
+  } catch (err) {
+    console.error('[reloadSprites] error:', err);
+  }
+}
+
 async function loadAllTextures() {
+  // 優先從 tiles-sprite.css 取 sprite（2D 版用的鮮豔素材），失敗 fallback 到 assets/
+  // sprite 在 `.t.NAME` (base) rule，不在 `.v\d+` 上
+  const cssMan    = findCssSpriteUrl(/^\.t\.man(?![a-z\-])/);
+  const cssPin    = findCssSpriteUrl(/^\.t\.pin(?![a-z\-])/);
+  const cssSou    = findCssSpriteUrl(/^\.t\.sou(?![a-z\-])/);
+  const cssHonor  = findCssSpriteUrl(/^\.t\.honor(?![a-z\-])/);
+  const cssFlower = findCssSpriteUrl(/^\.t\.flower(?![a-z\-])/);
+  console.log('[3D Texture] CSS sprite found:',
+    { man: !!cssMan, pin: !!cssPin, sou: !!cssSou, honor: !!cssHonor, flower: !!cssFlower });
+  // v1.7.10: sprite 切割參數從 SPRITE_OPTS 讀，user 可調後 reload
+  const mkOpts = (key) => ({ raw:true, ...SPRITE_OPTS[key] });
   const [man, pin, sou, honor, flower, woodBackTex, tableTex] = await Promise.all([
-    // maskTop 從 0.30 → 0.20:0.30 會把牌面文字頂端也裁掉(見「八筒頭被截」),
-    // 0.20 剛好對齊 sprite 圖內藍頂條的實際比例,讓牌面字完整顯示
-    sliceSprite('assets/man.png', 9, {maskTop:0.20}),
-    sliceSprite('assets/pin.png', 9, {maskTop:0.20}),
-    sliceSprite('assets/sou.png', 9, {maskTop:0.20}),
-    sliceSprite('assets/honor.png', 7, {maskTop:0.20}),
-    sliceSprite('assets/flower.png', 8),
+    sliceSprite(cssMan    || 'assets/man.png',    9, cssMan    ? mkOpts('man')    : { maskTop:0.20 }),
+    sliceSprite(cssPin    || 'assets/pin.png',    9, cssPin    ? mkOpts('pin')    : { maskTop:0.20 }),
+    sliceSprite(cssSou    || 'assets/sou.png',    9, cssSou    ? mkOpts('sou')    : { maskTop:0.20 }),
+    sliceSprite(cssHonor  || 'assets/honor.png',  7, cssHonor  ? mkOpts('honor')  : { maskTop:0.20 }),
+    sliceSprite(cssFlower || 'assets/flower.png', 8, cssFlower ? mkOpts('flower') : { maskTop:0    }),
     loadTex('assets/tile-back-style2.png'),
     loadTex('assets/table.png'),
   ]);
@@ -1494,9 +1708,10 @@ async function loadAllTextures() {
 /* ============================================================
    牌幾何與材質
    ============================================================ */
-const matSideWood = new THREE.MeshStandardMaterial({ color:0xf5eedc, roughness:0.40, metalness:0.03 });
-const matBottom   = new THREE.MeshStandardMaterial({ color:0xece6d2, roughness:0.42, metalness:0.04 });
-const matTopIvory = new THREE.MeshStandardMaterial({ color:0xf5eedc, roughness:0.40, metalness:0.03 });
+// v1.7.8: 牌側面/頂底面從象牙白 0xf5eedc 改成純白 0xffffff，提升對比
+const matSideWood = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.35, metalness:0.02 });
+const matBottom   = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.38, metalness:0.02 });
+const matTopIvory = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.35, metalness:0.02 });
 const matGoldFace = new THREE.MeshStandardMaterial({ color:0xffdd88, roughness:0.3, metalness:0.1, emissive:0xffaa00, emissiveIntensity:0.3 });
 
 function makeTileGeometry(w, h, d, radius) {
@@ -1635,26 +1850,88 @@ function getGlowTexture() {
 function clearGroup(g) { if (g) { scene.remove(g); g.traverse(c => { if (c.geometry) c.geometry.dispose(); }); } }
 
 /* ============================================================
+   四家手牌中心 3D 座標（共用常數）
+   ─────────────────────────────────────────────────────────
+   buildHand3D 用這份決定每家手牌離桌中心多遠；
+   syncHudOverlays 的 _edgeProbes 也讀這份，讓 HUD 卡片永遠
+   貼著對應玩家的手牌中心投影位置走。
+   想調手牌前後位置只要改這裡，3D 跟 HUD 會同步動。
+   ============================================================ */
+const SEAT_DIST = {
+  south: 11.4,   // 自家手牌 Z（正向）
+  north: 12.6,   // 對家手牌 Z 絕對值（位置在 -north）
+  east:  12.0,   // 右家手牌 X（正向）
+  west:  12.0,   // 左家手牌 X 絕對值（位置在 -west）
+};
+
+/* ============================================================
    三D 場景建構函數
    ============================================================ */
-function buildWall3D(side, tilesLeft) {
+function buildWall3D(side, deckLen, wallBreak, wallTailDrawn) {
+  // v1.7.10: 牌墩按「頭尾邏輯」渲染（移植 2D _renderWall 算法）
+  //   - 4 家牌墩構成 closed loop（72 物理疊，4×18），每疊 2 張，total 144 張
+  //   - wallBreak = 開門位置（在 south wall 的 offset 0-17）
+  //   - 從 headPhys 順時針 32 疊都是「已發牌」(空)，其餘 40 疊是剩餘牌堆
+  //   - frontDrwn 從頭摸（s.deck.shift()）、tailDrwn 從尾摸（s.deck.pop() 補花）
   const group = new THREE.Group();
-  const N = Math.min(18, Math.ceil(tilesLeft / 2)); // 近似顯示
+  const SEG = {
+    south: { physStart: 0,  count: 18 },
+    east:  { physStart: 18, count: 18 },
+    north: { physStart: 36, count: 18 },
+    west:  { physStart: 54, count: 18 },
+  };
+  const seg = SEG[side];
+  const TOTAL = 72;
+  const INIT_DECK = 80;       // 4×16 發完後牌墩剩 80 張 (40 疊)
+  const DECK_ST = 40;         // 剩餘牌堆疊數
+
+  const tailDrwn = wallTailDrawn || 0;
+  const frontDrwn = Math.max(0, (INIT_DECK - (deckLen||0)) - tailDrwn);
+  const frontEmpty = Math.floor(frontDrwn / 2);
+  const frontPartial = frontDrwn % 2;
+  const tailEmpty = Math.floor(tailDrwn / 2);
+  const tailPartial = tailDrwn % 2;
+
+  function stackCnt(deckIdx) {
+    if (deckIdx < 0 || deckIdx >= DECK_ST) return 0;
+    if (deckIdx < frontEmpty) return 0;
+    if (deckIdx === frontEmpty && frontPartial) return 1;
+    const rev = DECK_ST - 1 - deckIdx;
+    if (rev < tailEmpty) return 0;
+    if (rev === tailEmpty && tailPartial) return 1;
+    return 2;
+  }
+  const headPhys = (wallBreak || 0) % TOTAL;
+  function physToStackCnt(phys) {
+    const linear = (phys - headPhys + TOTAL) % TOTAL;
+    if (linear < 32) return 0;  // 已發牌位置
+    return stackCnt(linear - 32);
+  }
+
   const GAP = 0.03;
-  const len = N * (TW + GAP);
-  for (let i = 0; i < N; i++) {
-    for (let layer = 0; layer < 2; layer++) {
+  const len = seg.count * (TW + GAP);
+  for (let i = 0; i < seg.count; i++) {
+    const phys = seg.physStart + i;
+    const cnt = physToStackCnt(phys);
+    for (let layer = 0; layer < cnt; layer++) {
       const tile = makeWallTile3D();
       const x = -len/2 + i*(TW+GAP) + TW/2;
       tile.position.set(x, TD/2 + layer*(TD+0.015), 0);
       group.add(tile);
     }
   }
-  const dist = side==='south'?6.7 : side==='north'?8.6 : 8.0;
+  // 牌牆基本距桌中心（south 略往玩家方向）
+  const dist = side==='south'?7.2 : side==='north'?8.6 : 8.0;
   if (side==='south')      { group.position.z = dist; }
-  else if (side==='north') { group.position.z = -dist; group.rotation.y = Math.PI; }
-  else if (side==='east')  { group.position.x = dist;  group.rotation.y = -Math.PI/2; }
-  else if (side==='west')  { group.position.x = -dist; group.rotation.y = Math.PI/2; }
+  else if (side==='north') { group.position.z = -dist; }
+  else if (side==='east')  { group.position.x = dist; }
+  else if (side==='west')  { group.position.x = -dist; }
+  // v1.7.9: WALL_OFFSET 位置微調 + WALL_ROT_DEG 旋轉 + WALL_SCALE 縮放
+  const wO = WALL_OFFSET[side];
+  if (wO) { group.position.x += wO.x; group.position.z += wO.z; }
+  const wRot = WALL_ROT_DEG[side] || { x:0, y:0, z:0 };
+  group.rotation.set((wRot.x||0)*Math.PI/180, (wRot.y||0)*Math.PI/180, (wRot.z||0)*Math.PI/180);
+  group.scale.setScalar(WALL_SCALE[side] || 1.0);
   return group;
 }
 
@@ -1712,17 +1989,33 @@ function buildHand3D(side, tiles, candidateIds) {
   });
 
   // 對手手牌往各自牌牆靠（讓畫面中央留出空間,避免手牌伸進視野中央）
-  const dist = side==='south'?11.4 : side==='north'?12.6 : 12.0;
-  // 左右家額外旋轉 10°(從俯視看):east 逆時鐘、west 順時鐘
-  const EXTRA = 10 * Math.PI / 180;
-  if (side==='south')      { group.position.z = dist; }
-  else if (side==='north') { group.position.z = -dist; group.rotation.y = Math.PI; }
-  else if (side==='east')  { group.position.x = dist;  group.rotation.y =  Math.PI/2 + EXTRA; }
-  else if (side==='west')  { group.position.x = -dist; group.rotation.y = -Math.PI/2 - EXTRA; }
-  // 自家最大,對手稍微放大對抗透視縮小效果
-  if (isSouth)             group.scale.setScalar(1.22);
-  else if (side==='north') group.scale.setScalar(1.10);   // 對家最遠,放大多一點
-  else                     group.scale.setScalar(1.08);   // 左/右家放大一點
+  // 距離常數抽到 SEAT_DIST，syncHudOverlays 共用，調此處 HUD 自動跟
+  const dist = side==='south' ? SEAT_DIST.south
+             : side==='north' ? SEAT_DIST.north
+             : side==='east'  ? SEAT_DIST.east
+             :                  SEAT_DIST.west;
+  // v1.7.9: 手牌 group 旋轉用 HAND_GROUP_ROT_DEG (三軸 4 家)
+  const hRot = HAND_GROUP_ROT_DEG[side] || { x:0, y:0, z:0 };
+  const hRx = (hRot.x||0) * Math.PI/180;
+  const hRy = (hRot.y||0) * Math.PI/180;
+  const hRz = (hRot.z||0) * Math.PI/180;
+  // v1.7.4: east/west 手牌再往外側微移 (0.13 → 0.8 → 0.5，user 微調再往中央 0.3)
+  const SIDE_HAND_OUTWARD = 0.5;
+  // v1.7.4: 自家手牌往玩家方向偏移 0.5 (約 viewport 15px)，跟自家牌牆一起下移
+  const SOUTH_HAND_DOWN = 0.5;
+  // v1.7.4: 對家手牌往對家自己方向再偏移 1.0 (user 視角「往上」)
+  const NORTH_HAND_UP = 1.0;
+  if (side==='south')      { group.position.z = dist + SOUTH_HAND_DOWN; }
+  else if (side==='north') { group.position.z = -dist - NORTH_HAND_UP; }
+  else if (side==='east')  { group.position.x = dist + SIDE_HAND_OUTWARD; }
+  else if (side==='west')  { group.position.x = -dist - SIDE_HAND_OUTWARD; }
+  // v1.7.9: 統一用 HAND_GROUP_ROT_DEG 設整個 group rotation
+  group.rotation.set(hRx, hRy, hRz);
+  // v1.7.8: HAND_OFFSET 微調（debug panel 可即時調）
+  const hO = HAND_OFFSET[side];
+  if (hO) { group.position.x += hO.x; group.position.z += hO.z; }
+  // v1.7.9: 縮放從 HAND_SCALE 讀（debug panel 可調）
+  group.scale.setScalar(HAND_SCALE[side] || 1.0);
   return group;
 }
 
@@ -1730,25 +2023,43 @@ function buildDiscard3D(side, tiles) {
   const group = new THREE.Group();
   const cols = 6;
   const COL_GAP = 0.04, ROW_GAP = 0.06;
-  const DTILT = Math.PI / 18;
-  const TILT_Y_X = TD/2*Math.cos(DTILT) + TH/2*Math.sin(DTILT);
-  const TILT_Y_Z = TD/2*Math.cos(DTILT) + TW/2*Math.sin(DTILT);
+  // v1.7.9: 棄牌三軸旋轉（debug panel 可調）
+  const rot = DISCARD_ROT_DEG[side] || { x:0, y:0, z:0 };
+  const rx = (rot.x||0) * Math.PI / 180;
+  const ry = (rot.y||0) * Math.PI / 180;
+  const rz = (rot.z||0) * Math.PI / 180;
+  // mesh.position.y 用「主導軸」對應 TILT_Y 計算，保證牌底貼桌面
+  //   south/north 主導 X 軸 → TILT_Y_X
+  //   east/west 主導 Z 軸 → TILT_Y_Z
+  const tiltX_abs = Math.abs(rx);
+  const tiltZ_abs = Math.abs(rz);
+  const TILT_Y_X = TD/2*Math.cos(tiltX_abs) + TH/2*Math.sin(tiltX_abs);
+  const TILT_Y_Z = TD/2*Math.cos(tiltZ_abs) + TW/2*Math.sin(tiltZ_abs);
+  // v1.7.4 修正: group 仍在桌中央，但 mesh local z 加 INNER_START offset
+  //   讓第一張棄牌離桌中央 INNER_START 單位（避免 4 家擠中央正點）
+  //   棄牌堆從「內側起點」往「該家方向」延伸（user 視角內往外、上到下）
+  //   2.0 → 3.5（user 反映 2.0 還是擠中央，再往外推 1.5）
+  const INNER_START = 3.5;
   tiles.forEach((entry, i) => {
     const mesh = makeTile3D(entry.texKey, false);
     const r = Math.floor(i/cols), c = i%cols;
     const x = (c-(cols-1)/2)*(TW+COL_GAP);
-    const z = r*(TH+ROW_GAP);
-    if (side==='south')      { mesh.rotation.x = -DTILT; mesh.position.set(x, TILT_Y_X, z); }
-    else if (side==='north') { mesh.rotation.x = +DTILT; mesh.position.set(x, TILT_Y_X, z); }
-    else if (side==='east')  { mesh.rotation.set(0, Math.PI, +DTILT); mesh.position.set(x, TILT_Y_Z, z); }
-    else if (side==='west')  { mesh.rotation.set(0, Math.PI, -DTILT); mesh.position.set(x, TILT_Y_Z, z); }
+    const z = INNER_START + r*(TH+ROW_GAP);   // ← 加 inner offset，第一張在 z=INNER_START 不在 0
+    // v1.7.9: 三軸 rotation，user 可自由微調
+    mesh.rotation.set(rx, ry, rz);
+    mesh.position.set(x, (side==='south' || side==='north') ? TILT_Y_X : TILT_Y_Z, z);
     group.add(mesh);
   });
-  const dist = side==='south'?2.7 : side==='north'?4.6 : 4.0;
-  if (side==='south')      { group.position.z = dist; }
-  else if (side==='north') { group.position.z = -dist; group.rotation.y = Math.PI; }
-  else if (side==='east')  { group.position.set(dist, 0, -0.7); group.rotation.y = -Math.PI/2; }
-  else if (side==='west')  { group.position.set(-dist, 0, -0.7); group.rotation.y = Math.PI/2; }
+  // group 仍以中央為 anchor，靠 mesh local z 的 INNER_START 把棄牌起點往該家方向推
+  if (side==='south')      { group.position.set(0, 0, 0); }
+  else if (side==='north') { group.position.set(0, 0, 0); group.rotation.y = Math.PI; }
+  else if (side==='east')  { group.position.set(0, 0, 0); group.rotation.y = -Math.PI/2; }
+  else if (side==='west')  { group.position.set(0, 0, 0); group.rotation.y = Math.PI/2; }
+  // v1.7.12: 棄牌位置微調（debug panel 可調）
+  const o = DISCARD_OFFSET[side];
+  if (o) { group.position.x += o.x; group.position.z += o.z; }
+  // v1.7.9: 棄牌縮放
+  group.scale.setScalar(DISCARD_SCALE[side] || 1.0);
   return group;
 }
 
@@ -1760,56 +2071,293 @@ function placeBySide(group, side, lx, lz) {
 }
 
 function buildFlowers3D(side, tiles) {
-  // 花牌平躺 face up,跟棄牌一樣的擺法,而不是直立面向玩家
+  // 花牌按「上中下三段對齊」分組：
+  //   上段（north）：rotation.x = -NORTH_TILT (朝玩家立 6°，跟對家鳴牌/右家鳴牌一致)
+  //   中段（east/west）：跟「自家棄牌」一致 — rotation.set(0, π, ±DTILT) Y軸π+Z軸±10°
+  //   下段（south）：平躺 rotation.x = 0（跟自家鳴牌、左家鳴牌一致）
   const group = new THREE.Group();
-  const DTILT = Math.PI / 18; // 10° 微仰
-  const TILT_Y = TD/2*Math.cos(DTILT) + TH/2*Math.sin(DTILT);
+  // v1.7.9: 花牌三軸 rotation（FLOWER_ROT_DEG 可在 debug panel 調）
+  const rot = FLOWER_ROT_DEG[side] || { x:0, y:0, z:0 };
+  const rx = (rot.x||0) * Math.PI / 180;
+  const ry = (rot.y||0) * Math.PI / 180;
+  const rz = (rot.z||0) * Math.PI / 180;
+  const absX = Math.abs(rx);
+  const TILT_Y = TD/2*Math.cos(absX) + TH/2*Math.sin(absX);
   tiles.forEach((entry, i) => {
     const t = makeTile3D(entry.texKey, false);
-    // 與棄牌相同:south/north 平躺,east/west 需先 Y 軸轉 180 度再仰角
-    if (side==='south' || side==='north') {
-      t.rotation.x = side==='south' ? -DTILT : +DTILT;
-    } else {
-      t.rotation.set(0, Math.PI, side==='east' ? +DTILT : -DTILT);
-    }
+    t.rotation.set(rx, ry, rz);
     t.position.set(i*(TW+0.04), TILT_Y, 0);
     group.add(t);
   });
-  const flowerLx = side==='east'?-3.4 : side==='west'?-6.2 : side==='south'?-6.2 : -7.2;
+  // v1.7.4: 對家花牌 flowerLx -7.2 → -2.5 往世界中央移，避免擋到右家鳴牌
+  const flowerLx = side==='east'?-3.4 : side==='west'?-6.2 : side==='south'?-6.2 : -2.5;
   const flowerLz = side==='south'?9.0 : side==='north'?11.0 : 10.0;
   placeBySide(group, side, flowerLx, flowerLz);
-  if (side==='south')      group.scale.setScalar(1.22);
-  else if (side==='north') group.scale.setScalar(1.12);
-  else                     group.scale.setScalar(1.10);
+  // v1.7.8: FLOWER_OFFSET 微調（debug panel 可即時調）
+  const fO = FLOWER_OFFSET[side];
+  if (fO) { group.position.x += fO.x; group.position.z += fO.z; }
+  // v1.7.9: 縮放從 FLOWER_SCALE 讀
+  group.scale.setScalar(FLOWER_SCALE[side] || 1.0);
   return group;
+}
+
+// 鳴牌排列模式：
+//   'row'  = 1×4 縱向（每 meld 一個 z row，往對家方向延伸）— 現狀
+//   'grid' = 2×2 grid
+//   'wide' = 1×4 橫向（全部 meld 同 row，沿 X 軸延伸）
+let MELD_LAYOUT_MODE = 'grid';
+// v1.7.12: 鳴牌旋轉模式
+//   true  = 整組一起轉（像手牌）— 每張 tile 不轉，由 group.rotation 套用
+//   false = 每張單獨轉 — 各 tile 自己 rotation.set（舊行為）
+let MELD_ROT_AS_GROUP = true;
+
+// 各家鳴牌世界座標微調 (user debug panel 調整後)
+const MELD_OFFSET = {
+  east:  { x: -0.2, z:  1.1 },
+  west:  { x: -3.6, z: -2.9 },
+  north: { x:  2.8, z: -3.2 },
+  south: { x:  0,   z:  0   },
+};
+// 各家手牌世界座標微調
+const HAND_OFFSET = {
+  east:  { x:  2.1, z: -2.4 },
+  west:  { x: -2.9, z: -3   },
+  north: { x:  0.6, z: -4   },
+  south: { x: -0.1, z: -1.2 },
+};
+// 各家花牌世界座標微調
+const FLOWER_OFFSET = {
+  east:  { x:  1.1, z: -1.3 },
+  west:  { x: -1.9, z:  0.2 },
+  north: { x: -0.5, z: -2.4 },
+  south: { x:  2.6, z: -1.1 },
+};
+
+// 棄牌牌身旋轉度數 (X/Y/Z 三軸 degrees)
+const DISCARD_ROT_DEG = {
+  south: { x:  3, y: 0, z:   0 },
+  north: { x: -1, y: 0, z:   0 },
+  east:  { x:  0, y: 0, z: -10 },
+  west:  { x:  0, y: 0, z:  10 },
+};
+
+// 鳴牌牌身旋轉度數 (三軸)
+const MELD_ROT_DEG = {
+  south: { x: 0, y:  0, z:  0 },
+  north: { x: 3, y: -1, z: -1 },
+  east:  { x: 3, y:  1, z:  3 },
+  west:  { x: 0, y:  0, z:  0 },
+};
+
+// 花牌牌身旋轉度數 (三軸)
+//   east/west mesh.y=0 (不是 180)：經 group.y=±90 後 world y=±90，字頂朝該家外側
+//   (mesh default 字頂朝 local -Z，BoxGeometry UV mapping 使然)
+//   east world y=-90 → 字頂朝 +X (east 外側) ✓
+//   west world y=+90 → 字頂朝 -X (west 外側) ✓
+const FLOWER_ROT_DEG = {
+  south: { x:  1, y: 0, z: 0 },
+  north: { x: -6, y: 0, z: 0 },
+  east:  { x:  1, y: 0, z: 1 },
+  west:  { x:  1, y: 0, z: 0 },
+};
+
+// 手牌 group 旋轉度數 (三軸)
+const HAND_GROUP_ROT_DEG = {
+  south: { x: -11, y:     0, z: 0 },
+  north: { x:   0, y:   180, z: 0 },
+  east:  { x:   1, y:  101.5, z: 1 },
+  west:  { x:   0, y:  -99.5, z: 0 },
+};
+
+// 牌墩世界座標微調 (on top of buildWall3D 既有 placeBySide)
+const WALL_OFFSET = {
+  south: { x:  0.1, z: -1.3 },
+  north: { x:  0.1, z: -2   },
+  east:  { x:  0.3, z: -0.9 },
+  west:  { x: -1.3, z: -2.1 },
+};
+
+// v1.7.12: 棄牌世界座標微調 (on top of buildDiscard3D 既有 side facing)
+//   x/z 是世界座標 — 對 south 視角：x 正=往右、z 正=往自己
+const DISCARD_OFFSET = {
+  south: { x: -0.2, z: -2   },
+  north: { x: -0.1, z: -2.6 },
+  east:  { x: -0.1, z: -2.5 },
+  west:  { x: -0.1, z: -2.3 },
+};
+
+// 牌墩旋轉度數 (三軸)
+const WALL_ROT_DEG = {
+  south: { x: 0, y:      0, z: 0 },
+  north: { x: 0, y:    180, z: 0 },
+  east:  { x: 0, y:  -89.5, z: 0 },
+  west:  { x: 0, y:   87.5, z: 0 },
+};
+
+// 各元素四家縮放 (1.0 = 原始大小)
+const MELD_SCALE    = { south: 1.22, north: 1.54, east: 1.49, west: 1.15 };
+const HAND_SCALE    = { south: 1.66, north: 1.10, east: 1.08, west: 1.08 };
+const FLOWER_SCALE  = { south: 1.22, north: 1.12, east: 1.10, west: 1.10 };
+const DISCARD_SCALE = { south: 1.00, north: 1.00, east: 1.00, west: 1.00 };
+const WALL_SCALE    = { south: 1.00, north: 1.00, east: 1.00, west: 1.00 };
+
+// HUD DOM 元素位置微調 (viewport px, on top of CSS 既有定位)
+//   用 element.style.translate 套，跟原 CSS transform 不衝突
+const HUD_ADJUST = {
+  'hud-pp0':         { dx:   0, dy:    0, scale: 1.25 },
+  'hud-pp1':         { dx: -51, dy: -157, scale: 1.2  },
+  'hud-pp2':         { dx:   3, dy:    3, scale: 1.05 },
+  'hud-pp3':         { dx:  76, dy: -167, scale: 1.2  },
+  'hud-center-pill': { dx:   0, dy:    0, scale: 1 },
+  'action-overlay':  { dx: -79, dy:    8, scale: 1.2 },
+  'tbadge':          { dx: 183, dy: -161, scale: 1.45 },
+  'tenpai-tooltip':  { dx:   0, dy:    0, scale: 1 },
+  'meld-preview':    { dx: -25, dy: -101, scale: 1.25 },
+  'meld-tooltip':    { dx: 123, dy:   68, scale: 1.15 },
+  'ap':              { dx: 325, dy: -150, scale: 1.55 },
+};
+function applyHudAdjust(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const a = HUD_ADJUST[id];
+  if (!a) return;
+  el.style.translate = `${a.dx}px ${a.dy}px`;
+  el.style.scale = (a.scale || 1).toString();
+}
+function applyAllHudAdjust() { Object.keys(HUD_ADJUST).forEach(applyHudAdjust); }
+
+// v1.7.12: 相機設定（D 面板「相機」tab 可調）
+const CAMERA_CONFIG = {
+  posX: 0, posY: 25, posZ: 24,
+  lookX: 0, lookY: 0, lookZ: 0,
+  fov: 36,
+};
+function applyCamera() {
+  if (!window.camera) return;
+  camera.position.set(CAMERA_CONFIG.posX, CAMERA_CONFIG.posY, CAMERA_CONFIG.posZ);
+  camera.lookAt(CAMERA_CONFIG.lookX, CAMERA_CONFIG.lookY, CAMERA_CONFIG.lookZ);
+  camera.fov = CAMERA_CONFIG.fov;
+  camera.updateProjectionMatrix();
+}
+
+// v1.7.12: 重建桌面 + 陰影 plane 幾何，套用 TABLE_SIZE
+function applyTableSize() {
+  const newGeom = new THREE.PlaneGeometry(TABLE_SIZE.width, TABLE_SIZE.depth);
+  if (window._tablePlane) {
+    window._tablePlane.geometry.dispose();
+    window._tablePlane.geometry = newGeom;
+  }
+  if (window._shadowPlane) {
+    const sg = new THREE.PlaneGeometry(TABLE_SIZE.width, TABLE_SIZE.depth);
+    window._shadowPlane.geometry.dispose();
+    window._shadowPlane.geometry = sg;
+  }
+}
+
+// v1.7.12: 桌面整塊位移（藍色桌布 + 桌紋 + 木框紋）
+//   x 正值往右、負值往左
+//   z 正值往南家、負值往對家
+//   y 留 -0.02 不動（避免牌沉進桌面或浮空）
+const TABLE_OFFSET = { x: 0, z: -3.4 };
+function applyTableOffset() {
+  if (window._tablePlane) {
+    window._tablePlane.position.x = TABLE_OFFSET.x;
+    window._tablePlane.position.z = TABLE_OFFSET.z;
+  }
+  if (window._shadowPlane) {
+    window._shadowPlane.position.x = TABLE_OFFSET.x;
+    window._shadowPlane.position.z = TABLE_OFFSET.z;
+  }
 }
 
 function buildMelds3D(side, melds) {
   const group = new THREE.Group();
   const TILE_GAP = 0.03, ROW_GAP = 0.03;
+  // v1.7.8: 鳴牌仰角從 MELD_TILT_DEG 讀（debug panel 可調）
+  //   south/west 預設 0 (平躺)，north -6° / east +6° (朝玩家立)
+  // v1.7.9 wide mode 預算：所有 meld 寬度 + gap 累積寬
+  const meldWidthsArr = melds.map(m => m.length * TW + (m.length - 1) * TILE_GAP);
+  // v1.7.12: wide / grid 模式組間距 0.6→0.1（user 反映太鬆，組與組要靠很近）
+  const COL_GAP_WIDE = 0.1;
+  const totalWideWidth = meldWidthsArr.reduce((a,b)=>a+b, 0) + Math.max(0, melds.length-1) * COL_GAP_WIDE;
+  let wideXLeft = -totalWideWidth / 2;
+
   melds.forEach((meld, mi) => {
-    let totalW = 0;
-    meld.forEach((entry, ti) => { totalW += (ti===0) ? TH : TW; });
-    totalW += (meld.length-1)*TILE_GAP;
-    let xLeft = -totalW;
-    meld.forEach((entry, ti) => {
+    // 重新排序：把 ti=0 (called) 從第一張移到 meld 中央位置（僅 3 張吃/碰）
+    //   3 張：order = [tile1, tile0(called), tile2]
+    //   4 張(槓)：原順序不動，否則暗槓的 [face,back,back,face] 會被打散成 [back,back,face,face]
+    //   - 暗槓：idx 0/3 face、idx 1/2 back，必須保持邊緣 face、中間 back
+    //   - 明槓/加槓：四張都 face，順序不重要
+    const N = meld.length;
+    const visualOrder = meld.map((entry, ti) => ({ entry, ti }));
+    if (N === 3) {
+      const centerIdx = 1;
+      const called = visualOrder.shift();      // 取出 ti=0
+      visualOrder.splice(centerIdx, 0, called); // 插入中央
+    }
+    // N === 4 (槓): 不 reshuffle，保留 meldData 原順序
+
+    // 全部 tile 寬度都是 TW（不再有橫向 TH）
+    const totalW = N * TW + (N - 1) * TILE_GAP;
+
+    // v1.7.9 鳴牌排列模式：
+    //   'row'  = 縱向 1×N 每 meld 一 row (預設)
+    //   'grid' = 2×2 grid (2 個 meld 一 row 並排)
+    //   'wide' = 橫向 1×N (全部 meld 同 row，沿 X 軸延伸)
+    let xLeft, localZ;
+    if (MELD_LAYOUT_MODE === 'grid') {
+      const col = mi % 2;
+      const row = Math.floor(mi / 2);
+      const COL_GAP = 0.1;   // v1.7.12: 0.6→0.1 縮組間距
+      xLeft = col === 0 ? -totalW - COL_GAP/2 : COL_GAP/2;
+      localZ = -row * (TH + ROW_GAP);
+    } else if (MELD_LAYOUT_MODE === 'wide') {
+      // 4 個 meld 全部同 row，沿 X 軸排
+      xLeft = wideXLeft;
+      localZ = 0;
+      wideXLeft += meldWidthsArr[mi] + COL_GAP_WIDE;
+    } else {
+      // row 模式：每 meld 獨佔 row，水平置中
+      xLeft = -totalW / 2;
+      localZ = -mi * (TH + ROW_GAP);
+    }
+
+    // 鳴牌三軸 rotation（v1.7.12: 兩種模式擇一）
+    const rot = MELD_ROT_DEG[side] || { x:0, y:0, z:0 };
+    const tiltX = (rot.x||0) * Math.PI / 180;
+    const tiltY = (rot.y||0) * Math.PI / 180;
+    const tiltZ = (rot.z||0) * Math.PI / 180;
+
+    visualOrder.forEach(({ entry, ti }) => {
       const t = makeTile3D(entry.texKey, false);
-      const isCalled = ti === 0;
-      const tw = isCalled ? TH : TW;
-      if (isCalled) t.rotation.y = Math.PI/2;
-      const localZ = -mi*(TH+ROW_GAP) + (isCalled?(TH-TW)/2:0);
-      t.position.set(xLeft+tw/2, TD/2, localZ);
-      xLeft += tw+TILE_GAP;
+      // group 模式：tile 不轉，由 group.rotation 統一套
+      if (!MELD_ROT_AS_GROUP) {
+        t.rotation.set(tiltX, tiltY, tiltZ);
+      }
+      t.position.set(xLeft + TW/2, TD/2, localZ);
+      xLeft += TW + TILE_GAP;
       group.add(t);
     });
   });
   const meldLx = side==='south'?12.1 : side==='west'?11.1 : side==='east'?12.7 : 12.7;
   const meldLz = side==='south'?10.4 : side==='north'?13.0 : side==='west'?11.5 : 12.09;
   placeBySide(group, side, meldLx, meldLz);
-  // 副露對視覺辨識最重要(玩家要看出對手吃了什麼),對手放大幅度比手牌更大
-  if (side==='south')      group.scale.setScalar(1.22);
-  else if (side==='north') group.scale.setScalar(1.18);
-  else                     group.scale.setScalar(1.15);
+  // v1.7.8: 鳴牌位置抽到 MELD_OFFSET const，方便調整（console 也可即時調）
+  //   單位是 3D world unit。值大概對應：1 unit ≈ viewport 30~40 px
+  //   x: 正值往右、負值往左（玩家視角）
+  //   z: 正值往下（玩家方向）、負值往上（對家方向）
+  const o = MELD_OFFSET[side];
+  if (o) { group.position.x += o.x; group.position.z += o.z; }
+  // v1.7.9: 縮放從 MELD_SCALE 讀
+  group.scale.setScalar(MELD_SCALE[side] || 1.0);
+  // v1.7.12: group 模式 — placeBySide 設好 rotation.y 後，再疊上 user 微調 tilt
+  //   x/z 直接覆寫（placeBySide 沒動），y 是「側向 facing + user y tilt」
+  if (MELD_ROT_AS_GROUP) {
+    const r = MELD_ROT_DEG[side] || { x:0, y:0, z:0 };
+    group.rotation.x = (r.x||0) * Math.PI / 180;
+    group.rotation.z = (r.z||0) * Math.PI / 180;
+    group.rotation.y += (r.y||0) * Math.PI / 180;
+  }
   return group;
 }
 
@@ -1832,10 +2380,14 @@ function render3D() {
   }
   clearGroup(Groups.wall); Groups.wall = null;
 
-  // 牌牆（用 deck 長度近似）
+  // 牌牆（v1.7.10: 按頭尾邏輯渲染，傳 wallBreak / wallTailDrawn）
   const deckLen = s.deck ? s.deck.length : 0;
+  const wallBreak = s.wallBreak || 0;
+  const wallTailDrawn = s.wallTailDrawn || 0;
   const wallGroup = new THREE.Group();
-  ['south','east','north','west'].forEach(sd => wallGroup.add(buildWall3D(sd, Math.ceil(deckLen/4))));
+  ['south','east','north','west'].forEach(sd =>
+    wallGroup.add(buildWall3D(sd, deckLen, wallBreak, wallTailDrawn))
+  );
   scene.add(wallGroup);
   Groups.wall = wallGroup;
 
@@ -1862,10 +2414,14 @@ function render3D() {
     scene.add(dg); Groups.discards[pi] = dg;
 
     // 副露（鳴牌）
+    // v1.7.13: 暗槓規則改寫
+    //   遊戲進行中：4 張全 back（所有視角，含自家）
+    //   牌局結束/胡牌後（s.winData 存在）：4 張全 face 揭曉
+    const revealed = !!s.winData;
     const meldData = (s.melds[pi] || []).map(meld => {
+      const isDarkKong = meld.type==='kong' && meld.dark;
       return meld.tiles.map((t, idx) => {
-        const isDarkKong = meld.type==='kong' && meld.dark;
-        const showFace = isSelf || !isDarkKong || idx===0 || idx===3;
+        const showFace = !isDarkKong || revealed;
         return { texKey: showFace ? tileTexKey(t) : 'back' };
       });
     });
@@ -3077,6 +3633,12 @@ const Game={
     // 3D 版：隱藏大廳，初始化
     const lobbyEl=document.getElementById('lobby');
     if(lobbyEl) lobbyEl.style.display='none';
+    // v1.7.13: 大廳關閉後強制觸發 resize（多次延遲確保 reflow 完成）
+    requestAnimationFrame(()=>{
+      try{ onResize(); }catch(e){}
+      setTimeout(()=>{ try{ onResize(); }catch(e){} }, 100);
+      setTimeout(()=>{ try{ onResize(); }catch(e){} }, 300);
+    });
     if(Bgm.enabled){ Bgm.stop(); Bgm.start(); }
     const winds=['東','南','西','北'];
     for(let i=0;i<4;i++){
@@ -3172,6 +3734,12 @@ const Game={
     };
 
     document.getElementById('lobby').style.display='none';
+    // v1.7.13: 大廳關閉後強制觸發 resize（多次延遲確保 reflow 完成）
+    requestAnimationFrame(()=>{
+      try{ onResize(); }catch(e){}
+      setTimeout(()=>{ try{ onResize(); }catch(e){} }, 100);
+      setTimeout(()=>{ try{ onResize(); }catch(e){} }, 300);
+    });
     const gameEl=document.getElementById('game');gameEl.classList.add('show');
     document.getElementById('game-topbar').style.display='flex';
     document.getElementById('pause-btn').style.display='block';
@@ -3230,6 +3798,12 @@ const Game={
     this.restoreGame(snap);
     document.getElementById('resume-bar').style.display='none';
     document.getElementById('lobby').style.display='none';
+    // v1.7.13: 大廳關閉後強制觸發 resize（多次延遲確保 reflow 完成）
+    requestAnimationFrame(()=>{
+      try{ onResize(); }catch(e){}
+      setTimeout(()=>{ try{ onResize(); }catch(e){} }, 100);
+      setTimeout(()=>{ try{ onResize(); }catch(e){} }, 300);
+    });
     const gEl=document.getElementById('game');gEl.classList.add('show');
     setTimeout(updateTblVars,50);
     document.getElementById('game-topbar').style.display='flex';
@@ -4186,33 +4760,11 @@ const Game={
         document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,s.drawnId!=null);};
       ap.appendChild(b);
     }
-    if(pongOpt){
-      const b=document.createElement('button');b.className='ab apo';b.textContent='碰';
-      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        this.doMeld(0,'pong',pongOpt.tiles);};
-      ap.appendChild(b);
-    }
-    if(chiOpts.length){
-      const b=document.createElement('button');b.className='ab ach';b.textContent='吃';
-      b.onclick=()=>{
-        clearTimeout(this._meldTimeout);this.stopTimer();
-        if(chiOpts.length===1){
-          this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',chiOpts[0].tiles);
-        } else {
-          // Multi-chi: pick the combo leaving the best block score in remaining hand
-          const s=this.st;let bestOpt=chiOpts[0];let bestSc=-Infinity;
-          chiOpts.forEach(opt=>{const rem=s.hands[0].filter(h=>!opt.tiles.some(o=>o.id===h.id));const sc=calcBlockScore(rem);if(sc>bestSc){bestSc=sc;bestOpt=opt;}});
-          this.clearBtns();this.hideMeldPreview();this.doMeld(0,'chi',bestOpt.tiles);
-        }
-      };
-      ap.appendChild(b);
-    }
-    if(kongOpt){
-      const b=document.createElement('button');b.className='ab ako';b.textContent='槓';
-      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        this.doMeld(0,'kong',kongOpt.tiles);};
-      ap.appendChild(b);
-    }
+    // v1.7.13: 移除碰/吃/明槓按鈕 — 改成只能點手牌候選或 popup 字卡確認
+    //   保留邏輯但不顯示按鈕（candidateMap 仍負責點手牌互動、showMeldPreview 仍負責字卡）
+    // (碰 button removed)
+    // (吃 button removed — 多吃法走 _showCandidateTooltipHtml tooltip 選擇)
+    // (明槓 button removed)
     if(skOpt){
       const b=document.createElement('button');b.className='ab ako';b.textContent='暗槓';
       b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
@@ -5744,13 +6296,16 @@ const Game={
       });
       if(pi===wd.p){
         // Winner: analyse hand into groups, render in group order with colours & spacers
+        // v1.7.12: 分析仍用 17 張（含胡牌張）算分組，但渲染時跳過胡牌張，下方獨立顯示
         const pureHand=s.hands[pi].filter(x=>!x.fl);
+        const winTileId = wd.winTile?.id;
         const analysis=this._analyseHandGroups(pureHand);
         const usedIds=new Set();
         if(analysis&&analysis.melds&&analysis.melds.length){
           analysis.melds.forEach(m=>{
             m.tiles.forEach(t=>{
               usedIds.add(t.id);
+              if(t.id===winTileId) return;       // 跳過胡牌張
               const e=mkTile(t,'sm');e.style.cursor='default';
               e.classList.add(m.triple?'ws-tri':'ws-seq');
               row.appendChild(e);
@@ -5760,14 +6315,15 @@ const Game={
           if(analysis.pair){
             pureHand.filter(t=>t.s===analysis.pair.s&&t.v===analysis.pair.v&&!usedIds.has(t.id)).slice(0,2).forEach(t=>{
               usedIds.add(t.id);
+              if(t.id===winTileId) return;       // 跳過胡牌張
               const e=mkTile(t,'sm');e.style.cursor='default';e.classList.add('ws-pair');row.appendChild(e);
             });
           }
           // Fallback: any tiles not placed (e.g. 7-pairs)
-          pureHand.filter(t=>!usedIds.has(t.id)).forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
+          pureHand.filter(t=>!usedIds.has(t.id) && t.id!==winTileId).forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
         } else {
-          // 七對子 or analysis failed — plain render
-          pureHand.forEach(t=>{const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e);});
+          // 七對子 or analysis failed — plain render（仍跳過胡牌張）
+          pureHand.forEach(t=>{ if(t.id===winTileId) return; const e=mkTile(t,'sm');e.style.cursor='default';row.appendChild(e); });
         }
       } else {
         // Other players: plain render
@@ -6984,12 +7540,12 @@ function _showCandidateTooltipHtml(mesh, info, disc) {
   tip.innerHTML = '';
   const lbl = document.createElement('div');
   lbl.className = 'mt-label';
-  lbl.textContent = '選擇吃法：';
+  lbl.textContent = '點選吃法';
   tip.appendChild(lbl);
 
   const seenCombos = new Set();
+  const discTile = info.discTile || disc;
   (info.chiOpts || []).forEach(opt => {
-    const discTile = info.discTile || disc;
     const combo = [...opt.tiles, discTile].sort((a,b) => a.v - b.v);
     const key = combo.map(t => `${t.s}${t.v}`).join('-');
     if (seenCombos.has(key)) return;
@@ -6997,12 +7553,14 @@ function _showCandidateTooltipHtml(mesh, info, disc) {
 
     const row = document.createElement('div');
     row.className = 'mt-combo clickable';
-    row.textContent = combo.map(t => t.n || `${t.s}${t.v}`).join(' ');
+    // v1.7.13: 用 mkPreviewTile 渲染牌圖（之前是純文字，看起來像壞掉）
+    combo.forEach(t => row.appendChild(mkPreviewTile(t, discTile)));
+    const capturedOpt = opt;
     row.onclick = (e) => {
       e.stopPropagation();
-      tip.classList.remove('show', 'interactive');
+      _hideCandidateTooltipHtml();
       Game.clearBtns?.();
-      Game.doMeld?.(0, 'chi', opt.tiles);
+      Game.doMeld?.(0, 'chi', capturedOpt.tiles);
     };
     tip.appendChild(row);
   });
@@ -7013,10 +7571,21 @@ function _showCandidateTooltipHtml(mesh, info, disc) {
   tip.style.transform = 'translate(-50%,-50%)';
   tip.classList.add('show', 'interactive');
 
-  tip.onmouseleave = () => tip.classList.remove('show', 'interactive');
-  document.addEventListener('click', function dismiss(e) {
-    if (!tip.contains(e.target)) { tip.classList.remove('show','interactive'); document.removeEventListener('click', dismiss); }
-  }, { once: false });
+  // 點 tooltip 外面 → 收掉。用具名 listener 確保能 removeEventListener
+  if (window._meldTipDismiss) document.removeEventListener('click', window._meldTipDismiss);
+  window._meldTipDismiss = (e) => {
+    if (!tip.contains(e.target)) _hideCandidateTooltipHtml();
+  };
+  // 延遲一個 tick 才掛，避免本次 click 立刻觸發
+  setTimeout(() => document.addEventListener('click', window._meldTipDismiss), 0);
+}
+function _hideCandidateTooltipHtml() {
+  const tip = document.getElementById('meld-tooltip');
+  if (tip) { tip.classList.remove('show','interactive'); tip.innerHTML = ''; tip.style.transform = ''; }
+  if (window._meldTipDismiss) {
+    document.removeEventListener('click', window._meldTipDismiss);
+    window._meldTipDismiss = null;
+  }
 }
 
 /* mkTile/mkBack/mkPreviewTile 由遊戲邏輯定義，此處已有實作 */
@@ -7024,30 +7593,1251 @@ function _showCandidateTooltipHtml(mesh, info, disc) {
 /* ============================================================
    Resize
    ============================================================ */
+// 【v1.7.8】renderer 跟 camera 全部寫死 1920×1080 設計畫布
+// 不再隨 viewport 動態調整，整個 #tbl-3d 用 CSS scale 縮放（跟 2D 版同模式）
 function onResize() {
-  const w = window.innerWidth, h = window.innerHeight;
-  renderer.setSize(w, h, false);
-  const aspect = w / h;
-  camera.aspect = aspect;
-  // 【策略】桌面盡量填滿視窗,絕不因視窗縮小而變得很小
-  //
-  // 桌面世界座標範圍大約 X ±15、Z ±15(含牌牆)
-  // Three.js 的 camera.fov 是「垂直 fov」,水平 fov = vertical fov * aspect
-  //
-  // 固定 camera 位置與 lookAt,只調 fov 補償 aspect 差異
-  // 目標:讓 vertical 視野永遠剛好涵蓋桌深 ±15(讓桌上下幾乎貼視窗邊)
-  // 水平方向若 aspect < 1.5 會稍微裁掉桌邊(對手牌牆兩端),這是有意的 trade-off
-  // —— 寧可裁一點邊,也不要讓桌變得很小四周黑邊
-  camera.position.set(0, 22, 26);
-  camera.lookAt(0, 0, 2);
-  // fov 隨 aspect 微調,窄視窗 fov 略大讓垂直視野仍涵蓋全桌深
-  if (aspect >= 1.5)      camera.fov = 32;   // 寬螢幕
-  else if (aspect >= 1.0) camera.fov = 36;   // 中等
-  else                    camera.fov = 42;   // 窄/直立
-  camera.updateProjectionMatrix();
+  renderer.setSize(1920, 1080, false);
+  camera.aspect = 1920 / 1080;
+  // v1.7.12: 改讀 CAMERA_CONFIG（D 面板可即時調）
+  applyCamera();
+  // #tbl-3d 用 transform: scale 適應 viewport（跟 2D 版 updateTblVars 邏輯一致）
+  updateTbl3dScale();
+}
+
+// 把 #tbl-3d 用 CSS scale 縮放適應 viewport（跟 2D 版 updateTblVars 同邏輯）
+function updateTbl3dScale() {
+  const tbl = document.getElementById('tbl-3d');
+  if (!tbl) return;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const scaleX = (vw - 10) / 1920;
+  const scaleY = (vh - 10) / 1080;
+  const scale  = Math.min(scaleX, scaleY);
+  tbl.style.transform = `scale(${scale})`;
+  // 居中（letterbox/pillarbox 留黑邊）
+  const offsetX = (vw - 1920 * scale) / 2;
+  const offsetY = (vh - 1080 * scale) / 2;
+  tbl.style.left = Math.max(0, offsetX) + 'px';
+  tbl.style.top  = Math.max(0, offsetY) + 'px';
 }
 window.addEventListener('resize', onResize);
 onResize();
+
+// 套用 HUD_ADJUST 預設值（DOMContentLoaded 後跑，因 HUD elements 已在 HTML 內）
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => applyAllHudAdjust());
+} else {
+  applyAllHudAdjust();
+}
+
+/* ============================================================
+   Debug Panel: 鳴牌/手牌/花牌 位置即時調整（按 D 鍵切換）
+   ============================================================ */
+// position tabs (X/Z 位置)
+const _DEBUG_CONFIGS = [
+  { key:'meld',    label:'鳴牌位置',  ref:() => MELD_OFFSET,    defaults:() => _defaultsMeld    },
+  { key:'hand',    label:'手牌位置',  ref:() => HAND_OFFSET,    defaults:() => _defaultsHand    },
+  { key:'flower',  label:'花牌位置',  ref:() => FLOWER_OFFSET,  defaults:() => _defaultsFlower  },
+  { key:'wall',    label:'牌墩位置',  ref:() => WALL_OFFSET,    defaults:() => _defaultsWall    },
+  { key:'discard', label:'棄牌位置',  ref:() => DISCARD_OFFSET, defaults:() => _defaultsDiscard },
+  { key:'angle',   label:'角度',     angle:true },
+  { key:'scale',   label:'縮放',     scale:true },
+  { key:'hud',     label:'HUD',     hud:true },
+  { key:'camera',  label:'相機',     camera:true },
+  { key:'sprite',  label:'牌面切割', sprite:true },
+  { key:'sim',     label:'模擬',     sim:true },    // v1.7.13: 情境模擬
+];
+
+// v1.7.13: 情境模擬 helper（給 D 面板「模擬」tab 用）
+const _SimHelper = (() => {
+  let _id = 90000;
+  const T = (s, v) => ({ s, v, id: ++_id });
+  const make3 = (s, v) => [T(s,v), T(s,v), T(s,v)];
+  const make4 = (s, v) => [T(s,v), T(s,v), T(s,v), T(s,v)];
+  const chi  = (s, v) => [T(s,v), T(s,v+1), T(s,v+2)];
+  const sideToP = { south:0, east:1, north:2, west:3 };
+  const re = () => { try { render3D(); } catch(e){} };
+  const pushMeld = (side, meld) => {
+    if (!Game.st) return false;
+    Game.st.melds[sideToP[side]].push(meld);
+    return true;
+  };
+  return {
+    T, make3, make4, chi, sideToP, re, pushMeld,
+    fillAll() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      this.clearMelds();
+      ['south','east','north','west'].forEach(side => {
+        pushMeld(side, { type:'pong', tiles: make3('man', 1) });
+        pushMeld(side, { type:'chi',  tiles: chi('pin', 3) });
+        pushMeld(side, { type:'pong', tiles: make3('sou', 7) });
+        pushMeld(side, { type:'kong', tiles: make4('honor', 0), dark: false });
+      });
+      re();
+    },
+    addDarkKong(side) {
+      if (!pushMeld(side, { type:'kong', tiles: make4('sou', 4), dark: true })) return;
+      re();
+    },
+    addOpenKong(side) {
+      if (!pushMeld(side, { type:'kong', tiles: make4('pin', 9), dark: false })) return;
+      re();
+    },
+    clearMelds() {
+      if (!Game.st) return;
+      for (let i = 0; i < 4; i++) Game.st.melds[i] = [];
+      re();
+    },
+    fillFlowers() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      for (let i = 0; i < 4; i++) {
+        Game.st.flowers[i] = [T('flower', i*2), T('flower', i*2+1)];
+      }
+      re();
+    },
+    clearFlowers() {
+      if (!Game.st) return;
+      for (let i = 0; i < 4; i++) Game.st.flowers[i] = [];
+      re();
+    },
+    fillDiscards(n=18) {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      for (let p = 0; p < 4; p++) {
+        Game.st.discards[p] = [];
+        for (let k = 0; k < n; k++) {
+          Game.st.discards[p].push(T(['man','pin','sou','honor'][k%4], k%9));
+        }
+      }
+      re();
+    },
+    clearDiscards() {
+      if (!Game.st) return;
+      for (let p = 0; p < 4; p++) Game.st.discards[p] = [];
+      re();
+    },
+    tenpai() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      Game.st.melds[0] = [];
+      Game.st.hands[0] = [
+        T('man',1), T('man',2), T('man',3), T('man',4),
+        T('pin',5), T('pin',6), T('pin',7),
+        T('sou',7), T('sou',8), T('sou',9),
+        T('honor',0), T('honor',0), T('honor',0),
+        T('honor',4), T('honor',4),
+        T('man',3),
+      ];
+      Game.st.drawnId = null;
+      re();
+      try { Game.checkTenpai?.(0); Game.showTenpai?.(0); } catch(e) {}
+    },
+    canChi() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('man', 4);
+      Game.st.discards[3] = Game.st.discards[3] || [];
+      Game.st.discards[3].push(d);
+      Game.st.last = d; Game.st.lastP = 3;
+      Game.st.hands[0].push(T('man',2), T('man',3), T('man',5), T('man',6));
+      const opts = [
+        { type:'chi', tiles:[d, T('man',2), T('man',3)] },
+        { type:'chi', tiles:[d, T('man',3), T('man',5)] },
+        { type:'chi', tiles:[d, T('man',5), T('man',6)] },
+      ];
+      re();
+      try { Game.offerMeld?.(0, opts, d); } catch(e) { console.warn(e); }
+    },
+    canPong() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('sou', 7);
+      Game.st.discards[2] = Game.st.discards[2] || [];
+      Game.st.discards[2].push(d);
+      Game.st.last = d; Game.st.lastP = 2;
+      Game.st.hands[0].push(T('sou',7), T('sou',7));
+      re();
+      try { Game.offerMeld?.(0, [{ type:'pong', tiles:[d, T('sou',7), T('sou',7)] }], d); } catch(e) { console.warn(e); }
+    },
+    canKong() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('pin', 8);
+      Game.st.discards[1] = Game.st.discards[1] || [];
+      Game.st.discards[1].push(d);
+      Game.st.last = d; Game.st.lastP = 1;
+      Game.st.hands[0].push(T('pin',8), T('pin',8), T('pin',8));
+      re();
+      try {
+        Game.offerMeld?.(0, [
+          { type:'pong', tiles:[d, T('pin',8), T('pin',8)] },
+          { type:'kong', tiles:[d, T('pin',8), T('pin',8), T('pin',8)] },
+        ], d);
+      } catch(e) { console.warn(e); }
+    },
+    canChiPong() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('pin', 5);
+      Game.st.discards[3] = Game.st.discards[3] || [];
+      Game.st.discards[3].push(d);
+      Game.st.last = d; Game.st.lastP = 3;
+      Game.st.hands[0].push(T('pin',3), T('pin',4), T('pin',5), T('pin',5), T('pin',6), T('pin',7));
+      re();
+      try {
+        Game.offerMeld?.(0, [
+          { type:'chi',  tiles:[d, T('pin',3), T('pin',4)] },
+          { type:'chi',  tiles:[d, T('pin',4), T('pin',6)] },
+          { type:'chi',  tiles:[d, T('pin',6), T('pin',7)] },
+          { type:'pong', tiles:[d, T('pin',5), T('pin',5)] },
+        ], d);
+      } catch(e) { console.warn(e); }
+    },
+    canWinDiscard() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('man', 5);
+      Game.st.discards[2] = Game.st.discards[2] || [];
+      Game.st.discards[2].push(d);
+      Game.st.last = d; Game.st.lastP = 2;
+      re();
+      try { Game.offerMeld?.(0, [{ type:'win', label:'胡！' }], d); } catch(e) { console.warn(e); }
+    },
+    deckLow(n=1) {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      Game.st.deck = Array.from({length:n}, (_,i) => T('man', (i%9)+1));
+      re();
+    },
+    /* v1.7.13: HUD overlay 模擬 */
+    showTenpaiPanel() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      // 假裝聽 2 種牌（2 萬 / 5 萬）
+      const wt = [{ s:'man', v:2 }, { s:'man', v:5 }];
+      try { Game.showTenpai?.(wt); } catch(e) { console.warn(e); }
+    },
+    showTenpaiBanner() {
+      try { Game._showTenpaiBanner?.(7, 2); } catch(e) { console.warn(e); }
+    },
+    showTenpaiBannerSticky() {
+      // 持續顯示版：直接操作 DOM，跳過 3 秒 timer，方便用 HUD tab 拉槓桿
+      const b = document.getElementById('tenpai-banner');
+      if (!b) return console.warn('[Sim] #tenpai-banner 不存在');
+      clearTimeout(Game._tenpaiBannerTimer);
+      b.textContent = '聽牌！等 2 張（剩 7）';
+      b.classList.add('show');
+    },
+    hideTenpaiBanner() {
+      const b = document.getElementById('tenpai-banner');
+      if (b) b.classList.remove('show');
+    },
+    hideTenpai() {
+      try { Game.hideTenpai?.(); } catch(e) { console.warn(e); }
+    },
+    showActionBtns(kind) {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('man', 5);
+      Game.st.last = d; Game.st.lastP = 3;
+      let opts;
+      if (kind === 'chi') opts = [
+        { type:'chi',  label:'吃',   cls:'aok', tiles:[d, T('man',3), T('man',4)] },
+        { type:'skip', label:'略過', cls:'ask' },
+      ];
+      else if (kind === 'pong') opts = [
+        { type:'pong', label:'碰',   cls:'aop', tiles:[d, T('man',5), T('man',5)] },
+        { type:'skip', label:'略過', cls:'ask' },
+      ];
+      else if (kind === 'kong') opts = [
+        { type:'kong', label:'槓',   cls:'aog', tiles:[d, T('man',5), T('man',5), T('man',5)] },
+        { type:'pong', label:'碰',   cls:'aop', tiles:[d, T('man',5), T('man',5)] },
+        { type:'skip', label:'略過', cls:'ask' },
+      ];
+      else if (kind === 'win') opts = [
+        { type:'win',  label:'胡！', cls:'aow' },
+        { type:'skip', label:'略過', cls:'ask' },
+      ];
+      else if (kind === 'all') opts = [
+        { type:'win',  label:'胡！', cls:'aow' },
+        { type:'kong', label:'槓',   cls:'aog', tiles:[d, T('man',5), T('man',5), T('man',5)] },
+        { type:'pong', label:'碰',   cls:'aop', tiles:[d, T('man',5), T('man',5)] },
+        { type:'chi',  label:'吃',   cls:'aok', tiles:[d, T('man',3), T('man',4)] },
+        { type:'skip', label:'略過', cls:'ask' },
+      ];
+      else if (kind === 'selfkong') opts = [
+        { type:'sk',   label:'暗槓', cls:'ako', tiles:[T('man',5), T('man',5), T('man',5), T('man',5)] },
+        { type:'win',  label:'自摸', cls:'aow' },
+        { type:'skip', label:'略過', cls:'ask' },
+      ];
+      else return;
+      try { Game.showBtns?.(opts); } catch(e) { console.warn(e); }
+    },
+    hideActionBtns() {
+      try { Game.clearBtns?.(); } catch(e) { console.warn(e); }
+    },
+    /* v1.7.13: 持續顯示倒數計時徽章（不真的倒數） */
+    showTimerBadge(seconds = 12) {
+      const badge = document.getElementById('tbadge');
+      if (!badge) return console.warn('[Sim] #tbadge 不存在');
+      const tn = document.getElementById('tnum');
+      const rfg = document.getElementById('trfg');
+      if (tn) tn.textContent = seconds;
+      if (rfg) rfg.style.strokeDashoffset = 0;
+      badge.style.display = 'flex';
+      badge.className = '';  // 不要 urg 動畫干擾
+      document.getElementById('action-overlay')?.classList.add('active');
+    },
+    hideTimerBadge() {
+      const badge = document.getElementById('tbadge');
+      if (badge) { badge.style.display = 'none'; badge.className = ''; }
+    },
+    /* v1.7.13: 對手聽牌浮窗持續顯示 */
+    showOppTenpaiTooltip() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      // 確保 tooltip 已 init
+      try { Game._initTenpaiTooltip?.(); } catch(e){}
+      const tt = document.getElementById('tenpai-tooltip');
+      if (!tt) return console.warn('[Sim] #tenpai-tooltip 不存在');
+      // 塞假內容（直接 innerHTML，避免依賴對手實際聽牌狀態）
+      tt.innerHTML = `
+        <div class="tt-title">⚠ 電腦A 已聽牌</div>
+        <div class="tt-tiles" style="display:flex;gap:6px;margin-top:4px;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <span style="font-size:.6rem;color:rgba(245,236,215,.6)">聽</span>
+            <div class="t pin v3" style="margin-top:2px"><span>3</span></div>
+            <span style="color:#2ecc71;font-size:.7rem;margin-top:2px">剩4</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center">
+            <span style="font-size:.6rem;color:rgba(245,236,215,.6)">聽</span>
+            <div class="t sou v6" style="margin-top:2px"><span>6</span></div>
+            <span style="color:#2ecc71;font-size:.7rem;margin-top:2px">剩4</span>
+          </div>
+        </div>
+      `;
+      tt.style.left = '820px';
+      tt.style.top = '232px';
+      tt.classList.add('show');
+    },
+    hideOppTenpaiTooltip() {
+      const tt = document.getElementById('tenpai-tooltip');
+      if (tt) tt.classList.remove('show');
+    },
+
+    /* v1.7.13: sticky 持續顯示版（不會被 AI/timer 自動消失） */
+    stickyTenpai() {
+      // 同時顯示橫幅 + 面板，且不會消失
+      this.showTenpaiPanel();
+      this.showTenpaiBannerSticky();
+    },
+    stickyChi() {
+      // 持續：吃+略過 按鈕 + 多吃法 tooltip + 手牌候選高亮
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('man', 4);
+      Game.st.last = d; Game.st.lastP = 3;
+      // 塞候選牌進手牌（讓 _candidateMap 對得上 ID）
+      const c2 = T('man', 2);
+      const c3 = T('man', 3);
+      const c5 = T('man', 5);
+      const c6 = T('man', 6);
+      Game.st.hands[0].push(c2, c3, c5, c6);
+      // 1. 候選 map（金邊高亮）
+      Game._candidateMap = new Map([
+        [c2.id, { label:'吃', combos:[[c2,c3,d]], chiOpts:[{ tiles:[c3,c2] }, { tiles:[c3,c5] }], discTile:d }],
+        [c3.id, { label:'吃', combos:[[c2,c3,d],[c3,c5,d]], chiOpts:[{ tiles:[c2,c3] }, { tiles:[c5,c3] }, { tiles:[c5,c6] }], discTile:d }],
+        [c5.id, { label:'吃', combos:[[c3,c5,d],[c5,c6,d]], chiOpts:[{ tiles:[c3,c5] }, { tiles:[c5,c6] }], discTile:d }],
+        [c6.id, { label:'吃', combos:[[c5,c6,d]], chiOpts:[{ tiles:[c5,c6] }], discTile:d }],
+      ]);
+      Game._candidateDisc = d;
+      re();
+      // 2. 動作按鈕
+      try { Game.showBtns?.([
+        { type:'chi',  label:'吃',   cls:'aok' },
+        { type:'skip', label:'略過', cls:'ask' },
+      ]); } catch(e){}
+      // 3. 主動秀 multi-chi tooltip 在畫面中央
+      const tip = document.getElementById('meld-tooltip');
+      if (tip) {
+        tip.innerHTML = '';
+        const lbl = document.createElement('div'); lbl.className = 'mt-label'; lbl.textContent = '點選吃法';
+        tip.appendChild(lbl);
+        const chis = [
+          [T('man',2), T('man',3), T('man',4)],
+          [T('man',3), T('man',4), T('man',5)],
+          [T('man',4), T('man',5), T('man',6)],
+        ];
+        chis.forEach(combo => {
+          const row = document.createElement('div'); row.className = 'mt-combo clickable';
+          combo.forEach(t => row.appendChild(mkPreviewTile(t, d)));
+          tip.appendChild(row);
+        });
+        tip.classList.add('show','interactive');
+        tip.style.left = '760px'; tip.style.top = '720px';
+      }
+    },
+    stickyPong() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('sou', 7);
+      Game.st.last = d; Game.st.lastP = 2;
+      const p1 = T('sou', 7), p2 = T('sou', 7);
+      Game.st.hands[0].push(p1, p2);
+      Game._candidateMap = new Map([
+        [p1.id, { label:'碰', combos:[[p1,p2,d]] }],
+        [p2.id, { label:'碰', combos:[[p1,p2,d]] }],
+      ]);
+      Game._candidateDisc = d;
+      re();
+      try { Game.showBtns?.([
+        { type:'pong', label:'碰',   cls:'aop' },
+        { type:'skip', label:'略過', cls:'ask' },
+      ]); } catch(e){}
+      const tip = document.getElementById('meld-tooltip');
+      if (tip) {
+        tip.innerHTML = '';
+        const lbl = document.createElement('div'); lbl.className = 'mt-label'; lbl.textContent = '可以碰';
+        tip.appendChild(lbl);
+        const row = document.createElement('div'); row.className = 'mt-combo';
+        [T('sou',7), T('sou',7), T('sou',7)].forEach(t => row.appendChild(mkPreviewTile(t, d)));
+        tip.appendChild(row);
+        tip.classList.add('show');
+        tip.style.left = '760px'; tip.style.top = '720px';
+      }
+    },
+    stickyChiPong() {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      const d = T('pin', 5);
+      Game.st.last = d; Game.st.lastP = 3;
+      const p1 = T('pin', 5), p2 = T('pin', 5);
+      const c3 = T('pin', 3), c4 = T('pin', 4), c6 = T('pin', 6), c7 = T('pin', 7);
+      Game.st.hands[0].push(p1, p2, c3, c4, c6, c7);
+      Game._candidateMap = new Map([
+        [p1.id, { label:'碰', combos:[[p1,p2,d]] }],
+        [p2.id, { label:'碰', combos:[[p1,p2,d]] }],
+        [c3.id, { label:'吃', combos:[[c3,c4,d]], chiOpts:[{ tiles:[c4,c3] }], discTile:d }],
+        [c4.id, { label:'吃', combos:[[c3,c4,d],[c4,c6,d]], chiOpts:[{ tiles:[c3,c4] }, { tiles:[c6,c4] }], discTile:d }],
+        [c6.id, { label:'吃', combos:[[c4,c6,d],[c6,c7,d]], chiOpts:[{ tiles:[c4,c6] }, { tiles:[c6,c7] }], discTile:d }],
+        [c7.id, { label:'吃', combos:[[c6,c7,d]], chiOpts:[{ tiles:[c6,c7] }], discTile:d }],
+      ]);
+      Game._candidateDisc = d;
+      re();
+      try { Game.showBtns?.([
+        { type:'chi',  label:'吃',   cls:'aok' },
+        { type:'pong', label:'碰',   cls:'aop' },
+        { type:'skip', label:'略過', cls:'ask' },
+      ]); } catch(e){}
+      const tip = document.getElementById('meld-tooltip');
+      if (tip) {
+        tip.innerHTML = '';
+        const lbl = document.createElement('div'); lbl.className = 'mt-label'; lbl.textContent = '點選吃法';
+        tip.appendChild(lbl);
+        const combos = [
+          [T('pin',3), T('pin',4), T('pin',5)],
+          [T('pin',4), T('pin',5), T('pin',6)],
+          [T('pin',5), T('pin',6), T('pin',7)],
+        ];
+        combos.forEach(combo => {
+          const row = document.createElement('div'); row.className = 'mt-combo clickable';
+          combo.forEach(t => row.appendChild(mkPreviewTile(t, d)));
+          tip.appendChild(row);
+        });
+        // 碰那組
+        const pongLbl = document.createElement('div'); pongLbl.className = 'mt-label'; pongLbl.textContent = '碰';
+        pongLbl.style.marginTop = '6px';
+        tip.appendChild(pongLbl);
+        const pongRow = document.createElement('div'); pongRow.className = 'mt-combo';
+        [T('pin',5), T('pin',5), T('pin',5)].forEach(t => pongRow.appendChild(mkPreviewTile(t, d)));
+        tip.appendChild(pongRow);
+        tip.classList.add('show','interactive');
+        tip.style.left = '760px'; tip.style.top = '700px';
+      }
+    },
+    clearSticky() {
+      Game._candidateMap = null;
+      Game._candidateDisc = null;
+      try { Game.clearBtns?.(); } catch(e){}
+      const tip = document.getElementById('meld-tooltip');
+      if (tip) { tip.classList.remove('show','interactive'); tip.innerHTML = ''; }
+      this.hideTenpaiBanner();
+      this.hideTenpai();
+      this.hideTimerBadge();
+      this.hideOppTenpaiTooltip();
+      re();
+    },
+    jumpRound(r) {
+      if (!Game.st) return console.warn('[Sim] 先開局');
+      Game.st.round = r;
+      re();
+    },
+    showAxes(on) {
+      if (on) {
+        if (!window._axesHelper) {
+          window._axesHelper = new THREE.AxesHelper(20);
+          scene.add(window._axesHelper);
+        }
+      } else {
+        if (window._axesHelper) {
+          scene.remove(window._axesHelper);
+          window._axesHelper.dispose?.();
+          window._axesHelper = null;
+        }
+      }
+      re();
+    },
+    wireframe(on) {
+      scene.traverse(obj => {
+        if (obj.isMesh && obj.material) {
+          const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+          mats.forEach(m => { if ('wireframe' in m) m.wireframe = !!on; });
+        }
+      });
+      re();
+    },
+  };
+})();
+window._SimHelper = _SimHelper;  // 也暴露給 console
+const _defaultsMeld     = JSON.parse(JSON.stringify(MELD_OFFSET));
+const _defaultsHand     = JSON.parse(JSON.stringify(HAND_OFFSET));
+const _defaultsFlower   = JSON.parse(JSON.stringify(FLOWER_OFFSET));
+const _defaultsWall     = JSON.parse(JSON.stringify(WALL_OFFSET));
+const _defaultsDiscard  = JSON.parse(JSON.stringify(DISCARD_OFFSET));
+const _defaultsDiscRot     = JSON.parse(JSON.stringify(DISCARD_ROT_DEG));
+const _defaultsMeldRot     = JSON.parse(JSON.stringify(MELD_ROT_DEG));
+const _defaultsFlowerRot   = JSON.parse(JSON.stringify(FLOWER_ROT_DEG));
+const _defaultsHandGroupRot= JSON.parse(JSON.stringify(HAND_GROUP_ROT_DEG));
+const _defaultsWallRot     = JSON.parse(JSON.stringify(WALL_ROT_DEG));
+const _defaultsMeldScale    = JSON.parse(JSON.stringify(MELD_SCALE));
+const _defaultsHandScale    = JSON.parse(JSON.stringify(HAND_SCALE));
+const _defaultsFlowerScale  = JSON.parse(JSON.stringify(FLOWER_SCALE));
+const _defaultsDiscardScale = JSON.parse(JSON.stringify(DISCARD_SCALE));
+const _defaultsWallScale    = JSON.parse(JSON.stringify(WALL_SCALE));
+const _defaultsCamera       = JSON.parse(JSON.stringify(CAMERA_CONFIG));
+const _defaultsTableSize    = JSON.parse(JSON.stringify(TABLE_SIZE));
+const _defaultsTableOffset  = JSON.parse(JSON.stringify(TABLE_OFFSET));
+
+function _buildDebugPanel() {
+  if (document.getElementById('pos-debug-panel')) return;
+  const panel = document.createElement('div');
+  panel.id = 'pos-debug-panel';
+  panel.style.cssText = `
+    position:fixed; right:14px; top:14px; bottom:14px; z-index:99999;
+    background:rgba(8,16,10,.96); border:1.5px solid #5c4419;
+    border-radius:10px; color:#f5e2a8;
+    font-family:system-ui,sans-serif; font-size:12px;
+    box-shadow:0 4px 18px rgba(0,0,0,.7); pointer-events:auto;
+    width:320px; display:none;
+    flex-direction:column;
+  `;
+  // 內部分三層：header(固定) / rows(scroll) / footer(固定)
+  panel.innerHTML = `
+    <div style="padding:10px 14px 8px;border-bottom:1px solid rgba(212,168,67,.2);flex-shrink:0">
+      <div style="font-weight:700;color:#f5cc6a;letter-spacing:.05em;margin-bottom:8px">
+        位置調整 <span style="opacity:.5;font-weight:400">(Ctrl+D 切換)</span>
+      </div>
+      <div id="pos-debug-tabs" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    </div>
+    <div id="pos-debug-rows" style="flex:1;overflow-y:auto;padding:10px 14px;min-height:0"></div>
+    <div style="padding:8px 14px;border-top:1px solid rgba(212,168,67,.2);display:flex;gap:8px;flex-shrink:0">
+      <button id="pos-debug-print" style="flex:1;background:#5c4419;border:none;color:#f5e2a8;padding:8px;border-radius:5px;cursor:pointer;font-weight:600">印當前值</button>
+      <button id="pos-debug-reset" style="flex:1;background:#3a2a18;border:none;color:#f5e2a8;padding:8px;border-radius:5px;cursor:pointer">重設</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  // 加上 flex display style（顯示時用 flex 而非 block）
+  panel._showDisplay = 'flex';
+
+  // v1.7.13: 數值文字加 cursor:pointer + hover 提示「可點輸入」
+  if (!document.getElementById('_pos-debug-panel-style')) {
+    const st = document.createElement('style');
+    st.id = '_pos-debug-panel-style';
+    st.textContent = `
+      #pos-debug-panel span[data-xval],
+      #pos-debug-panel span[data-hval],
+      #pos-debug-panel span[data-cval],
+      #pos-debug-panel span[data-spval],
+      #pos-debug-panel span[data-toval],
+      #pos-debug-panel span[data-tval],
+      #pos-debug-panel span[data-scval],
+      #pos-debug-panel span[data-qval] {
+        cursor:pointer; border-bottom:1px dashed rgba(212,168,67,.35);
+        transition:background .15s;
+      }
+      #pos-debug-panel span[data-xval]:hover,
+      #pos-debug-panel span[data-hval]:hover,
+      #pos-debug-panel span[data-cval]:hover,
+      #pos-debug-panel span[data-spval]:hover,
+      #pos-debug-panel span[data-toval]:hover,
+      #pos-debug-panel span[data-tval]:hover,
+      #pos-debug-panel span[data-scval]:hover,
+      #pos-debug-panel span[data-qval]:hover {
+        background:rgba(212,168,67,.18); border-radius:3px;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  const renderNow = () => Game && Game.render && Game.render();
+  let activeTab = 'meld';
+
+  // v1.7.13: 點數值文字 → prompt 輸入精確值（解決 slider 拖不到 0 的問題）
+  //   涵蓋所有 value 顯示 span 的 data 屬性
+  const valueAttrs = ['xval','hval','cval','spval','toval','tval','scval','qval'];
+  panel.addEventListener('click', (e) => {
+    const span = e.target.closest('span[data-' + valueAttrs.join('],span[data-') + ']');
+    if (!span) return;
+    // 找對應的 input slider
+    let attrName, attrValue;
+    for (const a of valueAttrs) {
+      if (span.dataset[a] !== undefined) { attrName = a; attrValue = span.dataset[a]; break; }
+    }
+    if (!attrName) return;
+    // 對應 slider 的 selector — 各種 tab 用不同 attr
+    const sliderSelectorMap = {
+      'xval':  (v) => { const [t,k,a] = v.split('-'); return `input[data-xyz="${t}"][data-key="${k}"][data-ax="${a}"]`; },
+      'hval':  (v) => { const [id,a] = v.split('-'); return `input[data-hudid="${id}"][data-axis="${a}"]`; },
+      'cval':  (v) => `input[data-cam="${v}"]`,
+      'spval': (v) => { const [k,a] = v.split('-'); return `input[data-sprite="${k}"][data-axis="${a}"]`; },
+      'toval': (v) => `input[data-toff="${v}"]`,
+      'tval':  (v) => `input[data-tbl="${v}"]`,
+      'scval': (v) => { const [t,k] = v.split('-'); return `input[data-scale="${t}"][data-key="${k}"]`; },
+      'qval':  (v) => `input[data-quick="${v}"]`,
+    };
+    const selector = sliderSelectorMap[attrName]?.(attrValue);
+    if (!selector) return;
+    const slider = panel.querySelector(selector);
+    if (!slider) return;
+    const cur = slider.value;
+    const inp = prompt(`輸入新值（範圍 ${slider.min} ~ ${slider.max}）：`, cur);
+    if (inp === null || inp === '') return;
+    const v = parseFloat(inp);
+    if (isNaN(v)) return;
+    slider.value = v;
+    // 觸發 input event 讓既有 listener 跑
+    slider.dispatchEvent(new Event('input', { bubbles:true }));
+  });
+
+  function renderRows() {
+    const cfg = _DEBUG_CONFIGS.find(c => c.key === activeTab);
+    const rows = document.getElementById('pos-debug-rows');
+    rows.innerHTML = '';
+
+    // 「角度」tab：rotation 三軸 (X/Y/Z)
+    if (cfg.angle) {
+      // v1.7.12: 鳴牌整組旋轉 toggle
+      const togRow = document.createElement('div');
+      togRow.style.cssText = 'margin-bottom:10px;padding:8px;background:rgba(212,168,67,.08);border-radius:5px';
+      togRow.innerHTML = `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px">
+          <input type="checkbox" id="meld-rot-group-toggle" ${MELD_ROT_AS_GROUP ? 'checked' : ''} style="cursor:pointer">
+          <span><span style="color:#f5cc6a;font-weight:600">鳴牌整組旋轉</span><br>
+            <span style="color:rgba(212,168,67,.6);font-size:10px">勾選=整組一起轉（像手牌） / 取消=每張單獨轉</span>
+          </span>
+        </label>
+      `;
+      rows.appendChild(togRow);
+      togRow.querySelector('#meld-rot-group-toggle').addEventListener('change', e => {
+        MELD_ROT_AS_GROUP = e.target.checked;
+        renderNow();
+      });
+
+      const xyzSections = [
+        { title:'手牌旋轉 (degrees)', obj: HAND_GROUP_ROT_DEG, keys:['south','north','east','west'] },
+        { title:'棄牌旋轉 (degrees)', obj: DISCARD_ROT_DEG,    keys:['south','north','east','west'] },
+        { title:'鳴牌旋轉 (degrees)', obj: MELD_ROT_DEG,       keys:['south','north','east','west'] },
+        { title:'花牌旋轉 (degrees)', obj: FLOWER_ROT_DEG,     keys:['south','north','east','west'] },
+        { title:'牌墩旋轉 (degrees)', obj: WALL_ROT_DEG,       keys:['south','north','east','west'] },
+      ];
+      const labels = { south:'我 south', east:'右家 east', west:'左家 west', north:'對家 north' };
+
+      // 三軸 section
+      for (const sec of xyzSections) {
+        const h = document.createElement('div');
+        h.style.cssText = 'color:#f5cc6a;margin:10px 0 4px;font-weight:600';
+        h.textContent = sec.title;
+        rows.appendChild(h);
+        for (const k of sec.keys) {
+          const sub = document.createElement('div');
+          sub.style.cssText = 'margin-bottom:5px;border-bottom:1px solid rgba(212,168,67,.1);padding-bottom:4px';
+          const v = sec.obj[k] || {x:0,y:0,z:0};
+          sub.innerHTML = `
+            <div style="color:#d4a843;margin-bottom:2px;font-size:11px">${labels[k]||k}</div>
+            ${['x','y','z'].map(ax => `
+              <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+                <span style="width:14px;text-transform:uppercase">${ax}</span>
+                <input type="range" min="-180" max="180" step="0.5" value="${v[ax]}" data-xyz="${sec.title}" data-key="${k}" data-ax="${ax}" style="flex:1">
+                <span data-xval="${sec.title}-${k}-${ax}" style="width:50px;text-align:right;color:#ffd76b">${v[ax].toFixed(1)}°</span>
+              </div>
+            `).join('')}
+          `;
+          rows.appendChild(sub);
+        }
+      }
+
+      // bind xyz input
+      rows.querySelectorAll('input[data-xyz]').forEach(input => {
+        input.addEventListener('input', e => {
+          const title = e.target.dataset.xyz, k = e.target.dataset.key, ax = e.target.dataset.ax;
+          const v = parseFloat(e.target.value);
+          const sec = xyzSections.find(s => s.title === title);
+          sec.obj[k][ax] = v;
+          rows.querySelector(`[data-xval="${title}-${k}-${ax}"]`).textContent = v.toFixed(1) + '°';
+          renderNow();
+        });
+      });
+      return;
+    }
+
+    // 「縮放」tab：各元素 4 家 single scalar
+    if (cfg.scale) {
+      const scaleSections = [
+        { title:'鳴牌縮放', obj: MELD_SCALE    },
+        { title:'手牌縮放', obj: HAND_SCALE    },
+        { title:'花牌縮放', obj: FLOWER_SCALE  },
+        { title:'棄牌縮放', obj: DISCARD_SCALE },
+        { title:'牌墩縮放', obj: WALL_SCALE    },
+      ];
+      const labels = { south:'我 south', east:'右家 east', west:'左家 west', north:'對家 north' };
+      const keys = ['south','east','west','north'];
+      for (const sec of scaleSections) {
+        const h = document.createElement('div');
+        h.style.cssText = 'color:#f5cc6a;margin:8px 0 4px;font-weight:600';
+        h.textContent = sec.title;
+        rows.appendChild(h);
+        for (const k of keys) {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:3px';
+          row.innerHTML = `
+            <span style="width:80px;color:#d4a843;font-size:11px">${labels[k]||k}</span>
+            <input type="range" min="0.3" max="2.5" step="0.01" value="${sec.obj[k]}" data-scale="${sec.title}" data-key="${k}" style="flex:1">
+            <span data-scval="${sec.title}-${k}" style="width:50px;text-align:right;color:#ffd76b">${sec.obj[k].toFixed(2)}×</span>
+          `;
+          rows.appendChild(row);
+        }
+      }
+      rows.querySelectorAll('input[data-scale]').forEach(input => {
+        input.addEventListener('input', e => {
+          const title = e.target.dataset.scale, k = e.target.dataset.key;
+          const v = parseFloat(e.target.value);
+          const sec = scaleSections.find(s => s.title === title);
+          sec.obj[k] = v;
+          rows.querySelector(`[data-scval="${title}-${k}"]`).textContent = v.toFixed(2) + '×';
+          renderNow();
+        });
+      });
+      return;
+    }
+
+    // 「HUD」tab：DOM 元素 dx/dy（直接套 CSS translate，不需重 render 3D）
+    if (cfg.hud) {
+      const hudList = [
+        { id:'hud-center-pill', label:'中央牌局資訊 #hud-center-pill' },
+        { id:'hud-pp0',        label:'玩家資訊 (我 south)'  },
+        { id:'hud-pp1',        label:'玩家資訊 (右家 east)' },
+        { id:'hud-pp2',        label:'玩家資訊 (對家 north)'},
+        { id:'hud-pp3',        label:'玩家資訊 (左家 west)' },
+        { id:'action-overlay', label:'操作欄 #action-overlay' },
+        { id:'tbadge',         label:'倒數計時徽章 #tbadge' },
+        { id:'tenpai-tooltip', label:'對手聽牌浮窗 #tenpai-tooltip' },  // v1.7.13
+        { id:'meld-preview',   label:'吃碰預覽 #meld-preview' },
+        { id:'meld-tooltip',   label:'鳴牌提示 #meld-tooltip' },
+        { id:'ap',             label:'動作按鈕 #ap' },
+      ];
+      for (const { id, label } of hudList) {
+        const a = HUD_ADJUST[id] || { dx:0, dy:0, scale: 1 };
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-bottom:6px; border-bottom:1px solid rgba(212,168,67,.15); padding-bottom:6px';
+        row.innerHTML = `
+          <div style="color:#d4a843;margin-bottom:3px;font-size:11px">${label}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:14px">X</span>
+            <input type="range" min="-500" max="500" step="1" value="${a.dx}" data-hudid="${id}" data-axis="dx" style="flex:1">
+            <span data-hval="${id}-dx" style="width:46px;text-align:right;color:#ffd76b">${a.dx}px</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:14px">Y</span>
+            <input type="range" min="-500" max="500" step="1" value="${a.dy}" data-hudid="${id}" data-axis="dy" style="flex:1">
+            <span data-hval="${id}-dy" style="width:46px;text-align:right;color:#ffd76b">${a.dy}px</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:14px">S</span>
+            <input type="range" min="0.3" max="3" step="0.05" value="${a.scale||1}" data-hudid="${id}" data-axis="scale" style="flex:1">
+            <span data-hval="${id}-scale" style="width:46px;text-align:right;color:#ffd76b">${(a.scale||1).toFixed(2)}×</span>
+          </div>
+        `;
+        rows.appendChild(row);
+      }
+      rows.querySelectorAll('input[data-hudid]').forEach(input => {
+        input.addEventListener('input', e => {
+          const id = e.target.dataset.hudid, axis = e.target.dataset.axis;
+          const v = (axis === 'scale') ? parseFloat(e.target.value) : parseInt(e.target.value, 10);
+          if (!HUD_ADJUST[id]) HUD_ADJUST[id] = { dx:0, dy:0, scale:1 };
+          HUD_ADJUST[id][axis] = v;
+          const display = (axis === 'scale') ? v.toFixed(2) + '×' : v + 'px';
+          rows.querySelector(`[data-hval="${id}-${axis}"]`).textContent = display;
+          applyHudAdjust(id);
+        });
+      });
+      return;
+    }
+
+    // v1.7.13: 「模擬」tab — 副露/鳴牌提示/聽牌/胡牌/視覺除錯
+    if (cfg.sim) {
+      const mkBtn = (label, onclick, color='#5c4419') => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.style.cssText = `padding:6px 10px;border:none;border-radius:5px;cursor:pointer;
+          background:${color};color:#f5e2a8;font-size:11px;font-weight:600;flex:1;min-width:0`;
+        b.onclick = onclick;
+        return b;
+      };
+      const mkSection = (title) => {
+        const h = document.createElement('div');
+        h.style.cssText = 'color:#f5cc6a;margin:10px 0 4px;font-weight:600;border-bottom:1px solid rgba(212,168,67,.15);padding-bottom:3px';
+        h.textContent = title;
+        rows.appendChild(h);
+      };
+      const mkRow = (...btns) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;gap:5px;margin-bottom:5px;flex-wrap:wrap';
+        btns.forEach(b => row.appendChild(b));
+        rows.appendChild(row);
+      };
+
+      mkSection('副露');
+      mkRow(
+        mkBtn('明牌全填 (4家×4副露)', () => _SimHelper.fillAll(), '#5c4419'),
+        mkBtn('清空副露',           () => _SimHelper.clearMelds(), '#3a2a18'),
+      );
+      mkRow(
+        mkBtn('暗槓→東家', () => _SimHelper.addDarkKong('east')),
+        mkBtn('暗槓→對家', () => _SimHelper.addDarkKong('north')),
+        mkBtn('暗槓→西家', () => _SimHelper.addDarkKong('west')),
+        mkBtn('暗槓→自家', () => _SimHelper.addDarkKong('south')),
+      );
+      mkRow(
+        mkBtn('明槓→東家', () => _SimHelper.addOpenKong('east'), '#4a3812'),
+        mkBtn('明槓→對家', () => _SimHelper.addOpenKong('north'), '#4a3812'),
+        mkBtn('明槓→西家', () => _SimHelper.addOpenKong('west'), '#4a3812'),
+        mkBtn('明槓→自家', () => _SimHelper.addOpenKong('south'), '#4a3812'),
+      );
+
+      mkSection('鳴牌提示（左家打牌觸發按鈕/tooltip）');
+      mkRow(
+        mkBtn('可吃（3 種選擇）',  () => _SimHelper.canChi()),
+        mkBtn('可碰',              () => _SimHelper.canPong()),
+      );
+      mkRow(
+        mkBtn('可碰可槓',          () => _SimHelper.canKong()),
+        mkBtn('可吃可碰（4 種）',  () => _SimHelper.canChiPong()),
+      );
+      mkRow(
+        mkBtn('可胡（放槍）',      () => _SimHelper.canWinDiscard(), '#7a4818'),
+      );
+
+      mkSection('聽牌/牌局狀態');
+      mkRow(
+        mkBtn('自家聽牌 (聽 2/5 萬)', () => _SimHelper.tenpai()),
+      );
+      mkRow(
+        mkBtn('牌庫剩 1 張 (海底)', () => _SimHelper.deckLow(1)),
+        mkBtn('牌庫剩 4 張',       () => _SimHelper.deckLow(4)),
+      );
+
+      mkSection('HUD overlay 模擬（持續顯示 — 給你慢慢調 HUD tab 槓桿）');
+      mkRow(
+        mkBtn('聽牌面板 持續',          () => _SimHelper.showTenpaiPanel(), '#1c5e3a'),
+        mkBtn('可吃（3 種選擇 持續）',  () => _SimHelper.stickyChi(), '#1c5e3a'),
+      );
+      mkRow(
+        mkBtn('可碰 持續',              () => _SimHelper.stickyPong(), '#1c5e3a'),
+        mkBtn('可吃可碰（4 種 持續）',   () => _SimHelper.stickyChiPong(), '#1c5e3a'),
+      );
+      mkRow(
+        mkBtn('倒數計時 (持續顯示 12秒)',() => _SimHelper.showTimerBadge(12), '#1c5e3a'),
+        mkBtn('關倒數計時',              () => _SimHelper.hideTimerBadge(), '#3a2a18'),
+      );
+      mkRow(
+        mkBtn('對手聽牌浮窗 (持續)',     () => _SimHelper.showOppTenpaiTooltip(), '#1c5e3a'),
+        mkBtn('關對手聽牌浮窗',          () => _SimHelper.hideOppTenpaiTooltip(), '#3a2a18'),
+      );
+      mkRow(
+        mkBtn('⨯ 一鍵清掉所有持續顯示', () => _SimHelper.clearSticky(), '#7a2a18'),
+      );
+
+      // v1.7.13: 4 個關鍵 HUD 元素的 inline scale 控制（不用跳 tab）
+      const quickHudIds = [
+        { id:'meld-tooltip',   label:'點選吃法 popup' },
+        { id:'ap',             label:'略過/胡 按鈕' },
+        { id:'action-overlay', label:'操作欄整個容器' },
+        { id:'tbadge',         label:'倒數計時徽章' },
+        { id:'tenpai-tooltip', label:'對手聽牌浮窗' },
+      ];
+      const qHdr = document.createElement('div');
+      qHdr.style.cssText = 'color:#f5cc6a;margin:8px 0 4px;font-weight:600;font-size:11px;border-top:1px solid rgba(212,168,67,.15);padding-top:6px';
+      qHdr.textContent = '⬆ 上方持續顯示後，用下方槓桿快速調大小';
+      rows.appendChild(qHdr);
+      for (const { id, label } of quickHudIds) {
+        const a = HUD_ADJUST[id] || (HUD_ADJUST[id] = { dx:0, dy:0, scale:1 });
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:6px;margin-bottom:4px;font-size:11px';
+        row.innerHTML = `
+          <span style="width:130px;color:#d4a843">${label}</span>
+          <input type="range" min="0.3" max="3" step="0.05" value="${a.scale||1}" data-quick="${id}" style="flex:1">
+          <span data-qval="${id}" style="width:42px;text-align:right;color:#ffd76b">${(a.scale||1).toFixed(2)}×</span>
+        `;
+        rows.appendChild(row);
+      }
+      rows.querySelectorAll('input[data-quick]').forEach(input => {
+        input.addEventListener('input', e => {
+          const id = e.target.dataset.quick;
+          const v = parseFloat(e.target.value);
+          if (!HUD_ADJUST[id]) HUD_ADJUST[id] = { dx:0, dy:0, scale:1 };
+          HUD_ADJUST[id].scale = v;
+          rows.querySelector(`[data-qval="${id}"]`).textContent = v.toFixed(2) + '×';
+          applyHudAdjust(id);
+        });
+      });
+
+      mkSection('HUD overlay 模擬（用遊戲原本邏輯，有 timer）');
+      // v1.7.13: 聽牌面板已從 UI 中移除（display:none），相關按鈕不再列出
+      mkRow(
+        mkBtn('操作鈕：吃+略過',       () => _SimHelper.showActionBtns('chi'),  '#7a4818'),
+        mkBtn('操作鈕：碰+略過',       () => _SimHelper.showActionBtns('pong'), '#7a4818'),
+      );
+      mkRow(
+        mkBtn('操作鈕：碰+槓+略過',    () => _SimHelper.showActionBtns('kong'), '#7a4818'),
+        mkBtn('操作鈕：胡+略過',       () => _SimHelper.showActionBtns('win'),  '#7a4818'),
+      );
+      mkRow(
+        mkBtn('操作鈕：胡+槓+碰+吃',   () => _SimHelper.showActionBtns('all'),  '#7a4818'),
+        mkBtn('操作鈕：暗槓+自摸',     () => _SimHelper.showActionBtns('selfkong'), '#7a4818'),
+      );
+      mkRow(
+        mkBtn('關閉所有操作鈕',        () => _SimHelper.hideActionBtns(), '#3a2a18'),
+      );
+      mkRow(
+        mkBtn('跳東 4 局', () => _SimHelper.jumpRound(4)),
+        mkBtn('跳南 1 局', () => _SimHelper.jumpRound(5)),
+        mkBtn('回東 1 局', () => _SimHelper.jumpRound(1)),
+      );
+
+      mkSection('花牌/棄牌');
+      mkRow(
+        mkBtn('4 家各加 2 花', () => _SimHelper.fillFlowers()),
+        mkBtn('清空花牌',     () => _SimHelper.clearFlowers(), '#3a2a18'),
+      );
+      mkRow(
+        mkBtn('棄牌堆滿 (各 18 張)', () => _SimHelper.fillDiscards(18)),
+        mkBtn('清空棄牌',           () => _SimHelper.clearDiscards(), '#3a2a18'),
+      );
+
+      mkSection('視覺除錯');
+      const axesLabel = document.createElement('label');
+      axesLabel.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;margin-bottom:5px';
+      axesLabel.innerHTML = `<input type="checkbox" id="sim-axes"><span style="color:#d4a843">顯示世界座標軸（X 紅 / Y 綠 / Z 藍）</span>`;
+      axesLabel.querySelector('#sim-axes').addEventListener('change', e => _SimHelper.showAxes(e.target.checked));
+      rows.appendChild(axesLabel);
+
+      const wireLabel = document.createElement('label');
+      wireLabel.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px';
+      wireLabel.innerHTML = `<input type="checkbox" id="sim-wireframe"><span style="color:#d4a843">Wireframe 模式</span>`;
+      wireLabel.querySelector('#sim-wireframe').addEventListener('change', e => _SimHelper.wireframe(e.target.checked));
+      rows.appendChild(wireLabel);
+
+      const tip = document.createElement('div');
+      tip.style.cssText = 'color:rgba(212,168,67,.55);font-size:10px;margin-top:8px;line-height:1.5';
+      tip.innerHTML = '⚠️ 鳴牌提示按鈕需要先進牌局且輪到你的回合<br>⚠️ 跑「明牌全填」會清除既有副露';
+      rows.appendChild(tip);
+
+      return;
+    }
+
+    // 「相機」tab：CAMERA_CONFIG 7 軸（posX/Y/Z + lookX/Y/Z + fov）
+    if (cfg.camera) {
+      const camAxes = [
+        { key:'posX',  label:'位置 X',  min:-50, max:50,  step:0.5, suffix:'' },
+        { key:'posY',  label:'位置 Y (高度)', min:0,   max:60,  step:0.5, suffix:'' },
+        { key:'posZ',  label:'位置 Z',  min:-50, max:50,  step:0.5, suffix:'' },
+        { key:'lookX', label:'看向 X',  min:-20, max:20,  step:0.5, suffix:'' },
+        { key:'lookY', label:'看向 Y',  min:-10, max:20,  step:0.5, suffix:'' },
+        { key:'lookZ', label:'看向 Z',  min:-20, max:20,  step:0.5, suffix:'' },
+        { key:'fov',   label:'FOV (視野角)', min:10,  max:80,  step:0.5, suffix:'°' },
+      ];
+      for (const ax of camAxes) {
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-bottom:6px';
+        row.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:120px;color:#d4a843;font-size:11px">${ax.label}</span>
+            <input type="range" min="${ax.min}" max="${ax.max}" step="${ax.step}" value="${CAMERA_CONFIG[ax.key]}" data-cam="${ax.key}" style="flex:1">
+            <span data-cval="${ax.key}" style="width:50px;text-align:right;color:#ffd76b">${CAMERA_CONFIG[ax.key]}${ax.suffix}</span>
+          </div>
+        `;
+        rows.appendChild(row);
+      }
+      const tip = document.createElement('div');
+      tip.style.cssText = 'color:rgba(212,168,67,.6);font-size:10px;margin-top:6px;line-height:1.5';
+      tip.innerHTML = '位置 = 相機在世界中的座標<br>看向 = 相機聚焦點（通常桌面 y=0）<br>FOV 越大視野越廣（魚眼）';
+      rows.appendChild(tip);
+      rows.querySelectorAll('input[data-cam]').forEach(input => {
+        input.addEventListener('input', e => {
+          const k = e.target.dataset.cam;
+          const v = parseFloat(e.target.value);
+          CAMERA_CONFIG[k] = v;
+          const ax = camAxes.find(a => a.key === k);
+          rows.querySelector(`[data-cval="${k}"]`).textContent = v + (ax.suffix||'');
+          applyCamera();
+        });
+      });
+
+      // v1.7.12: 桌面尺寸 width / depth
+      const tblHdr = document.createElement('div');
+      tblHdr.style.cssText = 'color:#f5cc6a;margin:14px 0 4px;font-weight:600;border-top:1px solid rgba(212,168,67,.2);padding-top:10px';
+      tblHdr.textContent = '桌面尺寸 (PlaneGeometry)';
+      rows.appendChild(tblHdr);
+      const tblAxes = [
+        { key:'width', label:'寬度 X (左右家方向)', min:20, max:60, step:0.5 },
+        { key:'depth', label:'深度 Z (自家↔對家)',  min:20, max:60, step:0.5 },
+      ];
+      for (const ax of tblAxes) {
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-bottom:6px';
+        row.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:120px;color:#d4a843;font-size:11px">${ax.label}</span>
+            <input type="range" min="${ax.min}" max="${ax.max}" step="${ax.step}" value="${TABLE_SIZE[ax.key]}" data-tbl="${ax.key}" style="flex:1">
+            <span data-tval="${ax.key}" style="width:50px;text-align:right;color:#ffd76b">${TABLE_SIZE[ax.key]}</span>
+          </div>
+        `;
+        rows.appendChild(row);
+      }
+      rows.querySelectorAll('input[data-tbl]').forEach(input => {
+        input.addEventListener('input', e => {
+          const k = e.target.dataset.tbl;
+          const v = parseFloat(e.target.value);
+          TABLE_SIZE[k] = v;
+          rows.querySelector(`[data-tval="${k}"]`).textContent = v;
+          applyTableSize();
+        });
+      });
+
+      // v1.7.12: 桌面位移（整塊藍布 + 木框紋）
+      const offHdr = document.createElement('div');
+      offHdr.style.cssText = 'color:#f5cc6a;margin:14px 0 4px;font-weight:600;border-top:1px solid rgba(212,168,67,.2);padding-top:10px';
+      offHdr.textContent = '桌面位移';
+      rows.appendChild(offHdr);
+      const offAxes = [
+        { key:'x', label:'位移 X (左右)', min:-15, max:15, step:0.1 },
+        { key:'z', label:'位移 Z (前後)', min:-15, max:15, step:0.1 },
+      ];
+      for (const ax of offAxes) {
+        const row = document.createElement('div');
+        row.style.cssText = 'margin-bottom:6px';
+        row.innerHTML = `
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="width:120px;color:#d4a843;font-size:11px">${ax.label}</span>
+            <input type="range" min="${ax.min}" max="${ax.max}" step="${ax.step}" value="${TABLE_OFFSET[ax.key]}" data-toff="${ax.key}" style="flex:1">
+            <span data-toval="${ax.key}" style="width:50px;text-align:right;color:#ffd76b">${TABLE_OFFSET[ax.key]}</span>
+          </div>
+        `;
+        rows.appendChild(row);
+      }
+      rows.querySelectorAll('input[data-toff]').forEach(input => {
+        input.addEventListener('input', e => {
+          const k = e.target.dataset.toff;
+          const v = parseFloat(e.target.value);
+          TABLE_OFFSET[k] = v;
+          rows.querySelector(`[data-toval="${k}"]`).textContent = v.toFixed(1);
+          applyTableOffset();
+        });
+      });
+      return;
+    }
+
+    // 「牌面切割」tab：SPRITE_OPTS 三軸（slotStride/tileWidth/maskTop），改完自動 reload sprite
+    if (cfg.sprite) {
+      const spriteKeys = [
+        { key:'man',    label:'萬子 man'    },
+        { key:'pin',    label:'筒子 pin'    },
+        { key:'sou',    label:'條子 sou'    },
+        { key:'honor',  label:'字牌 honor'  },
+        { key:'flower', label:'花牌 flower' },
+      ];
+      const axes = [
+        { key:'slotStride', min:60, max:200, step:1, suffix:'px' },
+        { key:'tileWidth',  min:40, max:200, step:1, suffix:'px' },
+        { key:'maskTop',    min:0,  max:0.5, step:0.01, suffix:'' },
+        { key:'maskBottom', min:0,  max:0.5, step:0.01, suffix:'' },
+      ];
+      // 防 reload 太頻繁的 debounce
+      let reloadTimer = null;
+      const scheduleReload = () => {
+        clearTimeout(reloadTimer);
+        reloadTimer = setTimeout(() => reloadSprites(), 200);
+      };
+      for (const { key, label } of spriteKeys) {
+        const sub = document.createElement('div');
+        sub.style.cssText = 'margin-bottom:8px;border-bottom:1px solid rgba(212,168,67,.15);padding-bottom:6px';
+        const opts = SPRITE_OPTS[key];
+        sub.innerHTML = `<div style="color:#d4a843;margin-bottom:3px;font-size:11px">${label}</div>` +
+          axes.map(ax => `
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px">
+              <span style="width:78px;font-size:10px">${ax.key}</span>
+              <input type="range" min="${ax.min}" max="${ax.max}" step="${ax.step}" value="${opts[ax.key]}" data-sprite="${key}" data-axis="${ax.key}" style="flex:1">
+              <span data-spval="${key}-${ax.key}" style="width:46px;text-align:right;color:#ffd76b;font-size:11px">${opts[ax.key]}${ax.suffix}</span>
+            </div>
+          `).join('');
+        rows.appendChild(sub);
+      }
+      const tip = document.createElement('div');
+      tip.style.cssText = 'color:rgba(212,168,67,.6);font-size:10px;margin-top:4px';
+      tip.textContent = '改完 0.2 秒後自動重切 sprite（不用 reload 頁面）';
+      rows.appendChild(tip);
+      rows.querySelectorAll('input[data-sprite]').forEach(input => {
+        input.addEventListener('input', e => {
+          const key = e.target.dataset.sprite, axis = e.target.dataset.axis;
+          const v = parseFloat(e.target.value);
+          SPRITE_OPTS[key][axis] = v;
+          const ax = axes.find(a => a.key === axis);
+          rows.querySelector(`[data-spval="${key}-${axis}"]`).textContent = ((axis === 'maskTop' || axis === 'maskBottom') ? v.toFixed(2) : v) + (ax.suffix||'');
+          scheduleReload();
+        });
+      });
+      return;
+    }
+
+    // 一般 position tab：X/Z 偏移
+    const ref = cfg.ref();
+    const sides = [
+      { key:'south', label:'我 south'   },
+      { key:'east',  label:'右家 east'  },
+      { key:'west',  label:'左家 west'  },
+      { key:'north', label:'對家 north' },
+    ];
+
+    // 鳴牌位置 tab 額外加排列模式切換
+    if (activeTab === 'meld') {
+      const layoutRow = document.createElement('div');
+      layoutRow.style.cssText = 'margin-bottom:8px;padding:6px 8px;background:rgba(245,200,90,.08);border-radius:4px';
+      const mkBtn = (mode, label) => `<button data-mode="${mode}" style="flex:1;padding:4px;border:none;border-radius:3px;cursor:pointer;background:${MELD_LAYOUT_MODE===mode?'#f5cc6a':'#3a2a18'};color:${MELD_LAYOUT_MODE===mode?'#1a0a00':'#f5e2a8'};font-size:11px">${label}</button>`;
+      layoutRow.innerHTML = `
+        <div style="color:#f5cc6a;margin-bottom:4px;font-size:11px;font-weight:600">鳴牌排列模式</div>
+        <div style="display:flex;gap:3px">
+          ${mkBtn('row',  '縱 1×4')}
+          ${mkBtn('grid', '2×2')}
+          ${mkBtn('wide', '橫 1×4')}
+        </div>
+      `;
+      rows.appendChild(layoutRow);
+      layoutRow.querySelectorAll('button[data-mode]').forEach(b => {
+        b.onclick = () => { MELD_LAYOUT_MODE = b.dataset.mode; renderRows(); renderNow(); };
+      });
+    }
+
+    for (const { key, label } of sides) {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-bottom:6px; border-bottom:1px solid rgba(212,168,67,.15); padding-bottom:6px';
+      row.innerHTML = `
+        <div style="color:#d4a843;margin-bottom:3px">${label}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="width:14px">X</span>
+          <input type="range" min="-10" max="10" step="0.1" value="${ref[key].x}" data-side="${key}" data-axis="x" style="flex:1">
+          <span data-val="${key}-x" style="width:46px;text-align:right;color:#ffd76b">${ref[key].x.toFixed(1)}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="width:14px">Z</span>
+          <input type="range" min="-10" max="10" step="0.1" value="${ref[key].z}" data-side="${key}" data-axis="z" style="flex:1">
+          <span data-val="${key}-z" style="width:46px;text-align:right;color:#ffd76b">${ref[key].z.toFixed(1)}</span>
+        </div>
+      `;
+      rows.appendChild(row);
+    }
+    rows.querySelectorAll('input[type=range]').forEach(input => {
+      input.addEventListener('input', e => {
+        const side = e.target.dataset.side, axis = e.target.dataset.axis;
+        const v = parseFloat(e.target.value);
+        ref[side][axis] = v;
+        rows.querySelector(`[data-val="${side}-${axis}"]`).textContent = v.toFixed(1);
+        renderNow();
+      });
+    });
+  }
+
+  function renderTabs() {
+    const tabs = document.getElementById('pos-debug-tabs');
+    tabs.innerHTML = '';
+    for (const cfg of _DEBUG_CONFIGS) {
+      const btn = document.createElement('button');
+      btn.textContent = cfg.label;
+      const active = cfg.key === activeTab;
+      btn.style.cssText = `flex:1;padding:6px;border:none;border-radius:5px;cursor:pointer;
+        background:${active ? '#f5cc6a' : '#3a2a18'}; color:${active ? '#1a0a00' : '#f5e2a8'};
+        font-weight:${active ? 700 : 400}`;
+      btn.onclick = () => { activeTab = cfg.key; renderTabs(); renderRows(); };
+      tabs.appendChild(btn);
+    }
+  }
+
+  const printBtn = document.getElementById('pos-debug-print');
+  printBtn.onclick = () => {
+    console.log('====== 當前位置設定 ======');
+    console.log('MELD_OFFSET        =', JSON.stringify(MELD_OFFSET, null, 2));
+    console.log('HAND_OFFSET        =', JSON.stringify(HAND_OFFSET, null, 2));
+    console.log('FLOWER_OFFSET      =', JSON.stringify(FLOWER_OFFSET, null, 2));
+    console.log('WALL_OFFSET        =', JSON.stringify(WALL_OFFSET, null, 2));
+    console.log('DISCARD_OFFSET     =', JSON.stringify(DISCARD_OFFSET, null, 2));
+    console.log('DISCARD_ROT_DEG    =', JSON.stringify(DISCARD_ROT_DEG, null, 2));
+    console.log('MELD_ROT_DEG       =', JSON.stringify(MELD_ROT_DEG, null, 2));
+    console.log('FLOWER_ROT_DEG     =', JSON.stringify(FLOWER_ROT_DEG, null, 2));
+    console.log('HAND_GROUP_ROT_DEG =', JSON.stringify(HAND_GROUP_ROT_DEG, null, 2));
+    console.log('WALL_ROT_DEG       =', JSON.stringify(WALL_ROT_DEG, null, 2));
+    console.log('MELD_SCALE         =', JSON.stringify(MELD_SCALE, null, 2));
+    console.log('HAND_SCALE         =', JSON.stringify(HAND_SCALE, null, 2));
+    console.log('FLOWER_SCALE       =', JSON.stringify(FLOWER_SCALE, null, 2));
+    console.log('DISCARD_SCALE      =', JSON.stringify(DISCARD_SCALE, null, 2));
+    console.log('WALL_SCALE         =', JSON.stringify(WALL_SCALE, null, 2));
+    console.log('HUD_ADJUST         =', JSON.stringify(HUD_ADJUST, null, 2));
+    console.log('CAMERA_CONFIG      =', JSON.stringify(CAMERA_CONFIG, null, 2));
+    console.log('TABLE_SIZE         =', JSON.stringify(TABLE_SIZE, null, 2));
+    console.log('TABLE_OFFSET       =', JSON.stringify(TABLE_OFFSET, null, 2));
+    console.log('MELD_LAYOUT_MODE   =', JSON.stringify(MELD_LAYOUT_MODE));
+    console.log('MELD_ROT_AS_GROUP  =', JSON.stringify(MELD_ROT_AS_GROUP));
+    const orig = printBtn.textContent;
+    printBtn.textContent = '✓ 已印到 console';
+    printBtn.style.background = '#2ecc71';
+    setTimeout(() => { printBtn.textContent = orig; printBtn.style.background = '#5c4419'; }, 1200);
+  };
+  document.getElementById('pos-debug-reset').onclick = () => {
+    const cfg = _DEBUG_CONFIGS.find(c => c.key === activeTab);
+    if (cfg.angle) {
+      Object.assign(DISCARD_ROT_DEG,    JSON.parse(JSON.stringify(_defaultsDiscRot)));
+      Object.assign(MELD_ROT_DEG,       JSON.parse(JSON.stringify(_defaultsMeldRot)));
+      Object.assign(FLOWER_ROT_DEG,     JSON.parse(JSON.stringify(_defaultsFlowerRot)));
+      Object.assign(HAND_GROUP_ROT_DEG, JSON.parse(JSON.stringify(_defaultsHandGroupRot)));
+      Object.assign(WALL_ROT_DEG,       JSON.parse(JSON.stringify(_defaultsWallRot)));
+    } else if (cfg.scale) {
+      Object.assign(MELD_SCALE,    JSON.parse(JSON.stringify(_defaultsMeldScale)));
+      Object.assign(HAND_SCALE,    JSON.parse(JSON.stringify(_defaultsHandScale)));
+      Object.assign(FLOWER_SCALE,  JSON.parse(JSON.stringify(_defaultsFlowerScale)));
+      Object.assign(DISCARD_SCALE, JSON.parse(JSON.stringify(_defaultsDiscardScale)));
+      Object.assign(WALL_SCALE,    JSON.parse(JSON.stringify(_defaultsWallScale)));
+    } else if (cfg.camera) {
+      Object.assign(CAMERA_CONFIG, JSON.parse(JSON.stringify(_defaultsCamera)));
+      Object.assign(TABLE_SIZE,    JSON.parse(JSON.stringify(_defaultsTableSize)));
+      Object.assign(TABLE_OFFSET,  JSON.parse(JSON.stringify(_defaultsTableOffset)));
+      applyCamera();
+      applyTableSize();
+      applyTableOffset();
+    } else {
+      Object.assign(cfg.ref(), JSON.parse(JSON.stringify(cfg.defaults())));
+    }
+    renderRows();
+    renderNow();
+  };
+
+  renderTabs();
+  renderRows();
+}
+
+document.addEventListener('keydown', (e) => {
+  // v1.7.13: 改 Ctrl+D（或 Cmd+D Mac）避免一般打字誤觸
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault();  // 阻止瀏覽器書籤
+    _buildDebugPanel();
+    const panel = document.getElementById('pos-debug-panel');
+    if (panel) panel.style.display = panel.style.display === 'none' ? (panel._showDisplay || 'flex') : 'none';
+  }
+});
 
 /* ============================================================
    HUD 位置同步：把中央圓形 + 四家玩家卡綁定到 3D 世界座標
@@ -7060,14 +8850,28 @@ const _hudWorldAnchors = [
   { domId: 'hud-pp2', side:'north' },
   { domId: 'hud-pp3', side:'west'  },
 ];
-// 用於投影出「桌邊在 viewport 上的位置」的探針
+// HUD 卡片不該蓋手牌：從手牌中心往外（離桌中心方向）多推 OUTSIDE 單位
+// south/north：手牌沿 Z 軸短、HUD 推 1.8 就夠到手牌外緣
+// east/west：側家手牌橫向長（scale 1.0 + 12 張），HUD 多推 2.5 才有空間
+const _HUD_OUTSIDE = {
+  south: 1.8,
+  north: 1.8,
+  east:  2.5,
+  west:  2.5,
+};
+
+// 用於投影出「HUD 卡片在 viewport 上的位置」的探針
+// v1.7.3: 探針綁定 SEAT_DIST + _HUD_OUTSIDE，HUD 落在手牌外緣而非中心
+//         SEAT_DIST 仍是 3D 手牌位置常數；HUD 探針 = 手牌位置 + 外推量
+//         改 SEAT_DIST → 手牌跟 HUD 一起動；改 _HUD_OUTSIDE → 只調 HUD 距離
 const _edgeProbes = {
-  south: new THREE.Vector3(0, 0,  13.5),
-  north: new THREE.Vector3(0, 0, -13.5),
-  east:  new THREE.Vector3(13.5, 0, 0),
-  west:  new THREE.Vector3(-13.5, 0, 0),
-  // 中央圓形錨點:從桌中心略偏 -Z(往對家方向,viewport 顯示往上),離自家手牌遠一點
-  center:new THREE.Vector3(0, 0, -3.0),
+  south: new THREE.Vector3(0, 0,  SEAT_DIST.south + _HUD_OUTSIDE.south),
+  north: new THREE.Vector3(0, 0, -(SEAT_DIST.north + _HUD_OUTSIDE.north)),
+  east:  new THREE.Vector3( SEAT_DIST.east + _HUD_OUTSIDE.east,  0, 0),
+  west:  new THREE.Vector3(-(SEAT_DIST.west + _HUD_OUTSIDE.west), 0, 0),
+  // 中央圓形錨點：桌中心略偏 +Z（朝玩家方向）
+  // v1.7.4: -3.0 → -1.0 → +2.5 → +0.5（前次太下亂跑，回歸更靠桌中心）
+  center:new THREE.Vector3(0, 0, +0.5),
 };
 const _tmpVec = new THREE.Vector3();
 function _projectToScreen(world3, w, h) {
@@ -7083,10 +8887,11 @@ function syncHudOverlays() {
   const eWest  = _projectToScreen(_edgeProbes.west,   w, h);
   const eCenter= _projectToScreen(_edgeProbes.center, w, h);
   // 中央圓形 → 桌中心,且不出 viewport
+  // v1.7.4: pill 再上移 8 viewport px
   const pill = document.getElementById('hud-center-pill');
   if (pill) {
     pill.style.left = Math.max(60, Math.min(w-60, eCenter.x)) + 'px';
-    pill.style.top  = Math.max(60, Math.min(h-60, eCenter.y)) + 'px';
+    pill.style.top  = Math.max(60, Math.min(h-60, eCenter.y - 8)) + 'px';
     pill.style.right = 'auto'; pill.style.bottom = 'auto';
   }
   // 四家卡 — 貼在「桌邊投影位置」加偏移,而非 viewport 邊
@@ -7096,9 +8901,11 @@ function syncHudOverlays() {
     el.classList.add('hud-pos');
     let x, y;
     if (a.side === 'south')      { x = eCenter.x; y = Math.min(h - 30, eSouth.y + 40); }
-    else if (a.side === 'north') { x = eCenter.x; y = Math.max(30, eNorth.y - 40); }
-    else if (a.side === 'east')  { x = Math.min(w - 90, eEast.x + 60); y = eCenter.y; }
-    else if (a.side === 'west')  { x = Math.max(90, eWest.x - 60); y = eCenter.y; }
+    // v1.7.4: hud-pp2 (north) 再上移 10 viewport px (從 -40 → -50)
+    else if (a.side === 'north') { x = eCenter.x; y = Math.max(30, eNorth.y - 50); }
+    // v1.7.4: east/west HUD 卡片上移 110 → 140 (再上 30px)
+    else if (a.side === 'east')  { x = Math.min(w - 90, eEast.x + 60); y = eCenter.y - 140; }
+    else if (a.side === 'west')  { x = Math.max(90, eWest.x - 60); y = eCenter.y - 140; }
     // 安全 clamp(防極端視窗下飛出去)
     x = Math.max(70, Math.min(w - 70, x));
     y = Math.max(30, Math.min(h - 30, y));
@@ -7108,14 +8915,84 @@ function syncHudOverlays() {
 }
 
 /* ============================================================
+   3D 鳴牌動態定位 (v1.7.6)
+   ─────────────────────────────────────────────────────────────
+   邏輯：鳴牌綁 viewport 絕對位置（用 viewport 寬高的百分比 + 固定 px）
+         縮放時鳴牌位置完全不動、不跟手牌動。
+   每 frame 跑 syncMelds3D：用 MELD_VIEWPORT_POS 算 viewport 絕對位置 →
+   反推世界座標 y=0 平面 → 設鳴牌 group.position。
+   south 鳴牌仍用 placeBySide 寫死世界座標位置（自家近相機、不需 sync）。
+   ============================================================ */
+// 各家鳴牌的 viewport 絕對位置：xPct = viewport 寬度百分比，yPct = 高度百分比
+// v1.7.7 預設值由 user 手調 + fov 鎖 + camera 動態邏輯確定
+const MELD_VIEWPORT_POS = {
+  east:  { xPct: 0.78,  yPct: 0.15 },  // 右家鳴牌（右側偏上）
+  west:  { xPct: 0.064, yPct: 0.86 },  // 左家鳴牌（左下角）
+  north: { xPct: 0.25,  yPct: 0.12 },  // 對家鳴牌（頂部中央偏左）
+};
+
+// 把 viewport (vx, vy) 反推回桌面 y=0 平面的世界座標
+const _unprojTmp = new THREE.Vector3();
+function unprojectToTablePlane(vx, vy) {
+  const w = window.innerWidth, h = window.innerHeight;
+  const ndcX = (vx / w) * 2 - 1;
+  const ndcY = -((vy / h) * 2 - 1);
+  _unprojTmp.set(ndcX, ndcY, 0.5).unproject(camera);
+  const dx = _unprojTmp.x - camera.position.x;
+  const dy = _unprojTmp.y - camera.position.y;
+  const dz = _unprojTmp.z - camera.position.z;
+  if (Math.abs(dy) < 1e-6) return null;
+  const t = -camera.position.y / dy;
+  return {
+    x: camera.position.x + dx * t,
+    z: camera.position.z + dz * t,
+  };
+}
+
+function syncMelds3D() {
+  if (!Groups || !Groups.melds) return;
+  const w = window.innerWidth, h = window.innerHeight;
+  const sides = [
+    { idx: 1, side: 'east'  },
+    { idx: 2, side: 'north' },
+    { idx: 3, side: 'west'  },
+  ];
+  for (const { idx, side } of sides) {
+    const meldGroup = Groups.melds[idx];
+    if (!meldGroup) continue;
+    const pos = MELD_VIEWPORT_POS[side];
+    const targetVx = w * pos.xPct;
+    const targetVy = h * pos.yPct;
+    const worldPos = unprojectToTablePlane(targetVx, targetVy);
+    if (worldPos) {
+      meldGroup.position.x = worldPos.x;
+      meldGroup.position.z = worldPos.z;
+    }
+  }
+}
+
+/* ============================================================
+   Dev: 把核心 3D 物件 expose 到 window，方便 console 操作 / debug
+   ============================================================ */
+Object.assign(window, { THREE, renderer, scene, camera, Groups, SEAT_DIST, _edgeProbes, _HUD_OUTSIDE, MELD_VIEWPORT_POS, findCssSpriteUrl, sliceSprite, render3D, TEX, SPRITE_OPTS, reloadSprites, MELD_OFFSET, HAND_OFFSET, FLOWER_OFFSET, WALL_OFFSET, DISCARD_OFFSET, DISCARD_ROT_DEG, MELD_ROT_DEG, FLOWER_ROT_DEG, HAND_GROUP_ROT_DEG, WALL_ROT_DEG, MELD_SCALE, HAND_SCALE, FLOWER_SCALE, DISCARD_SCALE, WALL_SCALE, HUD_ADJUST, applyHudAdjust, applyAllHudAdjust, CAMERA_CONFIG, applyCamera, TABLE_SIZE, applyTableSize, TABLE_OFFSET, applyTableOffset });
+
+/* ============================================================
    Render loop
    ============================================================ */
+// v1.7.8: 不再需要 syncHudOverlays / syncMelds3D — 所有元素都用 CSS / 世界座標寫死
 function tick() {
-  syncHudOverlays();
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
 tick();
+
+// viewport resize 時重設 #tbl-3d scale（跟 2D 版 updateTblVars 同邏輯）
+let _tbl3dResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(_tbl3dResizeTimer);
+  _tbl3dResizeTimer = setTimeout(updateTbl3dScale, 80);
+});
+updateTbl3dScale();
 
 /* ============================================================
    updateTblVars stub（2D 版呼叫，3D 版無需）
@@ -7380,7 +9257,7 @@ async function init() {
 
   // 桌面 plane（與牌共用 3D 座標系,縮放完全同步）
   if (TEX['table']) {
-    const tableGeom = new THREE.PlaneGeometry(40, 40);
+    const tableGeom = new THREE.PlaneGeometry(TABLE_SIZE.width, TABLE_SIZE.depth);
     const tableMat = new THREE.MeshBasicMaterial({
       map: TEX['table'],
       depthWrite: false,
@@ -7390,6 +9267,9 @@ async function init() {
     tablePlane.position.y = -0.02;          // 略低於牌底
     tablePlane.renderOrder = -1;            // 確保最先繪製,牌一定在桌面上
     scene.add(tablePlane);
+    // v1.7.12: 暫存讓 D 面板能即時重建幾何
+    window._tablePlane = tablePlane;
+    window._shadowPlane = shadowPlane;
   }
 
   // 隱藏載入畫面
@@ -7402,6 +9282,8 @@ async function init() {
 
   // 統計 & 大廳
   Stats.load?.(); Stats.render?.();
+  // v1.7.12: 還原輔助面板狀態
+  Game.loadAssist?.();
 
   // 顯示大廳
   const lobbyEl = document.getElementById('lobby');
