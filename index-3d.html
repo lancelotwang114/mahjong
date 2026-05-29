@@ -9689,6 +9689,16 @@ async function init() {
   const lobbyEl = document.getElementById('lobby');
   if (lobbyEl) lobbyEl.style.display = 'flex';
 
+  // 邀請連結 ?room&host → 自動切到「加入」畫面並帶入連結（模組為 deferred，DOM 已就緒）
+  try {
+    const _ip = new URLSearchParams(location.search);
+    if (_ip.get('host') && _ip.get('room')) {
+      const _ce = document.getElementById('ol-join-code');
+      if (_ce) _ce.value = location.href;
+      Lobby.showOnline();
+      Online.showJoin();
+    }
+  } catch (e) {}
   console.log('🀄 台灣麻將 3D 整合版啟動完成');
 }
 
