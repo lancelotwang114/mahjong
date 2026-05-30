@@ -2287,6 +2287,8 @@ const Groups = {
 };
 // 每次 render3D 後 p0 手牌 mesh 陣列（供 raycast 用）
 let _p0HandMeshes = [];  // [{mesh, tileId, tile}]
+// v1.7.x: 候選/摸牌浮動動畫清單，tick() 每幀做 ease-in 升起 + sine 上下浮動
+let _floatTiles = [];
 
 // 摸牌光暈用的 sprite texture（canvas radial gradient，整個專案共用一份）
 let _glowTexture = null;
@@ -2410,7 +2412,7 @@ function buildHand3D(side, tiles, candidateIds) {
   // 摸牌視覺：懸浮在手牌上方 + 大間距 + 牌身金色 emissive 發光（仿 2D 版風格）
   const DRAWN_GAP = TW * 0.65;   // 右側額外間距,讓摸牌明顯脫離手牌排列
   const DRAWN_LIFT = TH * 0.55;  // 大幅抬高（懸浮感）
-  const CANDIDATE_LIFT = TH * 0.28; // 可吃碰候選牌：適度抬高(懸浮)，低於摸牌
+  const CANDIDATE_LIFT = TH * 0.38; // 可吃碰候選牌：抬高(懸浮)，低於摸牌（v1.7.x 0.28→0.38 更明顯）
   tiles.forEach((entry, i) => {
     const texKey = entry.texKey;
     const tileId = entry.tileId;
@@ -2424,6 +2426,7 @@ function buildHand3D(side, tiles, candidateIds) {
     mesh.position.set(x, posY + yBoost, posZ);
     // 摸牌「光暈」：用 Sprite billboard + canvas radial gradient texture
     // 永遠面對相機,牌本體不變色,光從牌「外圍」散開（仿 2D 範例）
+    let _glowSprite = null;
     if (isDrawn) {
       const spriteMat = new THREE.SpriteMaterial({
         map: getGlowTexture(),
@@ -2433,16 +2436,26 @@ function buildHand3D(side, tiles, candidateIds) {
         depthTest: true,
         opacity: 0.9,
       });
-      const sprite = new THREE.Sprite(spriteMat);
-      sprite.scale.set(TW*3.0, TH*2.0, 1);
+      _glowSprite = new THREE.Sprite(spriteMat);
+      _glowSprite.scale.set(TW*3.0, TH*2.0, 1);
       // sprite 加到 group 而非 mesh,避免 sprite 跟著 mesh.rotation 翻轉縮放異常
-      sprite.position.set(x, posY + yBoost, posZ);
-      group.add(sprite);
+      _glowSprite.position.set(x, posY + yBoost, posZ);
+      group.add(_glowSprite);
     }
     if (isCandidate || isSouth) {
       mesh.userData = { tileId, isSouth };
     }
     group.add(mesh);
+    // v1.7.x: 候選/摸牌 → 註冊到浮動動畫清單（tick() 每幀 ease-in 升起 + sine 浮動）
+    if (isDrawn || isCandidate) {
+      _floatTiles.push({
+        mesh, sprite: _glowSprite,
+        restY: posY, baseY: posY + yBoost,
+        amp: (isDrawn ? TH*0.06 : TH*0.05),
+        phase: i * 0.6,
+        bornAt: (typeof performance!=='undefined' ? performance.now() : Date.now()),
+      });
+    }
     if (isSouth) {
       _p0HandMeshes.push({ mesh, tileId, tile: entry.tile });
     }
@@ -2834,6 +2847,7 @@ function render3D() {
   if (!s || !TEX['wood-back']) return; // 素材未載入完成
 
   _p0HandMeshes = [];
+  _floatTiles = [];
   const candidateIds = Game._candidateMap ? new Set(Game._candidateMap.keys()) : null;
 
   // 清除舊群組
@@ -9570,6 +9584,22 @@ Object.assign(window, { THREE, renderer, scene, camera, Groups, SEAT_DIST, _edge
    ============================================================ */
 // v1.7.8: 不再需要 syncHudOverlays / syncMelds3D — 所有元素都用 CSS / 世界座標寫死
 function tick() {
+  // v1.7.x: 候選/摸牌浮動動畫 — ease-in 升起 + sine 上下浮動（取代靜態瞬間抬起）
+  if (_floatTiles.length) {
+    const now = (typeof performance!=='undefined' ? performance.now() : Date.now());
+    const RISE_T = 260; // ms：升起緩入時間
+    for (let k = 0; k < _floatTiles.length; k++) {
+      const f = _floatTiles[k];
+      if (!f.mesh) continue;
+      const age = now - f.bornAt;
+      let rise = age < RISE_T ? age / RISE_T : 1;
+      rise = 1 - Math.pow(1 - rise, 3); // easeOutCubic
+      const liftedY = f.restY + (f.baseY - f.restY) * rise;
+      const y = liftedY + Math.sin(now * 0.0035 + f.phase) * f.amp * rise;
+      f.mesh.position.y = y;
+      if (f.sprite) f.sprite.position.y = y;
+    }
+  }
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
