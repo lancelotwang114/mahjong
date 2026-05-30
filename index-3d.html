@@ -2110,7 +2110,7 @@ async function loadAllTextures() {
   TEX['back'] = TEX['wood-back'];
   TEX['table'] = tableTex;
   // 牌背皮膚（容錯載入；給大廳「牌背樣式」選擇器用，單張失敗不影響主場景）
-  await Promise.all(TILE_BACKS.map(async b => { try { TEX['back:'+b.id] = await loadTex('assets/backs/back-'+b.id+'.png'); } catch(e) {} }));
+  await Promise.all(TILE_BACKS.map(async b => { try { TEX['back:'+b.id] = await loadTex('assets/tilebacks/back-'+b.id+'.png'); } catch(e) {} }));
   // 所有牌面 texture 套高品質 filtering,避免遠看時牌面糊
   const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 8;
   for (const key of Object.keys(TEX)) {
@@ -2210,7 +2210,7 @@ function _buildTilebackSwatches(){
     w.className = 'tileback-swatch'; w.dataset.id = b.id; w.title = b.name;
     w.style.cssText = 'cursor:pointer;padding:3px;border-radius:7px;border:2px solid transparent;transition:border-color .12s,transform .12s';
     const img = document.createElement('img');
-    img.src = 'assets/backs/back-'+b.id+'.png'; img.alt = b.name;
+    img.src = 'assets/tilebacks/back-'+b.id+'.png'; img.alt = b.name;
     img.style.cssText = 'width:38px;height:44px;border-radius:5px;display:block';
     w.appendChild(img);
     w.addEventListener('click', ()=>applyTileBack(b.id));
