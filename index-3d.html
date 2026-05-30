@@ -2536,8 +2536,8 @@ function buildDiscard3D(side, tiles) {
   // group 仍以中央為 anchor，靠 mesh local z 的 INNER_START 把棄牌起點往該家方向推
   if (side==='south')      { group.position.set(0, 0, 0); }
   else if (side==='north') { group.position.set(0, 0, 0); group.rotation.y = Math.PI; }
-  else if (side==='east')  { group.position.set(0, 0, 0); group.rotation.y = -Math.PI/2; }
-  else if (side==='west')  { group.position.set(0, 0, 0); group.rotation.y = Math.PI/2; }
+  else if (side==='east')  { group.position.set(0, 0, 0); group.rotation.y = Math.PI/2; }   // v1.7.x: 修右↔左棄牌對調（原本與 placeBySide 相反）
+  else if (side==='west')  { group.position.set(0, 0, 0); group.rotation.y = -Math.PI/2; }
   // v1.7.12: 棄牌位置微調（debug panel 可調）
   const o = DISCARD_OFFSET[side];
   if (o) { group.position.x += o.x; group.position.z += o.z; }
@@ -2620,8 +2620,8 @@ const FLOWER_OFFSET = {
 const DISCARD_ROT_DEG = {
   south: { x:  3, y: 0, z:   0 },
   north: { x: -1, y: 0, z:   0 },
-  east:  { x:  0, y: 0, z: -10 },
-  west:  { x:  0, y: 0, z:  10 },
+  east:  { x:  0, y: 0, z:  10 },
+  west:  { x:  0, y: 0, z: -10 },
 };
 
 // 鳴牌牌身旋轉度數 (三軸)
@@ -2665,8 +2665,8 @@ const WALL_OFFSET = {
 const DISCARD_OFFSET = {
   south: { x: -0.2, z: -2   },
   north: { x: -0.1, z: -2.6 },
-  east:  { x: -0.1, z: -2.5 },
-  west:  { x: -0.1, z: -2.3 },
+  east:  { x: -0.1, z: -2.3 },
+  west:  { x: -0.1, z: -2.5 },
 };
 
 // 牌墩旋轉度數 (三軸)
