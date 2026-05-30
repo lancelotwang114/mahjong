@@ -2109,8 +2109,8 @@ async function loadAllTextures() {
   TEX['wood-back'] = woodBackTex;
   TEX['back'] = TEX['wood-back'];
   TEX['table'] = tableTex;
-  // 牌背皮膚（容錯載入；給大廳「牌背樣式」選擇器用，單張失敗不影響主場景）
-  await Promise.all(TILE_BACKS.map(async b => { try { TEX['back:'+b.id] = await loadTex('assets/tilebacks/back-'+b.id+'.png'); } catch(e) {} }));
+  // v1.7.x: 牌背皮膚改「點選時才載入」(lazy)，避免行動裝置一次載 14 張大圖 + 建 mipmap
+  //   記憶體尖峰爆掉被 Safari 砍（只有被選的那一張會建立 WebGL 材質；swatch 縮圖用 <img>）
   // 所有牌面 texture 套高品質 filtering,避免遠看時牌面糊
   const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 8;
   for (const key of Object.keys(TEX)) {
@@ -2190,9 +2190,18 @@ function getBackMat() {
 
 // ── 牌背樣式切換（大廳選擇器）──────────────────────────────
 let _tileBackId = null;
-function applyTileBack(id){
-  const t = TEX['back:'+id];
-  if(!t) return;
+async function applyTileBack(id){
+  let t = TEX['back:'+id];
+  if(!t){
+    // lazy load：第一次選到此牌背才建立 WebGL 材質（行動裝置記憶體友善）
+    try {
+      t = await loadTex('assets/tilebacks/back-'+id+'.png');
+      const ma = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 8;
+      t.anisotropy = ma; t.minFilter = THREE.LinearMipmapLinearFilter;
+      t.magFilter = THREE.LinearFilter; t.generateMipmaps = true; t.needsUpdate = true;
+      TEX['back:'+id] = t;
+    } catch(e){ return; }
+  }
   _tileBackId = id;
   TEX['wood-back'] = t;            // 牌山 top 用 wood-back，render 重建時跟著換
   TEX['back'] = t;
@@ -9904,7 +9913,7 @@ async function init() {
   try {
     _buildTilebackSwatches();
     const _savedBack = localStorage.getItem('mj_tileback_3d');
-    if (_savedBack && TEX['back:'+_savedBack]) applyTileBack(_savedBack);
+    if (_savedBack) applyTileBack(_savedBack);  // lazy：applyTileBack 內部會即時載入
   } catch(e) {}
   const lobbyEl = document.getElementById('lobby');
   if (lobbyEl) lobbyEl.style.display = 'flex';
