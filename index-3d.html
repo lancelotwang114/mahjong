@@ -4704,7 +4704,7 @@ const Game={
       ht0El.classList.add('my-turn');
       // Clear any leftover .sel (keyboard navigation) from previous turn
       ht0El.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
-      this.toast('✦ 輪到你！請打出一張牌',1600);
+      // v1.7.x: 移除「輪到你」深色 toast（計時徽章+動作區已足夠提示，深色塊會擋手牌）
       // action-overlay only activates if there are real action buttons (自摸/暗槓/聽牌)
       if(extraBtns.length) document.getElementById('action-overlay')?.classList.add('active');
       // 提示：左側 #hint-btn 已足夠，不在 action-overlay 重複放置
@@ -4923,9 +4923,7 @@ const Game={
     if(p===0){
       this._flyTile(tileId,'dc0',()=>{
         this._isDiscarding=false; // 【Task1】飛牌動畫結束，解除出牌鎖
-        // Show waiting indicator while AI resolves reactions
-        const wd=document.getElementById('wait-dots');
-        if(wd){wd.classList.add('show');document.getElementById('action-overlay').classList.add('active');}
+        // v1.7.x: 移除出牌後黃點等待指示（輪次文字+座位高亮+聚光燈已足夠提示，且黃點會擋手牌）
         this.render();
         // D5: 棄牌落地彈跳
         setTimeout(()=>this._animLastDiscard('dc0'),0);
