@@ -4108,7 +4108,14 @@ const Game={
     // Default AI names (used for solo mode; online mode overrides via st.names)
     const names=[name,'電腦A','電腦B','電腦C'];
 
-    this.initRound(names,[1,2,3],this.settings.money,0,1,'東');
+    // v1.7.x: 真實儀式 — 首局莊家由骰子決定。房主/單機用 _hostDice 算（線上 _hostDice 已由房主廣播給所有人）；
+    //   客戶端不自算，先給 0 佔位，待房主廣播 game_state 覆蓋（避免 per-seat 旋轉造成 desync）
+    let _firstDealer=0;
+    if(!this._online || this._isHost){
+      if(!this._hostDice) this._hostDice=[1+~~(Math.random()*6),1+~~(Math.random()*6)];
+      _firstDealer=((this._hostDice[0]+this._hostDice[1])-1)%4; // 從擲骰者(東)起逆時針數骰子點數
+    }
+    this.initRound(names,[1,2,3],this.settings.money,_firstDealer,1,'東');
     // 3D 版：隱藏大廳，初始化
     const lobbyEl=document.getElementById('lobby');
     if(lobbyEl) lobbyEl.style.display='none';
@@ -4329,7 +4336,9 @@ const Game={
     // 【Bug2修復】台灣規則：每人發「恰好16張」（含花牌計入16張名額）
     // 花牌計入名額後 hands[p].length + flowers[p].length === 16
     // _doFlowerReplacement 再補足缺少的手牌，確保最終手牌 = 16 張非花牌
-    for(let p=0;p<4;p++){
+    // v1.7.x: 真實儀式 — 從莊家牌墩起、逆時針發牌（牌堆已洗，結果公平；房主發完廣播，客戶端照收）
+    for(let k=0;k<4;k++){
+      const p=(dealer+k)%4;
       let count=0; // 計入花牌的總發牌數
       while(count<16&&pos<deck.length){
         const t=deck[pos++];
@@ -4514,7 +4523,9 @@ const Game={
     if(total===0){ done(); return; }
     // Batch: all players draw replacements instantly
     let hadFlowers=false;
-    for(let p=0;p<4;p++){
+    const _flrDealer=s.dealer??0;   // v1.7.x: 補花從莊家起逆時針（牌從牌尾/對面端補，原本已是）
+    for(let k=0;k<4;k++){
+      const p=(_flrDealer+k)%4;
       if(s.pending[p]<=0) continue;
       hadFlowers=true;
       // Draw replacement tiles until no more flowers pending
