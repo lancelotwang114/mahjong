@@ -2107,6 +2107,7 @@ async function loadAllTextures() {
   ['東','南','西','北','中','發','白'].forEach((ch, i) => TEX[`honor-${ch}`] = honor[i]);
   ['梅','蘭','菊','竹','春','夏','秋','冬'].forEach((ch, i) => TEX[`flower-${ch}`] = flower[i]);
   TEX['wood-back'] = woodBackTex;
+  TEX['__origBack'] = woodBackTex;   // v1.7.x: 保留預設牌背原始參照（房主用預設時客戶端可還原）
   TEX['back'] = TEX['wood-back'];
   TEX['table'] = tableTex;
   // v1.7.x: 牌背皮膚改「點選時才載入」(lazy)，避免行動裝置一次載 14 張大圖 + 建 mipmap
@@ -9923,9 +9924,12 @@ async function init() {
     const _ip = new URLSearchParams(location.search);
     if (_ip.get('host') && _ip.get('room')) {
       const _ce = document.getElementById('ol-join-code');
-      if (_ce) _ce.value = location.href;
+      if (_ce) { _ce.value = location.href; const _w=_ce.parentElement; if(_w) _w.style.display='none'; } // 連結自動帶入並隱藏，避免誤改
       Lobby.showOnline();
       Online.showJoin();
+      try { Online._setModeBtnsVisible(false); } catch(e){}   // 藏「建立/加入房間」切換鈕，避免誤觸
+      const _hint = document.querySelector('#ol-join-view > div'); // 第一個提示 div
+      if (_hint) _hint.textContent = '輸入你的名字後按「加入遊戲」即可';
     }
   } catch (e) {}
   // ?layoutqa：載入版面 QA 測試局面（四家副露），方便用 Ctrl+D 調鳴牌位置（對齊 2D 觸發）
@@ -10194,7 +10198,7 @@ window.Online = {
     Game._hostDice=diceVals;
     this.peers.forEach((p,i)=>{
       if(i===0||!p.id) return;
-      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals,hostId:MahjongNetwork.playerId,...roomSettings});
+      MahjongNetwork.sendTo(p.id,{type:'game_start',playerIndex:i,names,dice:diceVals,hostId:MahjongNetwork.playerId,tileback:Game._tileBackId||null,...roomSettings});
     });
     Game._online=true; Game._isHost=true; Game._myIndex=0;
     Game._peers=this.peers;
@@ -10270,6 +10274,11 @@ window.Online = {
         }
         if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
         if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
+        // v1.7.x: 牌背由房主統一決定 — 客戶端一律跟房主，不用自己本機選的背
+        try {
+          if(data.tileback){ applyTileBack(data.tileback); }
+          else if(TEX['__origBack']){ TEX['wood-back']=TEX['__origBack']; TEX['back']=TEX['__origBack']; matBack.map=TEX['__origBack']; matBack.needsUpdate=true; _tileBackId=null; if(typeof render3D==='function')render3D(); }
+        } catch(e){}
         Game._applyOnlineRole(); // hide speed/pause for guests
         // 儲存重連資訊（房間 + 席位 + 房主 peer ID），供斷線後重連使用
         try {
