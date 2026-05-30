@@ -5209,14 +5209,13 @@ const Game={
         if(chiTilesDone.has(t.id))return;
         chiTilesDone.add(t.id);
         addCand(t.id,'吃',allCombos,()=>{
-          this.clearBtns();
           if(chiOpts.length===1){
+            this.clearBtns();
             this.doMeld(0,'chi',chiOpts[0].tiles);
           } else {
-            // Multi-chi fallback: pick the combo leaving the best hand score
-            const s=this.st;let bestOpt=chiOpts[0];let bestSc=-Infinity;
-            chiOpts.forEach(opt=>{const rem=s.hands[0].filter(h=>!opt.tiles.some(o=>o.id===h.id));const sc=calcBlockScore(rem);if(sc>bestSc){bestSc=sc;bestOpt=opt;}});
-            this.doMeld(0,'chi',bestOpt.tiles);
+            // 方案A：多吃法不自動代選 — 點候選牌也開啟選單讓玩家自己挑（與「吃」按鈕一致）
+            clearTimeout(this._meldTimeout);this.stopTimer();this.hideMeldPreview();
+            this.showChiPicker(chiOpts,tile);
           }
         });
         // Store chiOpts + disc tile on the info for clickable tooltip rows
@@ -7462,14 +7461,9 @@ const Game={
         tiles.appendChild(entry);
       });
     } else {
+      // v1.7.x: 沒聽牌就不顯示 hand-bar（原本會留一條空的深色 bar 擋畫面/被誤認黑塊）
       lbl.textContent='';
-      // Show bar only if timer is active
-      const tbadge=document.getElementById('tbadge');
-      if(tbadge&&tbadge.style.display==='flex'){
-        bar.classList.add('show');
-      } else {
-        bar.classList.remove('show');
-      }
+      bar.classList.remove('show');
     }
   },
 
