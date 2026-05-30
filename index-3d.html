@@ -1431,6 +1431,10 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <button class="mode-hero-btn" onclick="Lobby.showSolo()">🎮 單機對戰（AI）</button>
         <button class="mode-hero-btn online" onclick="Lobby.showOnline()">🌐 連線對戰（開房間）</button>
       </div>
+      <div id="tileback-picker" style="margin-top:16px">
+        <div style="text-align:center;color:var(--gold);font-size:.8rem;font-weight:700;margin-bottom:8px">🀫 牌背樣式</div>
+        <div id="tileback-swatches" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:340px;margin:0 auto"></div>
+      </div>
       <div id="resume-bar" style="display:none;margin-top:14px;padding:10px 16px;background:rgba(212,168,67,.1);border:1px solid rgba(212,168,67,.4);border-radius:12px;text-align:center">
         <span style="color:var(--gold);font-size:.85rem;font-weight:700">🔄 偵測到中斷的牌局</span>
         <div style="margin-top:7px;display:flex;gap:8px;justify-content:center">
@@ -2015,6 +2019,10 @@ const SPRITE_OPTS = {
 };
 
 const TEX = {};
+const TILE_BACKS = [
+  {id:'amber',name:'經典琥珀黃'},{id:'wood',name:'細緻木紋'},{id:'jade',name:'翡翠綠'},{id:'navy',name:'深海藍'},{id:'cinnabar',name:'紅玉朱砂'},
+  {id:'purple',name:'紫金宮廷'},{id:'obsidian',name:'玄武黑曜'},{id:'ivory',name:'象牙白玉'},{id:'porcelain',name:'青花瓷韻'},{id:'pearl',name:'珍珠紋'},
+];
 // v1.7.8: 從 tiles-sprite.css 提取 sprite base64 URL，跟 2D 版用同一套素材
 //   (assets/ 內的 PNG 是較舊版本，顏色偏淡；2D 版內嵌 sprite 較鮮豔)
 //   抓不到 CSS sprite 就 fallback 到 assets/ 確保不 break
@@ -2100,6 +2108,8 @@ async function loadAllTextures() {
   TEX['wood-back'] = woodBackTex;
   TEX['back'] = TEX['wood-back'];
   TEX['table'] = tableTex;
+  // 牌背皮膚（容錯載入；給大廳「牌背樣式」選擇器用，單張失敗不影響主場景）
+  await Promise.all(TILE_BACKS.map(async b => { try { TEX['back:'+b.id] = await loadTex('assets/backs/back-'+b.id+'.png'); } catch(e) {} }));
   // 所有牌面 texture 套高品質 filtering,避免遠看時牌面糊
   const maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 8;
   for (const key of Object.keys(TEX)) {
@@ -2175,6 +2185,46 @@ const matBack = new THREE.MeshStandardMaterial({ map:null, roughness:0.38, metal
 function getBackMat() {
   if (!matBack.map && TEX['wood-back']) { matBack.map = TEX['wood-back']; matBack.needsUpdate = true; }
   return matBack;
+}
+
+// ── 牌背樣式切換（大廳選擇器）──────────────────────────────
+let _tileBackId = null;
+function applyTileBack(id){
+  const t = TEX['back:'+id];
+  if(!t) return;
+  _tileBackId = id;
+  TEX['wood-back'] = t;            // 牌山 top 用 wood-back，render 重建時跟著換
+  TEX['back'] = t;
+  matBack.map = t; matBack.needsUpdate = true;   // 所有牌背共用 matBack，直接換貼圖
+  try { localStorage.setItem('mj_tileback_3d', id); } catch(e){}
+  if (typeof render3D === 'function' && typeof Game !== 'undefined' && Game.st && Game.st.phase === 'playing') render3D();
+  _updateTilebackSwatches();
+}
+function _buildTilebackSwatches(){
+  const box = document.getElementById('tileback-swatches');
+  if(!box || box.dataset.built) return;
+  box.dataset.built = '1';
+  TILE_BACKS.forEach(b => {
+    const w = document.createElement('div');
+    w.className = 'tileback-swatch'; w.dataset.id = b.id; w.title = b.name;
+    w.style.cssText = 'cursor:pointer;padding:3px;border-radius:7px;border:2px solid transparent;transition:border-color .12s,transform .12s';
+    const img = document.createElement('img');
+    img.src = 'assets/backs/back-'+b.id+'.png'; img.alt = b.name;
+    img.style.cssText = 'width:38px;height:44px;border-radius:5px;display:block';
+    w.appendChild(img);
+    w.addEventListener('click', ()=>applyTileBack(b.id));
+    w.addEventListener('mouseenter', ()=>{ w.style.transform='translateY(-2px)'; });
+    w.addEventListener('mouseleave', ()=>{ w.style.transform=''; });
+    box.appendChild(w);
+  });
+  _updateTilebackSwatches();
+}
+function _updateTilebackSwatches(){
+  const box = document.getElementById('tileback-swatches');
+  if(!box) return;
+  Array.from(box.children).forEach(w => {
+    w.style.borderColor = (w.dataset.id === _tileBackId) ? 'var(--gold)' : 'transparent';
+  });
 }
 
 function makeTile3D(texKey, isCandidate) {
@@ -9824,6 +9874,12 @@ async function init() {
   Game.loadAssist?.();
 
   // 顯示大廳
+  // 牌背樣式：建立大廳選擇器 + 還原上次選擇（未選則維持內建牌背）
+  try {
+    _buildTilebackSwatches();
+    const _savedBack = localStorage.getItem('mj_tileback_3d');
+    if (_savedBack && TEX['back:'+_savedBack]) applyTileBack(_savedBack);
+  } catch(e) {}
   const lobbyEl = document.getElementById('lobby');
   if (lobbyEl) lobbyEl.style.display = 'flex';
 
