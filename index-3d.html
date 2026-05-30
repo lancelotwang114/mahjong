@@ -638,7 +638,7 @@ body::before {
 #tbadge.urg { animation:timerUrg .4s ease infinite alternate; }
 @keyframes timerUrg { from{transform:scale(1)} to{transform:scale(1.05)} }
 #tbadge svg { position:absolute; inset:0; }
-#tnum { font-size:14px; font-weight:700; color:var(--gold,#d4a843); position:relative; z-index:1; }
+#tnum { font-size:16px; font-weight:900; color:var(--gold,#d4a843); position:relative; z-index:1; }
 
 /* 按鈕樣式 */
 .ab { min-width:52px; padding:7px 14px; border-radius:6px;
@@ -6204,7 +6204,7 @@ const Game={
     const badge=document.getElementById('tbadge');
     const rfg=document.getElementById('trfg');
     const tn=document.getElementById('tnum');
-    const circ=120; // 2*pi*19
+    const circ=107; // 2*pi*17，對齊 stroke-dasharray=107，圓環比例才準
     badge.style.display='flex';
     document.getElementById('action-overlay')?.classList.add('active');
     document.getElementById('hand-bar').classList.add('show');
@@ -6219,7 +6219,9 @@ const Game={
       badge.style.color=badge.style.borderColor;
       if(urg)Snd.tick();
     };
+    rfg.style.transition='none';        // 初次設成滿環時不要播放補滿動畫
     tick();
+    requestAnimationFrame(()=>{ if(rfg) rfg.style.transition='stroke-dashoffset 1s linear'; }); // 之後每秒平滑過渡 → 連續倒數
     this.timer=setInterval(()=>{
       this.timerSec--;tick();
       if(this.timerSec<=0){
@@ -6991,7 +6993,7 @@ const Game={
         const badge=document.getElementById('tbadge');
         const rfg=document.getElementById('trfg');
         const tn=document.getElementById('tnum');
-        const circ=120;
+        const circ=107;
         badge.style.display='flex';
         const tick=()=>{
           tn.textContent=this.timerSec;
