@@ -4921,6 +4921,11 @@ const Game={
     if(this._online&&!this._isHost&&p===0){
       if(this._isDiscarding)return; // 【Task1】雙重出牌防護鎖：等主機確認前鎖死
       this._isDiscarding=true;
+      // v1.7.x【防雙打】非房主一出牌就停計時器/看門狗 + 清回合 UI。
+      //   否則最後一秒出牌、房主 game_state 還沒回來時，計時器逾時會強制解鎖再代打一張 → 一次兩張 → 相公
+      this.stopTimer();this.clearBtns();
+      clearTimeout(this._centralTurnTimer);clearTimeout(this._staleWatchdog);
+      document.getElementById('ht0')?.classList.remove('my-turn');
       const discMsg={type:'action',action:'discard',tileId,turnSeq:this._myTurnSeq||0};
       if(this._pendingDeclareRiichi){this._pendingDeclareRiichi=false;discMsg.declareRiichi=true;}
       MahjongNetwork.broadcast(discMsg);
