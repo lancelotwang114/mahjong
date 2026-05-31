@@ -1786,10 +1786,10 @@ const TW = 0.72, TD = 0.46, TH = 1.20;
    ============================================================ */
 const canvas = document.getElementById('scene');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
-// pixelRatio：SSAA 超採樣到 4 倍像素，牌面才夠銳利
-// （v1.7.3 實測 devicePixelRatio×1~2 都霧霧的；×4 OK）
-// cap 4 避免低階 GPU / 高 DPR 螢幕（DPR≥2）GPU 負擔過重
-renderer.setPixelRatio(Math.min(window.devicePixelRatio * 4, 4));
+// pixelRatio：v1.7.x 由 ×4 降為 ×2。×4(framebuffer 7680×4320≈3300萬px) 造成 CPU/RAM 暴增
+// （單分頁 ~1.4GB、CPU 75%）。×2(3840×2160) 在 ≤4K 螢幕仍銳利，像素量為 ×4 的 1/4。
+// 若特定大螢幕仍覺糊，正解是把 canvas framebuffer 尺寸對齊實際顯示大小，而非無腦超採樣。
+renderer.setPixelRatio(Math.min(window.devicePixelRatio * 2, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -9605,7 +9605,12 @@ Object.assign(window, { THREE, renderer, scene, camera, Groups, SEAT_DIST, _edge
    Render loop
    ============================================================ */
 // v1.7.8: 不再需要 syncHudOverlays / syncMelds3D — 所有元素都用 CSS / 世界座標寫死
-function tick() {
+let _lastFrameTs = 0;
+function tick(ts) {
+  requestAnimationFrame(tick);
+  // v1.7.x: 影格上限 ~30fps（回合制不需 60fps 連續重繪），CPU 再省約一半
+  if (ts !== undefined && ts - _lastFrameTs < 32) return;
+  _lastFrameTs = ts || 0;
   // v1.7.x: 候選/摸牌浮動動畫 — ease-in 升起 + sine 上下浮動（取代靜態瞬間抬起）
   if (_floatTiles.length) {
     const now = (typeof performance!=='undefined' ? performance.now() : Date.now());
@@ -9623,7 +9628,6 @@ function tick() {
     }
   }
   renderer.render(scene, camera);
-  requestAnimationFrame(tick);
 }
 tick();
 
