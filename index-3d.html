@@ -1785,13 +1785,15 @@ const TW = 0.72, TD = 0.46, TH = 1.20;
    Renderer / Scene / Camera
    ============================================================ */
 const canvas = document.getElementById('scene');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias:true, alpha:true });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:false, alpha:true }); // v1.7.x: 關 MSAA（×2 超採樣已磨平邊緣），省 GPU
 // pixelRatio：v1.7.x 由 ×4 降為 ×2。×4(framebuffer 7680×4320≈3300萬px) 造成 CPU/RAM 暴增
 // （單分頁 ~1.4GB、CPU 75%）。×2(3840×2160) 在 ≤4K 螢幕仍銳利，像素量為 ×4 的 1/4。
 // 若特定大螢幕仍覺糊，正解是把 canvas framebuffer 尺寸對齊實際顯示大小，而非無腦超採樣。
 renderer.setPixelRatio(Math.min(window.devicePixelRatio * 2, 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;   // v1.7.x: 陰影不每幀重算，只在場景重建時更新（render3D 設 needsUpdate）
+renderer.shadowMap.needsUpdate = true;   // 首幀先算一次
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
@@ -2330,7 +2332,7 @@ function getGlowTexture() {
   return _glowTexture;
 }
 
-function clearGroup(g) { if (g) { scene.remove(g); g.traverse(c => { if (c.geometry) c.geometry.dispose(); }); } }
+function clearGroup(g) { if (g) scene.remove(g); } // v1.7.x: 不再 dispose 共用幾何/材質（tileGeom 共用，dispose 會每步牌重傳浪費）
 
 /* ============================================================
    四家手牌中心 3D 座標（共用常數）
@@ -2870,6 +2872,7 @@ function render3D() {
 
   _p0HandMeshes = [];
   _floatTiles = [];
+  if (renderer && renderer.shadowMap) renderer.shadowMap.needsUpdate = true; // v1.7.x: 場景重建→下一幀重算一次陰影
   const candidateIds = Game._candidateMap ? new Set(Game._candidateMap.keys()) : null;
 
   // 清除舊群組
