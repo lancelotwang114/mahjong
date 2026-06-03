@@ -7909,6 +7909,9 @@ const Game={
     }
     // 【v1.6.62】宣告聽牌後：自摸自動胡，否則自動打牌（不顯示停止聽牌）
     if(this.riichiMode){
+      // v1.7.x【防相公】聽牌玩家只能摸切。收到「turn 已推進但房主尚未替我摸牌」的中間態(drawnId=null)時，
+      // 不可拿手牌亂打 → 等下一個帶 drawnId 的 game_state（否則拆聽牌型→相公→之後胡不了）
+      if(!s.drawnId) return;
       if(winNow){this.doWin(0,true);return;}
       if(s.tenpai[0]&&s.tenpaiT[0]) this.showTenpai(s.tenpaiT[0]);
       const _rDiscIdNH=this._autoPlayDiscard(0);
