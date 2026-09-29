@@ -3245,11 +3245,34 @@ const Snd={
     console.log('[Voice] Picked:',picked?.name,picked?.lang);
     return picked;
   },
+  // Edge TTS 預錄語音：tools/gen_voice.py 產生 audio/voice/<文字>.mp3；缺檔才退回瀏覽器語音
+  // ponytail: 首次播放才抓檔（每檔約 12KB），不預載；網路慢時第一次會晚一點
+  _clips:{}, _clipSrc:null,
+  _clip(text){
+    return this._clips[text]||(this._clips[text]=fetch(`audio/voice/${encodeURIComponent(text)}.mp3`)
+      .then(r=>{ if(!r.ok) throw new Error('no clip'); return r.arrayBuffer(); })
+      .then(b=>this.ctx.decodeAudioData(b)));
+  },
+  _playClip(text,vol=1){
+    this.init();
+    if(this.ctx.state==='suspended') this.ctx.resume();
+    return this._clip(text).then(buf=>{
+      try{ this._clipSrc?.stop(); }catch(e){} // 覆蓋式播放：新的一句切掉舊的
+      const src=this.ctx.createBufferSource(), g=this.ctx.createGain();
+      g.gain.value=vol*this.volume;
+      src.buffer=buf; src.connect(g); g.connect(this.ctx.destination);
+      // ponytail: Edge 輸出開頭固定約 0.19 秒靜音（實測 0.18~0.20），直接從 0.15 秒起播；換聲線要重量
+      src.start(0,0.15); this._clipSrc=src;
+    });
+  },
   say(tileName){
-    if(!window.speechSynthesis)return;
     if(this.volume===0||this.theme==='mute')return; // 靜音時也不要念
+    if((Game?.settings?.voice||'auto')==='off')return;
+    this._playClip(tileName).catch(()=>this._sayTTS(tileName));
+  },
+  _sayTTS(tileName){
+    if(!window.speechSynthesis)return;
     const voicePref=Game?.settings?.voice||'auto';
-    if(voicePref==='off')return;
     const u=new SpeechSynthesisUtterance(tileName);
     u.lang='zh-TW';
     const spd=Game?.aiSpeed||'normal';
@@ -5903,7 +5926,7 @@ const Game={
     if(s.ai.includes(p))this._aiQuip(p,'win');
     this.ann('win');Snd.win();
     // 胡牌/自摸語音廣播
-    setTimeout(()=>this.speakWin(s.names[p]||`玩家${p}`,selfDraw),300);
+    setTimeout(()=>this.speakWin(p,selfDraw),300);
     this.render();
     // 【BROADCAST_GAME_OVER / Task2】主機逐一傳送旋轉後的結算封包（含金錢），確保客戶端無需自行計算
     if(this._online&&this._isHost){
@@ -5986,7 +6009,7 @@ const Game={
     if(p===0)setTimeout(()=>this._burstConfetti(),600);
     if(s.ai.includes(p))this._aiQuip(p,'win');
     this.ann('win');Snd.win();
-    setTimeout(()=>this.speakWin(s.names[p]||`玩家${p}`,zimo),300);
+    setTimeout(()=>this.speakWin(p,zimo),300);
     this.render();
     if(this._online&&this._isHost){
       this._peers.forEach((pConn,idx)=>{
@@ -6184,7 +6207,7 @@ const Game={
     // 新聽牌時：全場語音廣播 + 連線封包
     if(!wasTenpai&&s.tenpai[p]){
       const name=s.names&&s.names[p]||`玩家${p}`;
-      this.speakTing(name);
+      this.speakTing(p);
       if(this._online&&this._isHost&&typeof MahjongNetwork!=='undefined'){
         MahjongNetwork.broadcast({type:'broadcast_ting',playerName:name,playerIdx:p});
       }
@@ -6216,6 +6239,9 @@ const Game={
 
   // ── 麻將語音廣播共用工具 ─────────────────────────────────
   _speakMj(text){
+    Snd._playClip(text,.5).catch(()=>this._speakMjTTS(text));
+  },
+  _speakMjTTS(text){
     if(!window.speechSynthesis)return;
     const u=new SpeechSynthesisUtterance(text);
     u.lang='zh-TW';u.rate=1.05;u.pitch=1.0;u.volume=0.5;
@@ -6229,11 +6255,15 @@ const Game={
     speechSynthesis.cancel();
     setTimeout(()=>speechSynthesis.speak(u),55);
   },
-  speakTing(playerName){
-    this._speakMj(`${playerName}聽牌`);
+  // 播報用座位（莊家 = 東家），各台依自己視角的 p / dealer 計算，結果一致；語音可預錄
+  _seatName(p){
+    return '東南西北'[((p-(this.st?.dealer||0))%4+4)%4]+'家';
   },
-  speakWin(playerName,selfDraw){
-    this._speakMj(selfDraw?`${playerName}自摸`:`${playerName}胡牌`);
+  speakTing(p){
+    this._speakMj(`${this._seatName(p)}聽牌`);
+  },
+  speakWin(p,selfDraw){
+    this._speakMj(`${this._seatName(p)}${selfDraw?'自摸':'胡牌'}`);
   },
 
   // ── TIMER ─────────────────────────────────────────────
@@ -7344,7 +7374,7 @@ const Game={
     // 【BROADCAST_TING】主機路徑（isHost 或單機）：廣播語音封包並自己播放
     if(!this._online||this._isHost){
       const tingName=s.names[0]||'玩家0';
-      this.speakTing(tingName);
+      this.speakTing(0);
       if(this._online&&this._isHost){
         MahjongNetwork.broadcast({type:'broadcast_ting',playerName:tingName,playerIdx:0});
       }
@@ -10657,7 +10687,8 @@ window.Online = {
       case 'broadcast_ting':
         // 【BROADCAST_TING】所有客戶端收到聽牌廣播後播語音
         if(!Game._isHost){
-          Game.speakTing(data.playerName||`玩家${data.playerIdx}`);
+          // playerIdx 是房主視角（絕對座位）→ 轉成本機視角
+          Game.speakTing(((data.playerIdx-(Game._myIndex||0))%4+4)%4);
         }
         break;
       case 'chat':
@@ -10757,7 +10788,7 @@ window.Online = {
             // 【BROADCAST_TING】主機廣播聽牌語音封包給所有人
             const tingName=Game.st.names[peerIdx]||`玩家${peerIdx}`;
             MahjongNetwork.broadcast({type:'broadcast_ting',playerName:tingName,playerIdx:peerIdx});
-            Game.speakTing(tingName); // 主機自己也播
+            Game.speakTing(peerIdx); // 主機自己也播（房主視角 = 絕對座位）
           } else {
             console.warn(`[riichi] p${peerIdx} declared riichi but not tenpai after discard, ignoring`);
           }
