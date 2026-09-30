@@ -421,7 +421,7 @@ body::before {
 /* ========================= 1920×1080 設計畫布 ========================= */
 /* v1.7.8: 整個 3D 場景 + HUD 裝進 #tbl-3d，CSS scale 適應 viewport (同 2D 版) */
 #tbl-3d {
-  position: absolute;
+  position: fixed; /* fixed：1920 原始寬度不計入版面，手機不會被撐成 1550 寬再整頁縮小 */
   width: 1920px;
   height: 1080px;
   transform-origin: top left;
@@ -477,7 +477,8 @@ body::before {
 
 /* 聽牌：面板外圈懸浮金框（::after 疊層，持續到胡牌／流局） */
 @keyframes ppTenpaiGold { 0%,100%{ box-shadow:0 0 10px 2px rgba(245,200,90,.5); transform:translateY(0); } 50%{ box-shadow:0 0 26px 6px rgba(255,216,90,.95); transform:translateY(-4px); } }
-.pp.tenpai::after { content:''; position:absolute; inset:-6px; border-radius:inherit; border:2px solid #f5cc6a; pointer-events:none; animation:ppTenpaiGold 1.6s ease-in-out infinite; }
+/* 雙線金框：與「輪到誰」的單線金光區隔 */
+.pp.tenpai::after { content:''; position:absolute; inset:-8px; border-radius:14px; border:4px double #f5cc6a; pointer-events:none; animation:ppTenpaiGold 1.6s ease-in-out infinite; }
 
 /* v1.7.8: 四家位置改用 id 寫死座標 (in #tbl-3d 1920×1080 內，center anchor) */
 #hud-pp0 { left:1001px; top:1057px; transform: translate(-50%, -50%); }   /* 玩家底中央 */
@@ -767,6 +768,39 @@ body::before {
 }
 .chat-fab-label { font-size:13px; }
 
+/* ══ HUD 可讀性補償 ══
+   HUD 是 1920×1080 設計再整體縮小；--hudk（字）/ --hudt（按鈕）由 updateTbl3dScale 依縮放比例算，
+   讓實際字級約 13.5px、按鈕約 40px（上限 2.2 倍）。只放大字與尺寸，不動 HUD_ADJUST 校好的定位。 */
+.pp { min-width:calc(160px*var(--hudk,1)); padding:calc(8px*var(--hudk,1)) calc(14px*var(--hudk,1)) calc(9px*var(--hudk,1)) calc(50px*var(--hudk,1)); }
+.pp .av { left:calc(5px*var(--hudk,1)); width:calc(38px*var(--hudk,1)); height:calc(38px*var(--hudk,1)); font-size:calc(22px*var(--hudk,1)); }
+.pp .name, .pp .score { font-size:calc(13px*var(--hudk,1)); }
+.pp .windbadge { width:calc(22px*var(--hudk,1)); height:calc(22px*var(--hudk,1)); font-size:calc(12px*var(--hudk,1)); }
+.ccp-round { font-size:calc(11px*min(var(--hudk,1),1.6)); }
+.ccp-deck  { font-size:calc(30px*min(var(--hudk,1),1.6)); }
+.ccp-label { font-size:calc(10px*min(var(--hudk,1),1.6)); }
+.tools { gap:calc(8px*var(--hudt,1)); }
+.tools .ic { width:calc(36px*var(--hudt,1)); height:calc(36px*var(--hudt,1)); font-size:calc(16px*var(--hudt,1)); border-radius:calc(8px*var(--hudt,1)); }
+.tools .ic.ic-wide { width:auto; min-width:calc(48px*var(--hudt,1)); font-size:calc(13px*var(--hudt,1)); }
+.tools .ic::after { font-size:calc(10px*var(--hudk,1)); }
+.tools .ic.on { border-color:#f5cc6a; background:linear-gradient(180deg,rgba(90,60,15,.95),rgba(50,32,8,.95)); box-shadow:0 0 12px rgba(245,200,90,.7); }
+.pause-fab, .chat-fab { font-size:calc(14px*var(--hudt,1)); padding:calc(8px*var(--hudt,1)) calc(15px*var(--hudt,1)); }
+#pause-fab-icon, .chat-fab-label { font-size:calc(14px*var(--hudt,1)); }
+#toast { font-size:calc(13px*var(--hudk,1)); }
+/* 放大後靠邊面板改以畫面邊緣為錨點，避免被切；自己的面板移到左下（聊天鈕上方），不擋手牌 */
+#hud-pp0 { left:calc(36px + 104px*var(--hudk,1)) !important; top:calc(1030px - 40px*var(--hudt,1) - 36px*var(--hudk,1)) !important; }
+#hud-pp1 { left:calc(1880px - 96px*var(--hudk,1)) !important; }
+#hud-pp2 { top:calc(8px + 26px*var(--hudk,1)) !important; }
+#hud-pp3 { left:calc(40px + 96px*var(--hudk,1)) !important; }
+
+/* 手機直向：提示轉橫向（大廳本身支援直向，由 #lobby 蓋在上層） */
+#rotate-hint { display:none; position:fixed; inset:0; z-index:250; background:rgba(10,6,4,.96); color:#f5e2a8;
+  flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px;
+  font:700 18px 'Noto Sans TC',sans-serif; }
+#rotate-hint .ri { font-size:56px; animation:riTurn 1.8s ease-in-out infinite; }
+#rotate-hint small { font-weight:500; font-size:13px; color:#a89868; }
+@keyframes riTurn { 0%,20%{transform:rotate(0)} 50%,80%{transform:rotate(-90deg)} 100%{transform:rotate(0)} }
+@media (orientation:portrait) and (max-width:820px) { #rotate-hint { display:flex; } }
+
 /* ── 3D 版聊天面板（移到左下） ── */
 #chat-panel {
   position:absolute; left:20px; bottom:80px;
@@ -1031,6 +1065,20 @@ body::before {
   box-shadow:0 0 80px rgba(212,168,67,.2),0 0 0 6px rgba(60,30,8,.5),inset 0 1px 0 rgba(255,200,100,.08);
 }
 .lcard::-webkit-scrollbar{width:4px}.lcard::-webkit-scrollbar-thumb{background:rgba(212,168,67,.3)}
+/* 大廳戰績（2D 版樣式移植＋放大）：橫排小卡；重置為明確按鈕並需確認 */
+#stats-bar{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:8px 0 2px}
+#stats-bar .sc{background:rgba(212,168,67,.07);border:1px solid rgba(212,168,67,.18);border-radius:8px;padding:6px 12px;text-align:center;min-width:64px}
+#stats-bar .sc-v{font-size:17px;font-weight:700;color:var(--gold,#d4a843);display:block}
+#stats-bar .sc-l{font-size:11px;color:rgba(212,168,67,.6);display:block;margin-top:1px}
+.stats-reset{display:block;margin:8px auto 0;padding:4px 14px;border:1px solid rgba(212,168,67,.35);border-radius:999px;background:transparent;
+  font:500 12px 'Noto Sans TC',sans-serif;color:rgba(212,168,67,.75);cursor:pointer}
+.stats-reset:hover{color:#f5cc6a;border-color:rgba(212,168,67,.7)}
+/* 寬螢幕：大廳兩欄（左：名字／模式等主要操作，右：戰績），免捲動 */
+@media (min-width:980px){
+  .lcard{width:min(900px,94vw);max-width:none;display:grid;grid-template-columns:1fr 1fr;column-gap:28px;align-items:start}
+  .lcard > *{grid-column:1}
+  .lcard > .lside{grid-column:2;grid-row:1 / span 30;background:rgba(0,0,0,.22);border:1px solid rgba(212,168,67,.15);border-radius:12px;padding:14px}
+}
 .ltitle{font-family:'Noto Serif TC';font-size:clamp(1.8rem,4vw,2.6rem);font-weight:900;color:var(--gold);letter-spacing:.15em;text-shadow:0 0 25px rgba(212,168,67,.55)}
 .lsub{color:rgba(212,168,67,.45);font-size:.78rem;letter-spacing:.25em;margin-bottom:24px}
 .ldeco{font-size:1.4rem;margin-bottom:10px;animation:bob 3s ease-in-out infinite}
@@ -1339,12 +1387,12 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 
   <!-- 右上工具 -->
   <div class="tools">
-    <div class="ic" data-label="提示" title="出牌提示 (H)" id="hud-hint-btn" onclick="Game.showHint?.()">提</div>
-    <div class="ic" data-label="輔助" title="輔助面板（聽牌計算 / 危險牌 / 牌追蹤）" id="hud-assist-btn" onclick="Game.toggleAssistPanel?.()">輔</div>
+    <div class="ic" data-label="提示" title="出牌提示 (H)" id="hud-hint-btn" onclick="Game.showHint?.()">💡</div>
+    <div class="ic" data-label="輔助" title="輔助面板（聽牌計算 / 危險牌 / 牌追蹤）" id="hud-assist-btn" onclick="Game.toggleAssistPanel?.()">🧮</div>
     <div class="ic ic-wide" data-label="AI 速度" title="AI 速度：正常" id="hud-speed-btn" onclick="Game.cycleSpeed?.()">正常</div>
-    <div class="ic" data-label="代打" title="自動代打" id="hud-autoplay-btn" onclick="Game.toggleAutoPlay?.()">代</div>
+    <div class="ic" data-label="代打" title="自動代打" id="hud-autoplay-btn" onclick="Game.toggleAutoPlay?.()">🤖</div>
     <div class="ic" data-label="音效" title="音效開關" id="hud-audio-btn" onclick="Game.toggleAudioMute?.()">🔊</div>
-    <div class="ic" data-label="返回大廳" title="返回大廳" onclick="Game.returnLobby?.()">廳</div>
+    <div class="ic" data-label="返回大廳" title="返回大廳" onclick="Game.returnLobby?.()">🏠</div>
     <div class="ic" data-label="存檔離開" title="離開（自動存檔）" onclick="Game.leaveAndSave?.()" style="display:none">出</div>
   </div>
 
@@ -1506,6 +1554,9 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
   📋 返回結算
 </button>
 
+<!-- 手機直向：提示轉橫向（CSS media query 控制顯示） -->
+<div id="rotate-hint"><div class="ri">📱</div>請將手機轉為橫向<small>牌桌為橫向設計，直向畫面太小無法操作</small></div>
+
 <!-- ── 大廳（原 2D 版）── -->
 <div id="lobby">
   <div class="lcard">
@@ -1514,6 +1565,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
     <div class="lver">v1.7.1</div>
 
+    <!-- 戰績區：寬螢幕時放右欄（.lside） -->
+    <div class="lside">
     <div id="stats-bar">
       <div class="sc"><span class="sc-v" id="st-games">0</span><span class="sc-l">對局</span></div>
       <div class="sc"><span class="sc-v" id="st-wins">0</span><span class="sc-l">勝場</span></div>
@@ -1521,12 +1574,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       <div class="sc"><span class="sc-v" id="st-net">$0</span><span class="sc-l">淨損益</span></div>
       <div class="sc"><span class="sc-v" id="st-best">0台</span><span class="sc-l">最高台數</span></div>
     </div>
-    <div class="stats-reset" onclick="Stats.reset()">重置記錄</div>
+    <button type="button" class="stats-reset" onclick="if(confirm('確定要清除所有對局記錄？此動作無法復原。'))Stats.reset()">重置記錄</button>
     <div id="stats-chart" style="min-height:20px"></div>
     <details style="margin-top:6px">
       <summary style="cursor:pointer;font-size:.72rem;color:rgba(212,168,67,.55);letter-spacing:.08em;padding:4px 0">📋 最近對局記錄</summary>
       <div id="hist-list" style="max-height:180px;overflow-y:auto;margin-top:4px;border-radius:8px;background:rgba(0,0,0,.25)"></div>
     </details>
+    </div>
 
     <!-- ── HOME PANEL ─────────────────────────────── -->
     <div id="lobby-home">
@@ -4498,7 +4552,7 @@ const Game={
     if(_apBtn){_apBtn.classList.remove('on');_apBtn.textContent='🤖 自動';}
     // 同步 3D HUD 代打按鈕(原本只動 ghost-dom 的 autoplay-btn,玩家看不到)
     const _hudApBtn=document.getElementById('hud-autoplay-btn');
-    if(_hudApBtn){ _hudApBtn.style.color='#e5d49a'; _hudApBtn.title='自動代打：OFF'; }
+    if(_hudApBtn){ _hudApBtn.style.color='#e5d49a'; _hudApBtn.title='自動代打：OFF'; _hudApBtn.classList.remove('on'); }
     const deck=shuffle(mkDeck());
     const hands=[[],[],[],[]],flowers=[[],[],[],[]];
     let pos=0;
@@ -7199,11 +7253,11 @@ const Game={
         `<div style="min-width:0"><div class="nm">${esc(n)}${i===payer?'<span class="r1-badge">放槍</span>':''}</div><div class="bal">$${m.toLocaleString()}</div></div>${dTxt}</div>`;
     }).join('');
   },
-  // 下一局 10 秒自動（單機／房主；連線客戶端由房主驅動，不自動）；玩家點結算畫面任一處即取消
+  // 下一局 10 秒自動（僅單機；連線時由房主手動開局，避免朋友還在看結算就被切走）；玩家點結算畫面任一處即取消
   _r1AutoNext(){
     clearInterval(this._r1Timer);
     const nb=document.getElementById('wov-next-btn');
-    if(!nb||nb.style.display==='none'||(this._online&&!this._isHost))return;
+    if(!nb||nb.style.display==='none'||this._online)return;
     let n=10;
     nb.innerHTML='下一局 <span class="r1-n">10</span><i class="r1-cd" style="width:100%"></i>';
     const cd=nb.querySelector('.r1-cd');
@@ -8519,6 +8573,12 @@ function updateTbl3dScale() {
   const scaleY = (vh - 10) / 1080;
   const scale  = Math.min(scaleX, scaleY);
   tbl.style.transform = `scale(${scale})`;
+  // HUD 可讀性補償（見 CSS「HUD 可讀性補償」）：實際字級約 13.5px、按鈕約 40px，上限 2.2 倍
+  const hud = tbl.querySelector('.hud');
+  if (hud) {
+    hud.style.setProperty('--hudk', Math.min(2.2, Math.max(1, 13.5 / (13 * scale))).toFixed(3));
+    hud.style.setProperty('--hudt', Math.min(2.2, Math.max(1, 40 / (36 * scale))).toFixed(3));
+  }
   // 居中（letterbox/pillarbox 留黑邊）
   const offsetX = (vw - 1920 * scale) / 2;
   const offsetY = (vh - 1080 * scale) / 2;
@@ -9934,6 +9994,7 @@ if (Game) {
     if (btn) {
       btn.style.color = this.autoPlay ? '#f5cc6a' : '#e5d49a';
       btn.title = this.autoPlay ? '自動代打：ON' : '自動代打：OFF';
+      btn.classList.toggle('on', this.autoPlay); // 圖示是 emoji，改用金框標示開啟
     }
     this.toast?.(this.autoPlay ? '🤖 自動代打開啟' : '🤖 自動代打關閉', 2000);
     // 開啟代打時若剛好是玩家回合,立刻代打(原本要等下一輪)
