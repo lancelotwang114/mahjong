@@ -458,11 +458,14 @@ body::before {
                  border:1px solid #f5cc6a; border-radius:50%;
                  font-size:12px; font-weight:900; display:flex; align-items:center; justify-content:center;
                  box-shadow:0 2px 4px rgba(0,0,0,.5); }
-.pp .tenpai-badge { position:absolute; left:-8px; top:-8px; background:#e74c3c; color:#fff;
-                    border-radius:11px; font-size:15px; font-weight:900; padding:2px 9px; line-height:1.1;
-                    display:none; box-shadow:0 0 8px rgba(231,76,60,.85); z-index:3; }
-.pp.tenpai .tenpai-badge { display:block; animation:ppBadgePulse 1.1s ease-in-out infinite; }
-@keyframes ppBadgePulse { 0%,100%{transform:scale(1);box-shadow:0 0 8px rgba(231,76,60,.85);} 50%{transform:scale(1.18);box-shadow:0 0 18px rgba(231,76,60,1);} }
+/* 聽牌：面板上方懸浮金色「聽」字牌（對家在頂邊 → 改放下方） */
+.pp .tenpai-badge { position:absolute; left:50%; top:-36px; transform:translateX(-50%);
+                    background:linear-gradient(180deg,#ffe28a,#d4a843); color:#2a1a04; border:2px solid #fff3c4;
+                    border-radius:14px; font:900 20px 'Noto Serif TC',serif; padding:1px 14px; line-height:1.25; white-space:nowrap;
+                    display:none; box-shadow:0 0 14px rgba(245,200,90,.9); z-index:3; }
+#hud-pp2 .tenpai-badge { top:auto; bottom:-36px; }
+.pp.tenpai .tenpai-badge { display:block; animation:ppBadgeFloat 1.6s ease-in-out infinite; }
+@keyframes ppBadgeFloat { 0%,100%{transform:translate(-50%,0);} 50%{transform:translate(-50%,-6px);} }
 
 /* 輪到該玩家：金色脈衝 + 上下浮動（懸浮感）。與聽牌紅光分屬不同層，可同時出現 */
 @keyframes ppActiveGlow {
@@ -472,9 +475,9 @@ body::before {
 @keyframes ppActiveFloat { 0%,100%{ transform:translate(-50%,-50%); } 50%{ transform:translate(-50%,calc(-50% - 5px)); } }
 .pp.active-turn { border-color:#f5cc6a; animation:ppActiveGlow 1.3s ease-in-out infinite, ppActiveFloat 1.8s ease-in-out infinite; }
 
-/* 聽牌：整個面板紅色呼吸光（::after 疊層，box-shadow 外擴成紅暈，不與金色衝突） */
-@keyframes ppTenpaiRed { 0%,100%{ box-shadow:0 0 10px 2px rgba(220,40,40,.45); } 50%{ box-shadow:0 0 24px 6px rgba(235,60,60,.9); } }
-.pp.tenpai::after { content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none; animation:ppTenpaiRed 2.2s ease-in-out infinite; }
+/* 聽牌：面板外圈懸浮金框（::after 疊層，持續到胡牌／流局） */
+@keyframes ppTenpaiGold { 0%,100%{ box-shadow:0 0 10px 2px rgba(245,200,90,.5); transform:translateY(0); } 50%{ box-shadow:0 0 26px 6px rgba(255,216,90,.95); transform:translateY(-4px); } }
+.pp.tenpai::after { content:''; position:absolute; inset:-6px; border-radius:inherit; border:2px solid #f5cc6a; pointer-events:none; animation:ppTenpaiGold 1.6s ease-in-out infinite; }
 
 /* v1.7.8: 四家位置改用 id 寫死座標 (in #tbl-3d 1920×1080 內，center anchor) */
 #hud-pp0 { left:1001px; top:1057px; transform: translate(-50%, -50%); }   /* 玩家底中央 */
@@ -666,6 +669,27 @@ body::before {
 .ab.ach { border-color:#2ecc71; color:#a8f0c6; }
 .ab.ako { border-color:#9b59b6; color:#d4aff0; }
 .ab.ask { border-color:#5c4419; color:#a89868; font-size:13px; letter-spacing:1px; }
+/* 鳴牌組合卡（offerMeld）：一個選項一張卡；沿用 .ab.apo/.ach/.ako/.aw/.ask 讓既有 guard 與 H/Space 快捷鍵照常辨識 */
+#ap .ab.mcard { position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; gap:8px; min-width:0;
+  padding:10px 12px 14px; border-radius:14px; border:2px solid var(--mc); background:rgba(8,12,18,.92); color:var(--mc);
+  letter-spacing:0; box-shadow:0 10px 26px rgba(0,0,0,.55); transition:transform .12s, box-shadow .12s; }
+#ap .ab.mcard:hover { transform:translateY(-6px); box-shadow:0 0 0 3px var(--mc), 0 0 28px var(--mc); color:var(--mc); }
+#ap .mcard .ml { font:900 30px 'Noto Serif TC',serif; display:flex; align-items:center; gap:8px; }
+#ap .mcard kbd { font:700 12px 'Noto Sans TC',sans-serif; color:#0b0f14; background:var(--mc); border-radius:4px; padding:1px 6px; }
+#ap .mcard .mt { display:flex; gap:3px; pointer-events:none; }
+#ap .mcard .mt .t.is-disc { outline:3px solid #f3cf6a; box-shadow:0 0 14px rgba(243,207,106,.9); }
+#ap .mcard .mbar { position:absolute; left:0; bottom:0; height:5px; width:100%; background:var(--mc); }
+#ap.warn .mcard .mbar { background:#ff4d3d; }
+#ap .ab.mcard.aw  { --mc:#ff5a3c; padding:16px 26px; background:rgba(40,8,6,.92); }
+#ap .mcard.aw .ml { font-size:46px; }
+#ap .ab.mcard.apo { --mc:#ff9a3c; }
+#ap .ab.mcard.ach { --mc:#4aa8ff; }
+#ap .ab.mcard.ako { --mc:#b36ae0; }
+#ap .ab.mcard.ask { --mc:#8b98a5; align-self:stretch; justify-content:center; min-width:92px; }
+#ap .mcard.ask .ml { font:700 24px 'Noto Sans TC',sans-serif; }
+#action-overlay:has(.mcard) { bottom:190px; } /* 組合卡較高：整列抬到手牌上方，不擋候選牌 */
+#ap.nudge .mcard { animation:mcardNudge .45s; }
+@keyframes mcardNudge { 25%{transform:translateY(-8px)} 50%{transform:translateY(0)} 75%{transform:translateY(-4px)} }
 
 /* wait-dots */
 #wait-dots { position:absolute; left:50%; bottom:74px; transform:translateX(-50%);
@@ -851,15 +875,21 @@ body::before {
 @keyframes mfxStamp{0%{transform:scale(2.4) rotate(-8deg);opacity:0}18%{transform:scale(.92) rotate(-2deg);opacity:1}30%{transform:scale(1.04) rotate(-3deg)}100%{transform:scale(1) rotate(-3deg);opacity:1}}
 .mfx-r{position:absolute;left:50%;top:50%;width:160px;height:160px;border-radius:50%;border:6px solid currentColor;transform:translate(-50%,-50%) scale(.3);opacity:.9;animation:mfxRing .6s ease-out .12s forwards}
 @keyframes mfxRing{to{transform:translate(-50%,-50%) scale(2.2);opacity:0}}
-.mfx-b{width:1920px;height:220px;display:flex;align-items:center;justify-content:center;gap:24px;
-  background:linear-gradient(90deg,transparent,rgba(0,0,0,.72) 18%,rgba(0,0,0,.72) 82%,transparent);animation:mfxBan 1.1s ease-out forwards}
-.mfx-b .mfx-g{font-size:170px}
-.mfx-b .mfx-s{margin:0;font-size:32px}
-@keyframes mfxBan{0%{clip-path:inset(0 50% 0 50%);opacity:0}25%{clip-path:inset(0 0 0 0);opacity:1}100%{clip-path:inset(0 0 0 0);opacity:1}}
-.mfx-e{position:absolute;left:0;right:0;height:3px;background:currentColor;box-shadow:0 0 16px currentColor}
-.mfx-et{top:0}.mfx-eb{bottom:0} /* 不可用 .t：那是牌的 class */
-.mfx-flash{position:absolute;inset:0;pointer-events:none;z-index:59;background:radial-gradient(circle at 50% 46%,rgba(255,215,120,.55),rgba(255,190,60,.15) 45%,transparent 70%);animation:mfxFlash 1.2s ease-out forwards}
-@keyframes mfxFlash{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
+/* 胡／自摸（_winFx，墨韻）：停格暗化 → 潑墨＋色帶 → 大字砸下 */
+.mfx-dark{position:absolute;inset:0;background:rgba(0,0,0,.62);pointer-events:none;z-index:58;animation:mfxDark .25s forwards}
+@keyframes mfxDark{from{opacity:0}}
+.mfx-ink{position:absolute;left:960px;top:500px;width:1100px;height:636px;transform:translate(-50%,-50%);pointer-events:none;z-index:59;animation:mfxInk .5s cubic-bezier(.2,1.2,.4,1) forwards}
+.mfx-ink svg{width:100%;height:100%;display:block}
+@keyframes mfxInk{from{transform:translate(-50%,-50%) scale(.2);opacity:0}}
+.mfx-slam{position:absolute;left:960px;top:490px;transform:translate(-50%,-50%);text-align:center;pointer-events:none;z-index:61}
+.mfx-wg{display:block;font:900 300px/1 'Noto Serif TC','PMingLiU',serif;color:#fff;white-space:nowrap;animation:mfxSlam .55s cubic-bezier(.2,1.5,.4,1) forwards}
+@keyframes mfxSlam{0%{transform:scale(3.2);opacity:0;filter:blur(8px)}35%{transform:scale(.9);opacity:1;filter:none}55%{transform:scale(1.05)}100%{transform:scale(1)}}
+.mfx-slam .mfx-s{font-size:36px;margin-top:14px;animation:mfxSubIn .5s .35s both}
+@keyframes mfxSubIn{from{opacity:0;transform:translateY(12px)}}
+/* 放槍者：頭像紅框閃爍＋「放槍」標籤 */
+.pp.mfx-payer{box-shadow:0 0 0 3px #ff3b30,0 0 26px #ff3b30 !important;animation:mfxPayer .45s steps(2) 6}
+@keyframes mfxPayer{50%{box-shadow:0 0 0 3px rgba(255,59,48,.35),0 0 8px rgba(255,59,48,.3)}}
+.mfx-ptag{position:absolute;left:50%;top:-30px;transform:translateX(-50%);padding:2px 12px;border-radius:999px;background:#b3261e;color:#fff;font:900 18px 'Noto Sans TC',sans-serif;white-space:nowrap;box-shadow:0 0 14px #ff3b30;animation:mfxSubIn .3s both}
 .mfx-rays{position:absolute;left:960px;top:500px;width:1600px;height:1600px;transform:translate(-50%,-50%);pointer-events:none;z-index:59;
   background:repeating-conic-gradient(rgba(255,220,130,.16) 0 6deg,transparent 6deg 18deg);border-radius:50%;
   mask:radial-gradient(circle,#000 20%,transparent 65%);-webkit-mask:radial-gradient(circle,#000 20%,transparent 65%);animation:mfxRays 2.2s linear forwards}
@@ -910,6 +940,44 @@ body::before {
                    border-color:#f5cc6a; color:#fff8e0; }
 .wov-btn.peek { background:rgba(80,120,80,.2); border-color:rgba(100,180,100,.4); color:#7dd4a8; }
 .wov-btn.peek:hover { background:rgba(80,140,80,.35); border-color:rgba(140,220,140,.65); color:#9fe3bc; }
+/* 結算 R1 橫向卡：左手牌／右台數逐條＋蓋章、下方四家本局 ±、下一局 10 秒自動；原則上不捲動 */
+.wov-box.r1 { max-width:1100px; width:94%; display:grid; grid-template-columns:1fr 300px; gap:14px 22px; text-align:left; padding:22px 28px;
+  grid-template-areas:"tit tit" "hand tai" "mon mon" "btn btn"; }
+.wov-box.r1.draw { grid-template-columns:1fr; grid-template-areas:"tit" "hand" "mon" "btn"; }
+.wov-box.r1 #wtit { grid-area:tit; font-size:36px; font-weight:900; margin:0; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; }
+.r1-tag { font:700 15px 'Noto Sans TC',sans-serif; padding:3px 12px; border-radius:999px; background:#7a1d16; color:#ffd7d0; }
+.r1-tag.z { background:#6b5410; color:#ffe9a8; }
+.wov-box.r1 #wtai { display:none; }
+.wov-box.r1 #whands { grid-area:hand; background:rgba(0,0,0,.28); border-radius:12px; padding:12px 14px; max-height:46vh; overflow-y:auto; }
+.wov-box.r1 #wbon { grid-area:tai; flex-direction:column; flex-wrap:nowrap; gap:6px; justify-content:flex-start; margin:0; background:rgba(0,0,0,.28); border-radius:12px; padding:14px 16px; }
+.wov-box.r1.draw #wbon { display:none; }
+.r1-tl { display:flex; justify-content:space-between; gap:10px; font-size:18px; color:#e8d49a; border-bottom:1px dashed rgba(255,255,255,.12); padding-bottom:5px; opacity:0; animation:r1In .3s forwards; }
+.r1-tl b { color:#f5cc6a; white-space:nowrap; }
+@keyframes r1In { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:none} }
+.r1-stamp { align-self:center; margin-top:10px; font:900 48px 'Noto Serif TC',serif; color:#ff5a3c; border:4px solid #ff5a3c; border-radius:12px; padding:0 18px; opacity:0; }
+.r1-stamp.go { animation:r1Stamp .5s cubic-bezier(.2,1.6,.4,1) forwards; }
+@keyframes r1Stamp { 0%{transform:scale(2.6) rotate(-14deg);opacity:0} 100%{transform:scale(1) rotate(-8deg);opacity:1} }
+.r1-money { text-align:center; font:900 28px 'Noto Sans TC',sans-serif; color:#f5cc6a; }
+.r1-note { text-align:center; font-size:12px; color:#a89868; }
+.wov-box.r1 #wmon { grid-area:mon; display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:0; }
+.r1-pc { display:flex; align-items:center; gap:10px; padding:8px 12px; border-radius:10px; background:rgba(255,255,255,.05); border:1px solid transparent; min-width:0; }
+.r1-pc .av { font-size:22px; }
+.r1-pc .nm { font-size:15px; font-weight:700; color:#e8d49a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.r1-pc .bal { font-size:12px; color:#a89868; }
+.r1-pc .d { margin-left:auto; font:900 22px 'Noto Sans TC',sans-serif; white-space:nowrap; }
+.r1-pc .d.pos { color:#46d37e; } .r1-pc .d.neg { color:#ff5a4a; } .r1-pc .d.zero { color:#8a8a8a; }
+.r1-pc.win { border-color:#f5cc6a; background:rgba(212,168,67,.12); } .r1-pc.lose { border-color:#ff5a4a; }
+.r1-badge { font-size:11px; padding:1px 7px; border-radius:999px; background:#7a1d16; color:#ffd7d0; margin-left:6px; }
+.wov-box.r1 .wov-btns { grid-area:btn; margin:0; }
+.wov-box.r1 .wov-btn.primary { position:relative; overflow:hidden; min-width:200px; font-size:18px; padding:10px 26px; }
+.r1-cd { position:absolute; left:0; bottom:0; height:4px; background:rgba(0,0,0,.35); }
+.r1-others summary { cursor:pointer; color:#a89868; font-size:13px; margin-top:8px; }
+.wov-box.r1:not(.draw) #whands > .whs:first-child .whr { zoom:1.3; } /* 胡牌者手牌放大 */
+@media (max-width:760px) {
+  .wov-box.r1 { grid-template-columns:1fr; grid-template-areas:"tit" "hand" "tai" "mon" "btn"; }
+  .wov-box.r1 #whands { min-height:170px; }
+  .wov-box.r1 #wmon { grid-template-columns:repeat(2,1fr); }
+}
 
 /* ══ LOBBY CSS（原 2D 版）══════════════════════════════ */
 #lobby{overflow-y:auto}
@@ -2900,7 +2968,8 @@ function render3D() {
   _p0HandMeshes = [];
   _floatTiles = [];
   if (renderer && renderer.shadowMap) renderer.shadowMap.needsUpdate = true; // v1.7.x: 場景重建→下一幀重算一次陰影
-  const candidateIds = Game._candidateMap ? new Set(Game._candidateMap.keys()) : null;
+  // 滑到組合卡上時（_meldFocus）只高亮該組合用到的手牌
+  const candidateIds = Game._meldFocus || (Game._candidateMap ? new Set(Game._candidateMap.keys()) : null);
 
   // 清除舊群組
   for (let i = 0; i < 4; i++) {
@@ -3230,6 +3299,30 @@ const Snd={
   },
   kong(){this.play(440,.08,'triangle',.2);setTimeout(()=>this.play(550,.08,'triangle',.2),70);setTimeout(()=>this.play(660,.12,'triangle',.22),140)},
   win(){[0,80,160,260].forEach((d,i)=>setTimeout(()=>this.play(440+i*110,.18,'sine',.25),d))},
+  // 胡／自摸合成音效（無音檔）：低頻重擊＋雷聲＋鈸＋上揚音階；大牌再疊一輪
+  _sweep(f0,f1,dur,vol,t=0){
+    if(this.theme==='mute'||this.volume===0)return;
+    try{this.init();const c=this.ctx,o=c.createOscillator(),g=c.createGain(),s=c.currentTime+t;
+      o.frequency.setValueAtTime(f0,s);o.frequency.exponentialRampToValueAtTime(f1,s+dur);
+      g.gain.setValueAtTime(vol*this.volume,s);g.gain.exponentialRampToValueAtTime(.001,s+dur);
+      o.connect(g);g.connect(c.destination);o.start(s);o.stop(s+dur);}catch(e){}
+  },
+  _noise(dur,type,freq,vol,t=0,q=1){
+    if(this.theme==='mute'||this.volume===0)return;
+    try{this.init();const c=this.ctx,b=c.createBuffer(1,c.sampleRate*dur,c.sampleRate),d=b.getChannelData(0);
+      for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length)**1.5;
+      const src=c.createBufferSource(),f=c.createBiquadFilter(),g=c.createGain(),s=c.currentTime+t;
+      src.buffer=b;f.type=type;f.frequency.value=freq;f.Q.value=q;
+      g.gain.setValueAtTime(vol*this.volume,s);g.gain.exponentialRampToValueAtTime(.001,s+dur);
+      src.connect(f);f.connect(g);g.connect(c.destination);src.start(s);}catch(e){}
+  },
+  winFx(zimo,big){
+    const hit=t=>{this._sweep(110,32,.9,.9,t);this._noise(.25,'lowpass',400,.6,t);};
+    const thunder=t=>{this._noise(.12,'highpass',2500,.5,t);this._noise(.08,'bandpass',1800,.6,t+.07,2);this._noise(2.2,'lowpass',260,.9,t+.05);};
+    hit(0);thunder(.02);if(zimo)thunder(.25);this._noise(1.4,'highpass',6500,.35,.05);
+    (zimo?[587,740,880,1175,1480]:[523,659,784,1047,1319]).forEach((f,i)=>setTimeout(()=>this.play(f,.5,'triangle',.22),350+i*85));
+    if(big){thunder(.55);hit(.6);[1047,1319,1568,2093].forEach((f,i)=>setTimeout(()=>this.play(f,.5,'triangle',.22),900+i*70));}
+  },
   tenpai(){this.play(880,.15,'sine',.18);setTimeout(()=>this.play(1100,.2,'sine',.15),150)},
   tick(){this.play(800,.05,'square',.07)},
   dice(){
@@ -4433,6 +4526,7 @@ const Game={
       hands:hands.map(h=>sortH(h)),flowers,pending,
       melds:[[],[],[],[]],discards:[[],[],[],[]],
       money:initMoney,
+      money0:[...initMoney], // 開局金額快照：結算畫面用 money−money0 算本局輸贏 ±
       names:names||this.st.names,
       ai:aiIdx||this.st.ai||[1,2,3],
       drawnId:null,
@@ -5311,9 +5405,8 @@ const Game={
             this.clearBtns();
             this.doMeld(0,'chi',chiOpts[0].tiles);
           } else {
-            // 方案A：多吃法不自動代選 — 點候選牌也開啟選單讓玩家自己挑（與「吃」按鈕一致）
-            clearTimeout(this._meldTimeout);this.stopTimer();this.hideMeldPreview();
-            this.showChiPicker(chiOpts,tile);
+            // 多吃法點手牌候選牌：不代選，讓組合卡彈一下提示「從卡片選」
+            this._nudgeMeldCards();
           }
         });
         // Store chiOpts + disc tile on the info for clickable tooltip rows
@@ -5329,58 +5422,46 @@ const Game={
     this._candidateDisc=tile;
     setTimeout(()=>this._applyCandidateHighlights(),0);
 
-    // Show 胡 / 碰 / 吃 / 槓 / 跳過 as explicit buttons
+    // 組合卡：一個選項一張卡（整組牌直接顯示、被鳴的牌金框），一次點選完成；
+    // 滑到卡上只高亮手牌中會用到的牌；鍵盤 1~n 選組合、H 胡、Space 過（沿用 .ab.* class 給既有 guard/快捷鍵）
     const ap=document.getElementById('ap');
     const ov=document.getElementById('action-overlay');
-    if(winOpt){
-      const b=document.createElement('button');b.className='ab aw';b.textContent='胡！';
-      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,false);}; // offerMeld 一律為榮和(ron)，固定 selfDraw=false（修正非房主 drawnId 殘留誤判為自摸被房主拒絕）
+    const done=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();};
+    const focus=ids=>{this._meldFocus=ids?new Set(ids):null;if(typeof render3D==='function')render3D();};
+    let num=0;
+    const card=(cls,label,tiles,key,act)=>{
+      const b=document.createElement('button');b.className='ab mcard '+cls;
+      b.innerHTML=`<span class="ml">${label}${key?` <kbd>${key}</kbd>`:''}</span>`;
+      if(tiles){
+        const row=document.createElement('span');row.className='mt';
+        tiles.forEach(t=>{const c=mkTile(t,'sm');if(t.id===tile.id)c.classList.add('is-disc');row.appendChild(c);});
+        b.appendChild(row);
+        const handIds=tiles.filter(t=>t.id!==tile.id).map(t=>t.id);
+        b.onmouseenter=()=>focus(handIds);
+        b.onmouseleave=()=>focus(null);
+      }
+      b.insertAdjacentHTML('beforeend','<i class="mbar"></i>');
+      if(/^\d$/.test(key))b.dataset.key=key;
+      b.onclick=()=>{this._meldFocus=null;act();};
       ap.appendChild(b);
-    }
-    // 方案A：恢復 碰/吃/槓 按鈕（業界標準入口）；吃遇多吃法跳出 showChiPicker 讓玩家選
-    if(pongOpt){
-      const b=document.createElement('button');b.className='ab apo';b.textContent='碰';
-      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();this.doMeld(0,'pong',pongOpt.tiles);};
-      ap.appendChild(b);
-    }
-    if(chiOpts.length){
-      const b=document.createElement('button');b.className='ab ach';b.textContent='吃';
-      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.hideMeldPreview();
-        if(chiOpts.length===1){this.clearBtns();this.doMeld(0,'chi',chiOpts[0].tiles);}
-        else{this.showChiPicker(chiOpts,tile);}};
-      ap.appendChild(b);
-    }
-    if(kongOpt){
-      const b=document.createElement('button');b.className='ab ako';b.textContent='槓';
-      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();this.doMeld(0,'kong',kongOpt.tiles);};
-      ap.appendChild(b);
-    }
-    if(skOpt){
-      const b=document.createElement('button');b.className='ab ako';b.textContent='暗槓';
-      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        this.doSelfKong(0,skOpt.tiles);};
-      ap.appendChild(b);
-    }
-    {
-      const b=document.createElement('button');b.className='ab ask';b.textContent='跳過';
-      b.onclick=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.clearBtns();this.hideMeldPreview();
-        this.hideChiPicker();const rp=document.getElementById('riichi-select-panel');if(rp)rp.remove();
-        // 【過水】跳過放槍胡機會 → 設旗標，本輪不可再放槍胡
-        if(winOpt&&this.st?.guoShui) this.st.guoShui[0]=true;
-        if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip',guoShui:!!winOpt});}
-        else{this.nextTurn();}};
-      ap.appendChild(b);
-    }
+    };
+    // offerMeld 一律為榮和(ron)，固定 selfDraw=false（修正非房主 drawnId 殘留誤判為自摸被房主拒絕）
+    if(winOpt) card('aw','胡',null,'H',()=>{done();document.getElementById('ht0').classList.remove('my-turn');this.doWin(0,false);});
+    if(kongOpt) card('ako','槓',[...kongOpt.tiles,tile],String(++num),()=>{done();this.doMeld(0,'kong',kongOpt.tiles);});
+    if(pongOpt) card('apo','碰',[...pongOpt.tiles,tile],String(++num),()=>{done();this.doMeld(0,'pong',pongOpt.tiles);});
+    chiOpts.forEach(o=>card('ach','吃',sortH([...o.tiles,tile]),String(++num),()=>{done();this.doMeld(0,'chi',o.tiles);}));
+    if(skOpt) card('ako','暗槓',sortH([...skOpt.tiles,tile]),String(++num),()=>{done();this.doSelfKong(0,skOpt.tiles);});
+    card('ask','過',null,'Space',()=>{
+      done();
+      this.hideChiPicker();const rp=document.getElementById('riichi-select-panel');if(rp)rp.remove();
+      // 【過水】跳過放槍胡機會 → 設旗標，本輪不可再放槍胡
+      if(winOpt&&this.st?.guoShui) this.st.guoShui[0]=true;
+      if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip',guoShui:!!winOpt});}
+      else{this.nextTurn();}
+    });
     ov.classList.add('active');
     // 記錄本次 offer 是否含胡牌選項（供 _startMeldCountdown 的 skip 讀取）
     this._meldHasWin=!!winOpt;
-
-    // v1.7.x: 單一鳴牌(碰/槓/單吃)不再跳預覽字卡，直接點按鈕即可；只有「多吃法」保留字卡作為「點擊選擇」入口
-    if(chiOpts.length>1){
-      const _act=()=>{clearTimeout(this._meldTimeout);this.stopTimer();this.hideMeldPreview();this.showChiPicker(chiOpts,tile);};
-      this.showMeldPreview(sortH([...chiOpts[0].tiles,tile]),`吃 ${chiOpts.length}種 ▶ 點擊選擇`,_act);
-    }
 
     // C4: 鳴牌倒數 — 固定 10 秒自動跳過（含視覺進度條）
     this._startMeldCountdown(10);
@@ -5400,10 +5481,11 @@ const Game={
       document.getElementById('action-overlay').appendChild(bar);
     }
     const startPct=(adjSec/sec)*100;
-    bar.style.transition='none';bar.style.width=startPct+'%';
+    const bars=[bar,...document.querySelectorAll('#ap .mcard .mbar')]; // 組合卡底部也跟著倒數
+    bars.forEach(b=>{b.style.transition='none';b.style.width=startPct+'%';});
     let rem=adjSec;
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      bar.style.transition=`width ${adjSec}s linear`;bar.style.width='0%';
+      bars.forEach(b=>{b.style.transition=`width ${adjSec}s linear`;b.style.width='0%';});
     }));
     const skip=()=>{
       clearInterval(this._meldCountInterval);
@@ -5415,8 +5497,18 @@ const Game={
       if(this._online&&!this._isHost){MahjongNetwork.broadcast({type:'action',action:'skip',guoShui:!!this._meldHasWin});}
       else{this.nextTurn();}
     };
-    this._meldCountInterval=setInterval(()=>{rem--;if(rem<=0){clearInterval(this._meldCountInterval);skip();}},1000);
+    this._meldCountInterval=setInterval(()=>{
+      rem--;
+      if(rem<=0){clearInterval(this._meldCountInterval);skip();return;}
+      // 最後 3 秒：卡片倒數條變紅＋滴答
+      if(rem<=3){document.getElementById('ap')?.classList.add('warn');Snd.play(1400,.05,'square',.12);}
+    },1000);
     this._meldTimeout=setTimeout(skip,adjSec*1000);
+  },
+  // 多吃法時點手牌候選牌 → 組合卡彈一下，提示從卡片選
+  _nudgeMeldCards(){
+    const ap=document.getElementById('ap');if(!ap)return;
+    ap.classList.remove('nudge');void ap.offsetWidth;ap.classList.add('nudge');
   },
 
   // Apply .meld-candidate class + hover/click handlers to hand tiles
@@ -5949,7 +6041,7 @@ const Game={
     // E4: AI 胡牌台詞
     if(s.ai.includes(p))this._aiQuip(p,'win');
     // 胡牌/自摸：ann 內含橫幅反饋 + speakWin 語音 + 連線廣播
-    this.ann(selfDraw?'zimo':'win',p,`${tai} 台`);Snd.win();
+    this.ann(selfDraw?'zimo':'win',p,`${tai} 台`,selfDraw?-1:s.lastP,tai>=8);
     this.render();
     // 【BROADCAST_GAME_OVER / Task2】主機逐一傳送旋轉後的結算封包（含金錢），確保客戶端無需自行計算
     if(this._online&&this._isHost){
@@ -6031,7 +6123,7 @@ const Game={
     this.clearSave();
     if(p===0)setTimeout(()=>this._burstConfetti(),600);
     if(s.ai.includes(p))this._aiQuip(p,'win');
-    this.ann(zimo?'zimo':'win',p,`${tai} 台`);Snd.win();
+    this.ann(zimo?'zimo':'win',p,`${tai} 台`,zimo?-1:payer,tai>=8);
     this.render();
     if(this._online&&this._isHost){
       this._peers.forEach((pConn,idx)=>{
@@ -6283,6 +6375,7 @@ const Game={
   },
   speakTing(p){
     this._speakMj(`${this._seatName(p)}聽牌`);
+    this._meldFx('tenpai',p,'聽牌'); // 聽牌瞬間：該家旁落下金色「聽」字印章（持續提示由 .pp.tenpai 金框負責）
   },
   speakWin(p,selfDraw){
     this._speakMj(`${this._seatName(p)}${selfDraw?'自摸':'胡牌'}`);
@@ -6813,6 +6906,7 @@ const Game={
     ht0.querySelectorAll('.t.sel').forEach(el=>el.classList.remove('sel'));
     const ap=document.getElementById('ap');
     Array.from(ap.children).forEach(c=>{if(c.id!=='tbadge')c.remove();});
+    ap.classList.remove('warn','nudge');this._meldFocus=null; // 組合卡狀態
     document.getElementById('ht0').classList.remove('meld-alert');
     document.getElementById('ht0')?.classList.remove('my-turn'); // 清除上局或上次出牌殘留的 my-turn
     this._clearMeldHighlight();
@@ -6861,6 +6955,11 @@ const Game={
     this._killAllTimers?.();
     this.clearBtns?.();
     this.hideTenpai?.();
+    // R1 橫向卡版面
+    const box=ov.querySelector('.wov-box');
+    box?.classList.add('r1');box?.classList.toggle('draw',!!isDraw);
+    clearInterval(this._r1Timer);
+    ov.onpointerdown=e=>{if(!e.target.closest('#wov-next-btn'))this._r1Stop?.();}; // 玩家有互動就取消自動下一局
     if(isDraw){
       document.getElementById('wtit').textContent='🀄 流局！';
       document.getElementById('wtai').textContent='';
@@ -6873,9 +6972,7 @@ const Game={
         const pay=base*perTai;
         tenpaiPs.forEach(tp=>noTenpaiPs.forEach(np=>{s.money[np]-=pay;s.money[tp]+=pay;}));
       }
-      document.getElementById('wmon').innerHTML=s.names.map((n,i)=>{
-        const m=s.money[i];return`<span style="margin:0 6px;color:${m<0?'#e74c3c':'#2ecc71'}">${n}: $${m.toLocaleString()}</span>`;
-      }).join('');
+      this._r1Players(-1,-1);
       // 流局罰款說明
       const wh=document.getElementById('whands');wh.innerHTML='';
       const drawBase=this.settings.base||1;const drawPerTai=this.settings.tai||100;
@@ -6949,6 +7046,7 @@ const Game={
       ov.style.display='flex';
       // D3: 流局翻牌依序顯示
       requestAnimationFrame(()=>this._revealDrawHands());
+      this._r1AutoNext();
       return;
     }
     const wd=s.winData;if(!wd)return;
@@ -6956,13 +7054,28 @@ const Game={
     const pn=wd.winnerName||s.names[wd.p]||'?';
     const payerName=wd.loserName||(wd.payer>=0?s.names[wd.payer]||'?':'');
     const isMe=wd.p===0;
-    document.getElementById('wtit').textContent=isMe?'🎉 你胡了！':`${pn} 胡牌！`;
+    const esc=v=>String(v).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'); // 名字來自玩家輸入／連線封包
+    document.getElementById('wtit').innerHTML=(isMe?'🎉 你胡了！':`${esc(pn)} 胡牌`)+
+      (wd.selfDraw?' <span class="r1-tag z">自摸</span>':` <span class="r1-tag">放槍：${esc(payerName)}</span>`);
     const payTxt=wd.selfDraw?`自摸（各家付 $${wd.total.toLocaleString()}）`:`${payerName} 放槍`;
     const mainBon=wd.bon.filter(b=>!b.startsWith('底'));
     const handDesc=mainBon.length?` ✦ ${mainBon.join(' · ')}`:'';
     document.getElementById('wtai').textContent=`${wd.tai}台 × $${wd.perTai} = $${wd.total.toLocaleString()}（${payTxt}）${handDesc}`;
-    document.getElementById('wbon').innerHTML=wd.bon.map(b=>`<span class="wchip">${b}</span>`).join('');
-    document.getElementById('wmon').innerHTML=s.names.map((n,i)=>{const m=s.money[i];return`<span style="margin:0 6px;color:${m<0?'#e74c3c':'#2ecc71'}">${n}: $${m.toLocaleString()}</span>`;}).join('');
+    // 台數明細逐條彈出 → 蓋章總台數 → 金額滾動
+    const wbon=document.getElementById('wbon');
+    wbon.innerHTML=wd.bon.map((b,i)=>{const m=b.match(/^(.+?)\s+(\S+)$/);
+      return`<div class="r1-tl" style="animation-delay:${.3+i*.26}s"><span>${esc(m?m[1]:b)}</span><b>${esc(m?m[2]:'')}</b></div>`;}).join('')+
+      `<div class="r1-stamp">${wd.tai} 台</div><div class="r1-money">$0</div>`+
+      `<div class="r1-note">${wd.selfDraw?`各家付 $${wd.total.toLocaleString()}`:`${esc(payerName)} 付 $${wd.total.toLocaleString()}`}</div>`;
+    wd.bon.forEach((b,i)=>setTimeout(()=>Snd.play(880+i*120,.18,'triangle',.18),300+i*260));
+    setTimeout(()=>{
+      wbon.querySelector('.r1-stamp')?.classList.add('go');Snd._sweep?.(160,50,.35,.8);
+      const d0=s.money0?s.money[wd.p]-s.money0[wd.p]:0; // 胡牌者本局實收（含本場），無快照時用台數推算
+      const el=wbon.querySelector('.r1-money'),to=d0>0?d0:wd.total*(wd.selfDraw?3:1),t0=performance.now();
+      const f=t=>{const k=Math.min(1,(t-t0)/700);if(el)el.textContent='$'+Math.round(to*k).toLocaleString();if(k<1)requestAnimationFrame(f);};
+      requestAnimationFrame(f);
+    },300+wd.bon.length*260+200);
+    this._r1Players(wd.p,wd.selfDraw?-1:wd.payer);
     // Show all hands with set highlighting for winner
     const wh=document.getElementById('whands');wh.innerHTML='';
     [wd.p,...[0,1,2,3].filter(i=>i!==wd.p)].forEach(pi=>{
@@ -7050,6 +7163,13 @@ const Game={
       }
       wh.appendChild(sec);
     });
+    // 他家手牌預設收合，版面只留胡牌者手牌
+    const others=[...wh.querySelectorAll('.whs')].slice(1);
+    if(others.length){
+      const det=document.createElement('details');det.className='r1-others';
+      det.innerHTML='<summary>▸ 他家手牌</summary>';
+      others.forEach(o=>det.appendChild(o));wh.appendChild(det);
+    }
     ov.style.display='flex';
     if(this._isHost){
       const b=document.getElementById('host-round-start-btn');if(b)b.style.display='block';
@@ -7065,9 +7185,38 @@ const Game={
       }
       wb.textContent='⏳ 等待房主開始下一局…';
     }
+    this._r1AutoNext();
+  },
+  // 結算四家卡：本局 ±（money−money0）、餘額；胡牌者金框、放槍者紅框＋標籤
+  _r1Players(winner,payer){
+    const s=this.st,el=document.getElementById('wmon');if(!s||!el)return;
+    const esc=v=>String(v).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
+    el.innerHTML=s.names.map((n,i)=>{
+      const m=s.money[i],d=s.money0?m-s.money0[i]:null;
+      const av=document.getElementById('hud-av'+i)?.textContent||'👤';
+      const dTxt=d==null?'':`<span class="d ${d>0?'pos':d<0?'neg':'zero'}">${d>0?'+':d<0?'−':'±'}${Math.abs(d).toLocaleString()}</span>`;
+      return`<div class="r1-pc${i===winner?' win':''}${i===payer?' lose':''}"><span class="av">${esc(av)}</span>`+
+        `<div style="min-width:0"><div class="nm">${esc(n)}${i===payer?'<span class="r1-badge">放槍</span>':''}</div><div class="bal">$${m.toLocaleString()}</div></div>${dTxt}</div>`;
+    }).join('');
+  },
+  // 下一局 10 秒自動（單機／房主；連線客戶端由房主驅動，不自動）；玩家點結算畫面任一處即取消
+  _r1AutoNext(){
+    clearInterval(this._r1Timer);
+    const nb=document.getElementById('wov-next-btn');
+    if(!nb||nb.style.display==='none'||(this._online&&!this._isHost))return;
+    let n=10;
+    nb.innerHTML='下一局 <span class="r1-n">10</span><i class="r1-cd" style="width:100%"></i>';
+    const cd=nb.querySelector('.r1-cd');
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{cd.style.transition='width 10s linear';cd.style.width='0%';}));
+    this._r1Stop=()=>{clearInterval(this._r1Timer);nb.textContent='下一局';};
+    this._r1Timer=setInterval(()=>{
+      n--;const e=nb.querySelector('.r1-n');if(e)e.textContent=n;
+      if(n<=0){this._r1Stop();if(document.getElementById('wov')?.style.display==='flex')nb.click();}
+    },1000);
   },
   // Peek at board from win overlay
   peekBoard(){
+    this._r1Stop?.();
     const ov=document.getElementById('wov');
     const retBtn=document.getElementById('peek-return-btn');
     if(!ov)return;
@@ -7816,29 +7965,57 @@ const Game={
   },
 
   // ── ANNOUNCE ─────────────────────────────────────────
-  // p：本機視角座位；sub：副標（牌名／台數）
-  ann(type,p=0,sub=''){
+  // p：本機視角座位；sub：副標（牌名／台數）；payer：放槍者本機座位（自摸 -1）；big：大牌（≥8 台）加碼
+  ann(type,p=0,sub='',payer=-1,big=false){
     const map={pong:'碰！',chi:'吃！',kong:'槓！',win:'胡牌！',tenpai:'聽牌！'};
     const cls={pong:'po',chi:'ch',kong:'ko',win:'wi',tenpai:'tp'};
-    this.showAnn(map[type]||type,cls[type]||'');
-    const smap={pong:()=>Snd.pong(),chi:()=>Snd.chi(),kong:()=>Snd.kong(),win:()=>Snd.win(),zimo:()=>Snd.win(),tenpai:()=>Snd.tenpai()};
+    // 吃碰槓胡聽已有 _meldFx/_winFx 大字演出（聽牌由 speakTing 觸發），#ann 小字只留給其他類型，避免疊字
+    if(!['chi','pong','kong','win','zimo','tenpai'].includes(type)) this.showAnn(map[type]||type,cls[type]||'');
+    const isWin=type==='win'||type==='zimo';
+    const smap={pong:()=>Snd.pong(),chi:()=>Snd.chi(),kong:()=>Snd.kong(),tenpai:()=>Snd.tenpai()};
     if(smap[type])smap[type]();
     // Voice announcement for player actions（胡／自摸改由 speakWin 播「東家胡牌」，避免多句互相切斷）
     const sayMap={pong:'碰',chi:'吃',kong:'槓',tenpai:'聽牌'};
     if(sayMap[type]) setTimeout(()=>Snd.say(sayMap[type]),80);
-    if(type==='win'||type==='zimo') setTimeout(()=>this.speakWin(p,type==='zimo'),300);
-    this._meldFx(type,p,sub);
-    // 連線：房主廣播給客戶端，客戶端各自轉成本機視角播放（房主視角 p = 絕對座位）
+    if(isWin){
+      this._winFx(type,p,sub,payer,big); // 胡／自摸音效在演出停格後才播（見 _winFx）
+      setTimeout(()=>this.speakWin(p,type==='zimo'),550);
+    } else this._meldFx(type,p,sub);
+    // 連線：房主廣播給客戶端，客戶端各自轉成本機視角播放（房主視角 p/payer = 絕對座位）
     if(this._online&&this._isHost&&type!=='tenpai'&&typeof MahjongNetwork!=='undefined'){
-      MahjongNetwork.broadcast({type:'ann',kind:type,p,sub});
+      MahjongNetwork.broadcast({type:'ann',kind:type,p,sub,payer,big});
     }
   },
-  // 鳴牌反饋：吃碰槓＝印章（鳴牌者旁），胡／自摸＝橫幅（正中）＋金光；震動分級 0/3/5/6px
+  // 胡／自摸演出（墨韻）：停格 0.25 秒 → 潑墨＋色帶＋大字砸下＋合成重擊音；放槍者頭像紅框＋「放槍」標籤
+  _winFx(type,p,sub,payer,big){
+    const hud=document.querySelector('.hud');if(!hud)return;
+    const zimo=type==='zimo', color=zimo?'#ffcf4a':'#ff4d3d', txt=zimo?'自摸':'胡';
+    const add=(cls,html='')=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;hud.appendChild(d);return d;};
+    const els=[add('mfx-dark')];
+    if(payer>=0){
+      const pp=document.getElementById('hud-pp'+payer);
+      if(pp){pp.classList.add('mfx-payer');const tag=document.createElement('span');tag.className='mfx-ptag';tag.textContent='放槍';pp.appendChild(tag);
+        setTimeout(()=>{pp.classList.remove('mfx-payer');tag.remove();},3200);}
+    }
+    setTimeout(()=>{
+      Snd.winFx(zimo,big);
+      [document.getElementById('scene'),hud].forEach(el=>{if(!el)return;el.classList.remove('fx-shake1','fx-shake2','fx-shake3');void el.offsetWidth;el.classList.add('fx-shake3');});
+      const dots=Array.from({length:14},()=>`<circle fill="#0b0b0b" cx="${60+Math.random()*780}" cy="${80+Math.random()*380}" r="${4+Math.random()*16}"/>`).join('');
+      els.push(add('mfx-ink',`<svg viewBox="0 0 900 520"><path fill="#0b0b0b" opacity=".92" d="M40 300 C 90 160, 260 120, 430 150 S 760 90, 860 210 C 900 280, 830 360, 700 380 S 420 470, 250 430 S 10 420, 40 300 Z"/>`+
+        `<path fill="${color}" opacity=".85" d="M120 330 C 240 250, 520 240, 820 280 C 700 300, 500 320, 150 350 Z"/>${dots}</svg>`));
+      if(big) els.push(add('mfx-rays'));
+      // sub 可能來自連線封包 → 跳脫後才放進 innerHTML
+      const s=sub?`<span class="mfx-s">${String(sub).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';')}</span>`:'';
+      els.push(add('mfx-slam',`<span class="mfx-wg" style="text-shadow:0 0 40px ${color},0 8px 0 rgba(0,0,0,.6)">${txt}</span>${s}`));
+    },250);
+    setTimeout(()=>{els.forEach(e=>e.classList.add('mfx-out'));setTimeout(()=>els.forEach(e=>e.remove()),350);},big?3400:2600);
+  },
+  // 鳴牌反饋：吃碰槓＝印章（鳴牌者旁）；震動分級 0/3/5px（胡／自摸改走 _winFx）
   _meldFx(type,p,sub){
-    const cfg={chi:['吃','#4aa3e6',0],pong:['碰','#f08a2c',1],kong:['槓','#b36ae0',2],win:['胡','#ff4d3d',3],zimo:['自摸','#ffcf4a',3]}[type];
+    const cfg={chi:['吃','#4aa3e6',0],pong:['碰','#f08a2c',1],kong:['槓','#b36ae0',2],tenpai:['聽','#f5cc6a',0]}[type];
     const hud=document.querySelector('.hud');
     if(!cfg||!hud)return;
-    const [txt,color,lv]=cfg, win=lv===3;
+    const [txt,color,lv]=cfg;
     if(lv){
       [document.getElementById('scene'),hud].forEach(el=>{
         if(!el)return;
@@ -7848,19 +8025,16 @@ const Game={
       });
     }
     // 字放在頭像往桌心方向（對應 #hud-pp0~3）
-    const [x,y]=win?[960,500]:([[1001,820],[1560,429],[1001,230],[360,429]][p]||[960,500]);
+    const [x,y]=[[1001,820],[1560,429],[1001,230],[360,429]][p]||[960,500];
     const fx=document.createElement('div');
-    fx.className='mfx '+(win?'mfx-b':'mfx-a');
+    fx.className='mfx mfx-a';
     fx.style.cssText=`left:${x}px;top:${y}px;color:${color}`;
     const g=`<span class="mfx-g" style="text-shadow:0 0 30px ${color},0 4px 0 rgba(0,0,0,.6)">${txt}</span>`;
     // sub 可能來自連線封包 → 跳脫後才放進 innerHTML
     const s=sub?`<span class="mfx-s">${String(sub).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';')}</span>`:'';
-    fx.innerHTML=win?`<i class="mfx-e mfx-et"></i>${g}${s}<i class="mfx-e mfx-eb"></i>`
-      :`<i class="mfx-r"></i>${g}${s}${lv>=2?'<i class="mfx-r" style="animation-delay:.28s"></i>':''}`;
-    const extra=win?['mfx-flash','mfx-rays'].map(c=>{const d=document.createElement('div');d.className=c;hud.appendChild(d);return d;}):[];
+    fx.innerHTML=`<i class="mfx-r"></i>${g}${s}${lv>=2?'<i class="mfx-r" style="animation-delay:.28s"></i>':''}`;
     hud.appendChild(fx);
-    setTimeout(()=>extra.forEach(d=>d.remove()),2300);
-    setTimeout(()=>{fx.classList.add('mfx-out');setTimeout(()=>fx.remove(),350);},win?1900:1000);
+    setTimeout(()=>{fx.classList.add('mfx-out');setTimeout(()=>fx.remove(),350);},1000);
   },
   showAnn(txt,cls){
     // 3D 版 HTML 未提供 #ann 元素，靜默跳過避免 doMeld → ann → showAnn 整條鏈 throw 卡死
@@ -8221,8 +8395,8 @@ function setupRaycast() {
     if (cmap && cmap.has(entry.tileId)) {
       const info = cmap.get(entry.tileId);
       if (info.chiOpts && info.chiOpts.length > 1) {
-        // 方案A：多吃法點候選牌 → 開啟吃法選單（與「吃」按鈕一致，不再用 tooltip）
-        Game.showChiPicker?.(info.chiOpts, Game._candidateDisc);
+        // 多吃法點候選牌：不代選，組合卡彈一下提示從卡片選
+        Game._nudgeMeldCards?.();
       } else {
         Game._hideCandidateTooltip?.();
         info.action();
@@ -10744,7 +10918,10 @@ window.Online = {
         break;
       case 'ann':
         // 連線：房主廣播的吃碰槓胡反饋（p 為房主視角）→ 轉本機視角播放；客戶端 ann 不會再廣播
-        if(!Game._isHost) Game.ann(data.kind,((data.p-(Game._myIndex||0))%4+4)%4,data.sub||'');
+        if(!Game._isHost){
+          const loc=i=>((i-(Game._myIndex||0))%4+4)%4;
+          Game.ann(data.kind,loc(data.p),data.sub||'',data.payer>=0?loc(data.payer):-1,!!data.big);
+        }
         break;
       case 'broadcast_ting':
         // 【BROADCAST_TING】所有客戶端收到聽牌廣播後播語音
@@ -11001,6 +11178,7 @@ window.Online = {
       scores:state.scores?reorder(state.scores):state.scores,
       pending:reorder(state.pending||[0,0,0,0]),
       money:reorder(state.money||[0,0,0,0]),
+      money0:state.money0?reorder(state.money0):state.money0,
       aiStyle:state.aiStyle?reorder(state.aiStyle):state.aiStyle,
       ai:(state.ai||[]).map(rot),
       turn:rot(state.turn),
@@ -11157,6 +11335,14 @@ document.addEventListener('keydown', e => {
   if (e.code === 'Space' && !_isTyping()) {
     const btn = document.querySelector('#ap .ab.ask');
     if (btn) { e.preventDefault(); btn.click(); }
+  }
+});
+
+// 1~9 → 鳴牌組合卡
+document.addEventListener('keydown', e => {
+  if (/^[1-9]$/.test(e.key) && !_isTyping()) {
+    const card = document.querySelector(`#ap .mcard[data-key="${e.key}"]`);
+    if (card) { e.preventDefault(); card.click(); }
   }
 });
 
