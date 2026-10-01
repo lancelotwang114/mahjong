@@ -2879,7 +2879,8 @@ const CAMERA_CONFIG = {
   fov: 36,
 };
 function applyCamera() {
-  if (!window.camera) return;
+  // 直接用本模組的 camera：原本檢查 window.camera，但載入時 onResize→applyCamera 早於
+  // Object.assign(window,{camera}) → 直接 return，fov 停在建立時的 28°，要拉過視窗才變 36°（畫面大小不一致）
   camera.position.set(CAMERA_CONFIG.posX, CAMERA_CONFIG.posY, CAMERA_CONFIG.posZ);
   camera.lookAt(CAMERA_CONFIG.lookX, CAMERA_CONFIG.lookY, CAMERA_CONFIG.lookZ);
   camera.fov = CAMERA_CONFIG.fov;
