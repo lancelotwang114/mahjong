@@ -458,12 +458,11 @@ body::before {
                  border:1px solid #f5cc6a; border-radius:50%;
                  font-size:12px; font-weight:900; display:flex; align-items:center; justify-content:center;
                  box-shadow:0 2px 4px rgba(0,0,0,.5); }
-/* 聽牌：面板上方懸浮金色「聽」字牌（對家在頂邊 → 改放下方） */
+/* 聽牌：面板上方懸浮金色「聽」字牌（自己／對家的細條改放左側，見「HUD 可讀性補償」） */
 .pp .tenpai-badge { position:absolute; left:50%; top:-36px; transform:translateX(-50%);
                     background:linear-gradient(180deg,#ffe28a,#d4a843); color:#2a1a04; border:2px solid #fff3c4;
                     border-radius:14px; font:900 20px 'Noto Serif TC',serif; padding:1px 14px; line-height:1.25; white-space:nowrap;
                     display:none; box-shadow:0 0 14px rgba(245,200,90,.9); z-index:3; }
-#hud-pp2 .tenpai-badge { top:auto; bottom:-36px; }
 .pp.tenpai .tenpai-badge { display:block; animation:ppBadgeFloat 1.6s ease-in-out infinite; }
 @keyframes ppBadgeFloat { 0%,100%{transform:translate(-50%,0);} 50%{transform:translate(-50%,-6px);} }
 
@@ -770,11 +769,12 @@ body::before {
 
 /* ══ HUD 可讀性補償 ══
    HUD 是 1920×1080 設計再整體縮小；--hudk（字）/ --hudt（按鈕）由 updateTbl3dScale 依縮放比例算，
-   讓實際字級約 13.5px、按鈕約 40px（上限 2.2 倍）。只放大字與尺寸，不動 HUD_ADJUST 校好的定位。 */
-.pp { min-width:calc(160px*var(--hudk,1)); padding:calc(8px*var(--hudk,1)) calc(14px*var(--hudk,1)) calc(9px*var(--hudk,1)) calc(50px*var(--hudk,1)); }
-.pp .av { left:calc(5px*var(--hudk,1)); width:calc(38px*var(--hudk,1)); height:calc(38px*var(--hudk,1)); font-size:calc(22px*var(--hudk,1)); }
-.pp .name, .pp .score { font-size:calc(13px*var(--hudk,1)); }
-.pp .windbadge { width:calc(22px*var(--hudk,1)); height:calc(22px*var(--hudk,1)); font-size:calc(12px*var(--hudk,1)); }
+   讓實際字級約 13.5px、按鈕約 40px（上限 2.2 倍）。只放大字與尺寸，不動 HUD_ADJUST 校好的定位。
+   四家面板上限 1.6：手機 2.2 倍時面板會壓到四角副露（遮擋稽核實測） */
+.pp { min-width:calc(160px*min(var(--hudk,1),1.6)); padding:calc(8px*min(var(--hudk,1),1.6)) calc(14px*min(var(--hudk,1),1.6)) calc(9px*min(var(--hudk,1),1.6)) calc(50px*min(var(--hudk,1),1.6)); }
+.pp .av { left:calc(5px*min(var(--hudk,1),1.6)); width:calc(38px*min(var(--hudk,1),1.6)); height:calc(38px*min(var(--hudk,1),1.6)); font-size:calc(22px*min(var(--hudk,1),1.6)); }
+.pp .name, .pp .score { font-size:calc(13px*min(var(--hudk,1),1.6)); }
+.pp .windbadge { width:calc(22px*min(var(--hudk,1),1.6)); height:calc(22px*min(var(--hudk,1),1.6)); font-size:calc(12px*min(var(--hudk,1),1.6)); }
 .ccp-round { font-size:calc(11px*min(var(--hudk,1),1.6)); }
 .ccp-deck  { font-size:calc(30px*min(var(--hudk,1),1.6)); }
 .ccp-label { font-size:calc(10px*min(var(--hudk,1),1.6)); }
@@ -786,11 +786,24 @@ body::before {
 .pause-fab, .chat-fab { font-size:calc(14px*var(--hudt,1)); padding:calc(8px*var(--hudt,1)) calc(15px*var(--hudt,1)); }
 #pause-fab-icon, .chat-fab-label { font-size:calc(14px*var(--hudt,1)); }
 #toast { font-size:calc(13px*var(--hudk,1)); }
-/* 放大後靠邊面板改以畫面邊緣為錨點，避免被切；自己的面板移到左下（聊天鈕上方），不擋手牌 */
-#hud-pp0 { left:calc(36px + 104px*var(--hudk,1)) !important; top:calc(1030px - 40px*var(--hudt,1) - 36px*var(--hudk,1)) !important; }
-#hud-pp1 { left:calc(1880px - 96px*var(--hudk,1)) !important; }
-#hud-pp2 { top:calc(8px + 26px*var(--hudk,1)) !important; }
-#hud-pp3 { left:calc(40px + 96px*var(--hudk,1)) !important; }
+/* 放大後靠邊面板改以畫面邊緣為錨點，避免被切。
+   自己的面板：四個角落都是各家副露（左下＝左家副露），底排是手牌 → 改成貼底邊的單行細條，只佔手牌下方空隙 */
+/* 對家面板同理：手牌貼頂邊，上方只剩一條空隙 → 也做成單行細條貼在最上緣，不蓋對家手牌。
+   細條放大上限 1.6（手機 2.2 倍會壓到手牌） */
+#hud-pp0 { top:calc(1076px - 22px*min(var(--hudk,1),1.6)) !important; }
+#hud-pp2 { top:calc(-10px + 22px*min(var(--hudk,1),1.6)) !important; } /* 實測對家手牌上緣：細條需完全在其上方 */
+#hud-pp0, #hud-pp2 { min-width:0; white-space:nowrap;
+  padding:calc(4px*min(var(--hudk,1),1.6)) calc(14px*min(var(--hudk,1),1.6)) calc(4px*min(var(--hudk,1),1.6)) calc(40px*min(var(--hudk,1),1.6)); }
+#hud-pp0 .av, #hud-pp2 .av { width:calc(28px*min(var(--hudk,1),1.6)); height:calc(28px*min(var(--hudk,1),1.6)); font-size:calc(16px*min(var(--hudk,1),1.6)); left:calc(5px*min(var(--hudk,1),1.6)); }
+#hud-pp0 .name, #hud-pp0 .score, #hud-pp2 .name, #hud-pp2 .score { display:inline-block; margin:0 0 0 calc(8px*min(var(--hudk,1),1.6)); line-height:1.3; font-size:calc(13px*min(var(--hudk,1),1.6)); }
+#hud-pp0 .name, #hud-pp2 .name { margin-left:0; }
+/* 細條的風位徽章放右側中線（原本在右上角，頂邊細條會被切掉） */
+#hud-pp0 .windbadge, #hud-pp2 .windbadge { width:calc(22px*min(var(--hudk,1),1.6)); height:calc(22px*min(var(--hudk,1),1.6)); font-size:calc(12px*min(var(--hudk,1),1.6));
+  top:50%; right:calc(-11px*min(var(--hudk,1),1.6)); transform:translateY(-50%); }
+/* 細條的「聽」放左側，不往上／下蓋到手牌 */
+#hud-pp0 .tenpai-badge, #hud-pp2 .tenpai-badge { top:50%; bottom:auto; left:auto; right:calc(100% + 10px); transform:translateY(-50%); animation:none; }
+#hud-pp1 { left:calc(1888px - 96px*min(var(--hudk,1),1.6)) !important; } /* 再貼右緣 8px，避開右上角副露 */
+#hud-pp3 { left:calc(40px + 96px*min(var(--hudk,1),1.6)) !important; }
 
 /* 手機直向：提示轉橫向（大廳本身支援直向，由 #lobby 蓋在上層） */
 #rotate-hint { display:none; position:fixed; inset:0; z-index:250; background:rgba(10,6,4,.96); color:#f5e2a8;
@@ -2665,6 +2678,7 @@ function buildHand3D(side, tiles, candidateIds) {
   return group;
 }
 
+let _lastDiscGeom = null, _lastDiscMat = null, _lastDiscArrowGeom = null; // 最新棄牌金色光座＋箭頭（共用）
 function buildDiscard3D(side, tiles) {
   const group = new THREE.Group();
   const cols = 6;
@@ -2695,6 +2709,25 @@ function buildDiscard3D(side, tiles) {
     mesh.rotation.set(rx, ry, rz);
     mesh.position.set(x, (side==='south' || side==='north') ? TILT_Y_X : TILT_Y_Z, z);
     group.add(mesh);
+    // 最新打出的牌：牌底金色光座，一眼看出剛打了什麼
+    if (entry.isLast) {
+      // 共用幾何/材質（clearGroup 不 dispose，每次重建會漏 GPU 記憶體）
+      _lastDiscGeom = _lastDiscGeom || new THREE.PlaneGeometry(TW * 1.8, TH * 1.55);
+      _lastDiscMat = _lastDiscMat || new THREE.MeshBasicMaterial({ color: 0xf5cc6a, transparent: true, opacity: 0.85, depthWrite: false });
+      const glow = new THREE.Mesh(_lastDiscGeom, _lastDiscMat);
+      glow.rotation.x = -Math.PI / 2;
+      glow.position.set(x, 0.006, z);
+      group.add(glow);
+      // 牌上方浮動金色倒三角箭頭（tick() 的 _floatTiles 負責上下浮動）
+      _lastDiscArrowGeom = _lastDiscArrowGeom || new THREE.ConeGeometry(0.26, 0.5, 4);
+      const arrow = new THREE.Mesh(_lastDiscArrowGeom, _lastDiscMat);
+      arrow.rotation.x = Math.PI; // 尖端朝下
+      const ay = 1.15;
+      arrow.position.set(x, ay, z);
+      group.add(arrow);
+      _floatTiles.push({ mesh: arrow, sprite: null, restY: ay, baseY: ay, amp: 0.14, phase: 0,
+        bornAt: (typeof performance!=='undefined' ? performance.now() : Date.now()) });
+    }
   });
   // group 仍以中央為 anchor，靠 mesh local z 的 INNER_START 把棄牌起點往該家方向推
   if (side==='south')      { group.position.set(0, 0, 0); }
@@ -2776,7 +2809,7 @@ const FLOWER_OFFSET = {
   east:  { x:  1.1, z: -1.3 },
   west:  { x: -1.9, z:  0.2 },
   north: { x: -0.5, z: -2.4 },
-  south: { x:  2.6, z: -1.1 },
+  south: { x:  2.6, z: -1.55 }, // 自家花牌置中於「牌牆底～手牌頂」空隙（原 -1.1 時壓到立起的手牌上緣）
 };
 
 // 棄牌牌身旋轉度數 (X/Y/Z 三軸 degrees)
@@ -2843,7 +2876,7 @@ const WALL_ROT_DEG = {
 // 各元素四家縮放 (1.0 = 原始大小)
 const MELD_SCALE    = { south: 1.22, north: 1.64, east: 1.69, west: 1.15 };
 const HAND_SCALE    = { south: 1.66, north: 1.10, east: 1.08, west: 1.08 };
-const FLOWER_SCALE  = { south: 1.22, north: 1.12, east: 1.10, west: 1.10 };
+const FLOWER_SCALE  = { south: 0.9, north: 1.12, east: 1.10, west: 1.10 }; // south 1.22→0.9：牌牆與手牌間空隙放得下
 const DISCARD_SCALE = { south: 1.00, north: 1.00, east: 1.00, west: 1.00 };
 const WALL_SCALE    = { south: 1.00, north: 1.00, east: 1.00, west: 1.00 };
 
@@ -3064,7 +3097,8 @@ function render3D() {
     scene.add(hg); Groups.hands[pi] = hg;
 
     // 棄牌
-    const discTiles = (s.discards[pi] || []).map(tile => ({ texKey: tileTexKey(tile) }));
+    // isLast：全場最新打出的那張（被鳴走後就不在牌河，自然不標）
+    const discTiles = (s.discards[pi] || []).map(tile => ({ texKey: tileTexKey(tile), isLast: !!(s.last && tile.id === s.last.id) }));
     const dg = buildDiscard3D(side, discTiles);
     scene.add(dg); Groups.discards[pi] = dg;
 
@@ -3095,6 +3129,54 @@ function render3D() {
 
   // 更新 HUD
   updateHUD(s);
+  _placeSidePanels();
+}
+
+// 左右家面板避讓：開局 16 張時側家手牌欄很長，固定位置的面板會蓋住最遠端幾張；
+// 每次重繪後量手牌最上緣，把面板推到其上方（不超過工具列／暫停鈕／角落副露），無空間時停在上限。
+// 用 camera.matrixWorld 反矩陣自行投影（matrixWorldInverse 只在 render 時更新，可能過期）。
+function _placeSidePanels() {
+  const cv = document.getElementById('scene'), hud = document.querySelector('.hud');
+  if (!cv || !hud) return;
+  const cr = cv.getBoundingClientRect(), k = hud.getBoundingClientRect().width / 1920;
+  if (!k) return;
+  camera.updateMatrixWorld();
+  const inv = new THREE.Matrix4().copy(camera.matrixWorld).invert(), v = new THREE.Vector3();
+  const tileRects = g => {
+    const out = [];
+    if (!g) return out;
+    g.updateMatrixWorld(true);
+    g.traverse(m => {
+      if (!m.isMesh || !m.geometry || m.geometry.type !== 'BoxGeometry') return;
+      if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+      const b = m.geometry.boundingBox; let l = 1e9, t = 1e9, r = -1e9, bt = -1e9;
+      for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) {
+        v.set(x, y, z).applyMatrix4(m.matrixWorld).applyMatrix4(inv).applyMatrix4(camera.projectionMatrix);
+        const sx = cr.left + (v.x + 1) / 2 * cr.width, sy = cr.top + (1 - v.y) / 2 * cr.height;
+        l = Math.min(l, sx); r = Math.max(r, sx); t = Math.min(t, sy); bt = Math.max(bt, sy);
+      }
+      out.push({ l, t, r, b: bt });
+    });
+    return out;
+  };
+  const GAP = 6;
+  [[1, '.tools', 1], [3, '#hud-pause-floating', 2]].forEach(([seat, topSel, cornerMeldSeat]) => {
+    const el = document.getElementById('hud-pp' + seat);
+    if (!el) return;
+    el.style.marginTop = '0px';
+    const p = el.getBoundingClientRect();
+    const xHit = t => t.r > p.left && t.l < p.right;
+    const hand = tileRects(Groups.hands[seat]).filter(xHit);
+    if (!hand.length) return;
+    const handTop = Math.min(...hand.map(t => t.t));
+    if (p.bottom <= handTop - GAP) return;                       // 沒擋到
+    const tb = document.querySelector(topSel)?.getBoundingClientRect();
+    let ceil = tb ? tb.bottom + (topSel === '.tools' ? 18 : 0) : cr.top;   // 工具列含下方標籤
+    tileRects(Groups.melds[cornerMeldSeat]).concat(tileRects(Groups.melds[seat])).filter(xHit)
+      .forEach(t => { if (t.b < handTop) ceil = Math.max(ceil, t.b); });
+    const newTop = Math.max(ceil + GAP, handTop - GAP - p.height);
+    el.style.marginTop = ((newTop - p.top) / k) + 'px';             // HUD 內為設計座標
+  });
 }
 
 /* ============================================================
@@ -8578,8 +8660,9 @@ function updateTbl3dScale() {
   const hud = tbl.querySelector('.hud');
   if (hud) {
     hud.style.setProperty('--hudk', Math.min(2.2, Math.max(1, 13.5 / (13 * scale))).toFixed(3));
-    hud.style.setProperty('--hudt', Math.min(2.2, Math.max(1, 40 / (36 * scale))).toFixed(3));
+    hud.style.setProperty('--hudt', Math.min(2.0, Math.max(1, 40 / (36 * scale))).toFixed(3)); // 按鈕上限 2.0：再大工具列會壓到右上角副露
   }
+  _placeSidePanels(); // 面板尺寸隨縮放改變，重算避讓
   // 居中（letterbox/pillarbox 留黑邊）
   const offsetX = (vw - 1920 * scale) / 2;
   const offsetY = (vh - 1080 * scale) / 2;
