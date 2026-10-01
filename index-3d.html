@@ -2522,9 +2522,16 @@ function makeTile3D(texKey, isCandidate) {
   return mesh;
 }
 
+// 牌牆材質共用（原本每張牌新建 2 個材質，每次重繪 288 個）；牌背貼圖換了才重建頂面材質
+let _wallMatTop = null, _wallMatTex, _wallMatSide = null;
 function makeWallTile3D() {
-  const matWTop = new THREE.MeshStandardMaterial({ map: TEX['wood-back']||null, roughness:0.38, metalness:0.05 });
-  const matWS  = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.40, metalness:0.06 });
+  const tex = TEX['wood-back'] || null;
+  if (!_wallMatTop || _wallMatTex !== tex) {
+    _wallMatTop = new THREE.MeshStandardMaterial({ map: tex, roughness:0.38, metalness:0.05 });
+    _wallMatTex = tex;
+  }
+  if (!_wallMatSide) _wallMatSide = new THREE.MeshStandardMaterial({ color:0xffffff, roughness:0.40, metalness:0.06 });
+  const matWTop = _wallMatTop, matWS = _wallMatSide;
   const mats = [matWS, matWS, matWTop, matBottom, matWS, matWS];
   const m = new THREE.Mesh(tileGeom, mats);
   m.castShadow = true; m.receiveShadow = true;
@@ -2626,7 +2633,8 @@ const SEAT_DIST = {
 function buildWall3D(side, deckLen, wallBreak, wallTailDrawn, dealtStacks = 32) {
   // v1.7.10: 牌墩按「頭尾邏輯」渲染（移植 2D _renderWall 算法）
   //   - 4 家牌墩構成 closed loop（72 物理疊，4×18），每疊 2 張，total 144 張
-  //   - wallBreak = 開門位置（在 south wall 的 offset 0-17）
+  //   - wallBreak = 第一個發出疊的物理編號（0-71，見 Game._wallBreakFor）；物理編號遞增＝逆時針，
+  //     發牌從開門處「順時針」拿（編號遞減），補花從另一端（尾端）拿
   //   - 從 headPhys 順時針 32 疊都是「已發牌」(空)，其餘 40 疊是剩餘牌堆
   //   - frontDrwn 從頭摸（s.deck.shift()）、tailDrwn 從尾摸（s.deck.pop() 補花）
   const group = new THREE.Group();
@@ -2659,7 +2667,7 @@ function buildWall3D(side, deckLen, wallBreak, wallTailDrawn, dealtStacks = 32) 
   }
   const headPhys = (wallBreak || 0) % TOTAL;
   function physToStackCnt(phys) {
-    const linear = (phys - headPhys + TOTAL) % TOTAL;
+    const linear = (headPhys - phys + TOTAL) % TOTAL; // 順時針
     if (linear < dealtStacks) return 0;  // 已發牌位置（開局發牌動畫期間 < 32）
     if (linear < 32) return 2;           // 發牌動畫中尚未發出的疊
     return stackCnt(linear - 32);
@@ -2674,7 +2682,7 @@ function buildWall3D(side, deckLen, wallBreak, wallTailDrawn, dealtStacks = 32) 
       const tile = makeWallTile3D();
       const x = -len/2 + i*(TW+GAP) + TW/2;
       tile.position.set(x, TD/2 + layer*(TD+0.015), 0);
-      tile.userData.linear = (phys - headPhys + TOTAL) % TOTAL; // 發牌動畫用：找出被拿走的疊
+      tile.userData.linear = (headPhys - phys + TOTAL) % TOTAL; // 發牌動畫用：找出被拿走的疊
       group.add(tile);
     }
   }
@@ -4543,6 +4551,9 @@ const Game={
     if(!this._online || this._isHost){
       if(!this._hostDice) this._hostDice=[1+~~(Math.random()*6),1+~~(Math.random()*6)];
       _firstDealer=((this._hostDice[0]+this._hostDice[1])-1)%4; // 從擲骰者(東)起逆時針數骰子點數
+    } else if(this._hostDice){
+      // 客戶端：用房主骰子算出同一位莊家，再換成本機座位（自己＝0）。開局儀式顯示的莊家／開門才正確；房主廣播仍會覆蓋
+      _firstDealer=(((this._hostDice[0]+this._hostDice[1])-1)%4-(this._myIndex||0)+4)%4;
     }
     this.initRound(names,[1,2,3],this.settings.money,_firstDealer,1,'東');
     // 3D 版：隱藏大廳，初始化
@@ -4753,6 +4764,7 @@ const Game={
 
   initRound(names,aiIdx,money,dealer=0,roundNum=1,roundWind='東',honba=0){
     const hsb=document.getElementById('host-round-start-btn');if(hsb)hsb.style.display='none';
+    this._hostStateSeen=false;
     // 【v1.6.62】每局開始自動關閉自動打牌
     this.autoPlay=false;
     const _apBtn=document.getElementById('autoplay-btn');
@@ -4803,17 +4815,22 @@ const Game={
       honba:honba,       // 本場點：連莊累積
       turnSeq:0,         // 【防雙打】回合序號令牌，每次 doTurn 遞增
       wallTailDrawn:0,   // 從牌牆尾端補花抽走的張數（視覺同步用）
-      wallBreak:0,       // 開門位置（0-21，showDice 後依骰子更新）
+      wallBreak:0,       // 開門位置（0-71，showDice 後依骰子更新，見 _wallBreakFor）
     };
   },
 
+
+  // 開門（台灣常見打法）：骰子點數從莊家（算 1）起逆時針數到牌牆主人，從主人視角的右端數「點數」疊，
+  //   下一疊起順時針發牌。回傳第一個發出疊的物理編號（south 0-17／east 18-35／north 36-53／west 54-71，
+  //   每面牆編號遞增＝逆時針，所以主人右端＝該牆最後一疊）
+  _wallBreakFor(d1,d2,dealer){const sum=d1+d2,owner=((dealer||0)+sum-1)%4;return owner*18+17-sum;},
 
   showDice(){
     // ── quickStart bypass ─────────────────────────────────
     if(this.settings&&this.settings.quickStart){
       const [d1,d2]=this._hostDice||[1+~~(Math.random()*6),1+~~(Math.random()*6)];
       this._hostDice=null;
-      if(this.st){this.st.dice=[d1,d2];this.st.wallBreak=((d1+d2)+(this.st.dealer||0)*18)%22;}
+      if(this.st){this.st.dice=[d1,d2];this.st.wallBreak=this._wallBreakFor(d1,d2,this.st.dealer);}
       const dov=document.getElementById('dov');if(dov)dov.style.display='none';
       if(this.st)this.st.phase='playing';
       _dealView=null;document.querySelector('.hud')?.classList.remove('seat-hidden'); // 上局儀式中途離開的殘留
@@ -4825,7 +4842,7 @@ const Game={
     const [d1,d2]=this._hostDice||[1+~~(Math.random()*6),1+~~(Math.random()*6)];
     this._hostDice=null;
     this.st.dice=[d1,d2];
-    this.st.wallBreak=((d1+d2)+(this.st.dealer||0)*18)%22;
+    this.st.wallBreak=this._wallBreakFor(d1,d2,this.st.dealer);
     const dov=document.getElementById('dov');if(dov)dov.style.display='none';
     const hud=document.querySelector('.hud');
     if(!hud){this.st.phase='playing';this.render();this.closeDice();return;}
@@ -4857,9 +4874,10 @@ const Game={
         p.c.style.transform=`translate(${x-48}px,${y-48-h}px) rotateX(${-60+p.rx*r}deg) rotateY(${p.ry*r}deg)`;
         p.sh.style.left=x+'px';p.sh.style.top=(y+42)+'px';p.sh.style.opacity=.3+.4*(1-h/180);});};
     const land=()=>{
-      if(settled)return;settled=true;pose(1);
+      if(settled||!sc.isConnected)return;settled=true;pose(1); // 骰子場景已被移除（回大廳）就不再開局
       this.st.phase='playing';hud.classList.remove('seat-hidden');this.render(); // 莊家確定才亮出門風
       Snd.play(880,.22,'sine',.2);setTimeout(()=>Snd.play(1100,.15,'sine',.15),120);
+      const fast=(this.st.roundNum||1)>1||(this.st.honba||0)>0; // 第 2 局起／連莊：縮短儀式（擲骰保留，決定開門）
       const di=this.st.dealer??0,esc=v=>String(v).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
       const res=document.createElement('div');res.className='mdice-res';
       res.innerHTML=`<div class="big">${d1} ＋ ${d2} ＝ ${d1+d2}</div><div class="sm">莊家：${esc(this.st.names[di]||'')}</div>`;sc.appendChild(res);
@@ -4870,10 +4888,10 @@ const Game={
       const hint=document.createElement('div');hint.className='mdice-hint';hint.textContent='點畫面可跳過';sc.appendChild(hint);
       // 看完點數後骰子與結果淡出，開門發牌（發完自動開局）
       setTimeout(()=>{
-        if(done)return;
+        if(done||!sc.isConnected)return;
         [res,...plan.flatMap(p=>[p.c,p.sh])].forEach(el=>{el.style.transition='opacity .4s';el.style.opacity=0;});
-        this._dealAnim(finish);
-      },1300);
+        this._dealAnim(finish,fast);
+      },fast?700:1300);
     };
     const t0=performance.now(),D=1400;let landSnd=false;
     const step=()=>{if(settled||done)return;const k=Math.min(1,(performance.now()-t0)/D);pose(k);
@@ -4885,8 +4903,8 @@ const Game={
 
   // 開門發牌動畫：從開門處依序拿 2 疊（4 張）飛給莊家起逆時針各家，4 輪共 16 張；發完自家手牌翻正 → done()
   //   純視覺：牌早在 initRound 發好，這裡只靠 _dealView 逐步揭露（連線時各端各自播，不影響同步）
-  _dealAnim(done){
-    const s=this.st,dv=_dealView,tok=this._dealTok=(this._dealTok||0)+1,STEP=110,FLY=300;
+  _dealAnim(done,fast){
+    const s=this.st,dv=_dealView,tok=this._dealTok=(this._dealTok||0)+1,STEP=fast?45:110,FLY=fast?200:300;
     if(!dv||!Groups.wall){done();return;}
     this._dealGhosts=[];
     const alive=()=>tok===this._dealTok&&_dealView===dv;
@@ -4901,8 +4919,11 @@ const Game={
       if(!alive())return;
       if(i>=16){
         scene.remove(gate);
-        setTimeout(()=>{
+        const t0=Date.now();
+        const flip=()=>{
           if(!alive())return;
+          // 連線客戶端：本機手牌是佔位，等房主狀態送達（最多 4 秒）再翻，避免翻出假牌又被換掉
+          if(this._online&&!this._isHost&&!this._hostStateSeen&&Date.now()-t0<4000){setTimeout(flip,100);return;}
           dv.faceUp=true;render3D();
           Snd.play(520,.12,'sine',.15);
           (Groups.hands[0]?.children||[]).forEach((m,j)=>{
@@ -4910,8 +4931,9 @@ const Game={
             const rx=m.rotation.x;m.rotation.x=rx-Math.PI;
             tween3D(m,m.position,240+j*14,{rx:[rx-Math.PI,rx],arc:.5});
           });
-          setTimeout(()=>{if(alive())done();},700);
-        },FLY);
+          setTimeout(()=>{if(alive())done();},fast?400:700);
+        };
+        setTimeout(flip,FLY);
         return;
       }
       const p=((s.dealer??0)+i)%4,lin=[2*i,2*i+1];
@@ -4930,7 +4952,7 @@ const Game={
       Snd.play(300+i*6,.05,'triangle',.08);
       i++;setTimeout(next,STEP);
     };
-    setTimeout(next,450);
+    setTimeout(next,fast?150:450);
   },
 
   // Flower replacement: plays out on the board, each player in turn order
@@ -8141,6 +8163,19 @@ const Game={
     document.getElementById('wov').style.display='none';
     document.getElementById('match-ov').style.display='none';
     this.autoPlay=false;
+    // 單機：停掉背景牌局（AI 回合是匿名 setTimeout，靠 phase 守門擋下），否則回大廳後仍在出牌、
+    //   doTurn 還會把剛清掉的存檔寫回去 → 大廳誤顯「偵測到中斷的牌局」。連線維持原行為（房間靠房主迴圈運作）
+    if(!this._online){
+      this._killAllTimers();this.clearBtns?.();
+      if(this.st) this.st.phase='lobby';
+    }
+    // 開局儀式中途離開：中止發牌／補花動畫、清骰子
+    this._dealTok=(this._dealTok||0)+1;
+    (this._dealGhosts||[]).forEach(g=>scene.remove(g));this._dealGhosts=[];
+    _dealView=null;
+    document.querySelectorAll('.mdice-scene').forEach(e=>e.remove());
+    document.querySelector('.hud')?.classList.remove('seat-hidden');
+    document.getElementById('hud-center-pill')?.classList.remove('mdice-dim');
     const lobbyEl=document.getElementById('lobby');
     if(lobbyEl) lobbyEl.style.display='flex';
     speechSynthesis&&speechSynthesis.cancel();
@@ -11093,7 +11128,8 @@ window.Online = {
           if(data.maxRounds!==undefined) Game.settings.maxRounds=data.maxRounds;
         }
         if(Game.settings) Game.settings.aiStyle=[null,null,null,null];
-        if(Game.st){ Game.st.ai=[]; Game.st.names=data.names; }
+        // names 是房主座位順序，換成本機（自己＝0）；房主廣播的 game_state 也是旋轉後的順序
+        if(Game.st){ Game.st.ai=[]; Game.st.names=data.names.map((_,i)=>data.names[(i+data.playerIndex)%4]); }
         // v1.7.x: 牌背由房主統一決定 — 客戶端一律跟房主，不用自己本機選的背
         try {
           if(data.tileback){ applyTileBack(data.tileback); }
@@ -11213,6 +11249,7 @@ window.Online = {
           // 但不可覆蓋已由 game_over 封包正確設定好的本地狀態，否則會抹去正確的贏家資訊
           if(Game.st&&Game.st.phase==='ended') break;
           Game._isDiscarding=false; // 【Task1】主機已處理出牌，解除客戶端鎖
+          Game._hostStateSeen=true; // 開局儀式：收到房主真實手牌後才翻牌
           // 【v1.6.58】若正在顯示鳴牌 offer（吃/碰/槓），跳過 clearBtns；
           // 正確清除時機是 action_resolved，此處強清會導致 offer 瞬間消失
           if(!(Game._candidateMap&&Game._candidateMap.size>0)) Game.clearBtns();
@@ -11608,6 +11645,8 @@ window.Online = {
       turn:rot(state.turn),
       dealer:rot(state.dealer),
       lastP:state.lastP!=null?rot(state.lastP):state.lastP,
+      // 牌墩物理編號以「自己＝南牆 0-17」為準，座位轉 absIdx 位 → 編號減 18×absIdx
+      wallBreak:((state.wallBreak||0)-absIdx*18+72*4)%72,
     };
   }
 };
