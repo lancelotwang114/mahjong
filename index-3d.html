@@ -983,10 +983,28 @@ body::before {
 @keyframes mfxSlam{0%{transform:scale(3.2);opacity:0;filter:blur(8px)}35%{transform:scale(.9);opacity:1;filter:none}55%{transform:scale(1.05)}100%{transform:scale(1)}}
 .mfx-slam .mfx-s{font-size:36px;margin-top:14px;animation:mfxSubIn .5s .35s both}
 @keyframes mfxSubIn{from{opacity:0;transform:translateY(12px)}}
-/* 放槍者：頭像紅框閃爍＋「放槍」標籤 */
-.pp.mfx-payer{box-shadow:0 0 0 3px #ff3b30,0 0 26px #ff3b30 !important;animation:mfxPayer .45s steps(2) 6}
-@keyframes mfxPayer{50%{box-shadow:0 0 0 3px rgba(255,59,48,.35),0 0 8px rgba(255,59,48,.3)}}
-.mfx-ptag{position:absolute;left:50%;top:-30px;transform:translateX(-50%);padding:2px 12px;border-radius:999px;background:#b3261e;color:#fff;font:900 18px 'Noto Sans TC',sans-serif;white-space:nowrap;box-shadow:0 0 14px #ff3b30;animation:mfxSubIn .3s both}
+/* 放槍 F1 天雷擊牌（_dealInFx） */
+.mfx-boltsvg{position:absolute;left:0;top:0;width:1920px;height:1080px;pointer-events:none;z-index:62;overflow:visible}
+.mfx-boltsvg polyline{fill:none;stroke-linejoin:round;stroke-linecap:round}
+.mfx-whiteflash{position:absolute;inset:0;background:#fff;pointer-events:none;z-index:63;animation:mfxWFlash .35s ease-out forwards}
+@keyframes mfxWFlash{0%{opacity:.95}100%{opacity:0}}
+.mfx-hot{position:absolute;transform:translate(-50%,-50%);border-radius:8px;pointer-events:none;z-index:61;
+  box-shadow:0 0 0 4px #ff3b30,0 0 30px 10px rgba(255,59,48,.9);background:rgba(255,80,60,.25);animation:mfxHot .12s steps(2) 10}
+@keyframes mfxHot{50%{filter:brightness(2.2)}}
+.mfx-crack{position:absolute;transform:translate(-50%,-50%);pointer-events:none;z-index:61;overflow:visible}
+.mfx-crack polyline{fill:none;stroke:#7a0b05;stroke-width:3;vector-effect:non-scaling-stroke}
+.mfx-spark{position:absolute;width:7px;height:7px;border-radius:50%;background:#fff;pointer-events:none;z-index:62;
+  box-shadow:0 0 10px var(--c),0 0 20px var(--c);animation:mfxSpark .6s ease-out forwards}
+@keyframes mfxSpark{to{transform:translate(var(--dx),var(--dy)) scale(.2);opacity:0}}
+.pp.mfx-zap{border-color:#ff3b30 !important;box-shadow:0 0 0 3px #ff3b30,0 0 30px #ff3b30 !important;animation:mfxZap .08s steps(2) 14}
+/* 用 rotate 抖動：translate／scale 已被 HUD_ADJUST 以 inline 佔用，動畫改它會讓面板瞬移 */
+@keyframes mfxZap{0%{rotate:-2deg;filter:brightness(2) saturate(0)}50%{rotate:2deg;filter:brightness(.6)}}
+.pp.mfx-shocked{filter:grayscale(1) brightness(.75)}
+.mfx-seal{position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%) rotate(-10deg);padding:0 14px;z-index:5;
+  border:4px solid #ff3b30;border-radius:10px;color:#ff3b30;background:rgba(40,0,0,.8);white-space:nowrap;
+  font:900 calc(28px*min(var(--hudk,1),1.6)) 'Noto Serif TC',serif;text-shadow:0 0 14px rgba(255,59,48,.9);animation:mfxSeal .45s cubic-bezier(.2,1.6,.4,1) both}
+.mfx-seal.below{bottom:auto;top:calc(100% + 8px)} /* 對家細條在頂邊：章蓋在下方 */
+@keyframes mfxSeal{from{transform:translateX(-50%) rotate(-24deg) scale(2.6);opacity:0}}
 .mfx-rays{position:absolute;left:960px;top:500px;width:1600px;height:1600px;transform:translate(-50%,-50%);pointer-events:none;z-index:59;
   background:repeating-conic-gradient(rgba(255,220,130,.16) 0 6deg,transparent 6deg 18deg);border-radius:50%;
   mask:radial-gradient(circle,#000 20%,transparent 65%);-webkit-mask:radial-gradient(circle,#000 20%,transparent 65%);animation:mfxRays 2.2s linear forwards}
@@ -3502,6 +3520,15 @@ const Snd={
       src.buffer=b;f.type=type;f.frequency.value=freq;f.Q.value=q;
       g.gain.setValueAtTime(vol*this.volume,s);g.gain.exponentialRampToValueAtTime(.001,s+dur);
       src.connect(f);f.connect(g);g.connect(c.destination);src.start(s);}catch(e){}
+  },
+  // 放槍雷擊（F1）：雷鳴爆裂＋低頻滾雷；電流嗡嗡聲
+  thunderFx(){this._noise(.09,'highpass',3000,.7);this._noise(.06,'bandpass',1600,.8,.05,3);this._sweep(2200,300,.08,.15);this._noise(2.4,'lowpass',220,.9,.05);this._sweep(70,32,1.4,.6,.05);},
+  buzzFx(dur){
+    if(this.theme==='mute'||this.volume===0)return;
+    try{this.init();const c=this.ctx,o=c.createOscillator(),lfo=c.createOscillator(),lg=c.createGain(),g=c.createGain(),s=c.currentTime;
+      o.type='sawtooth';o.frequency.value=110;lfo.frequency.value=38;lg.gain.value=.12*this.volume;lfo.connect(lg);lg.connect(g.gain);
+      g.gain.setValueAtTime(.12*this.volume,s);g.gain.exponentialRampToValueAtTime(.001,s+dur);o.connect(g);g.connect(c.destination);
+      o.start(s);lfo.start(s);o.stop(s+dur);lfo.stop(s+dur);}catch(e){}
   },
   winFx(zimo,big){
     const hit=t=>{this._sweep(110,32,.9,.9,t);this._noise(.25,'lowpass',400,.6,t);};
@@ -7067,6 +7094,9 @@ const Game={
 
   // ── WIN OVERLAY ───────────────────────────────────────
   showWin(isDraw=false){
+    // 胡牌演出（雷擊／墨韻）尚未結束 → 等演出播完再跳結算（房主 1.4 秒、客戶端 0.8 秒就會呼叫）
+    const _wait=(this._winFxUntil||0)-performance.now();
+    if(_wait>50){clearTimeout(this._showWinDefer);this._showWinDefer=setTimeout(()=>this.showWin(isDraw),_wait);return;}
     const s=this.st;
     const ov=document.getElementById('wov');
     // 防殘留：結算畫面開啟前清掉聽牌/立直選擇面板，避免覆蓋在結算上方擋住按鈕
@@ -7965,6 +7995,7 @@ const Game={
     setTimeout(()=>this.showDice(),200);
   },
   returnLobby(keepSave=false){
+    clearTimeout(this._showWinDefer);this._winFxUntil=0; // 演出中回大廳：取消延後的結算畫面
     document.getElementById('wov').style.display='none';
     document.getElementById('match-ov').style.display='none';
     this.autoPlay=false;
@@ -8101,25 +8132,25 @@ const Game={
     const sayMap={pong:'碰',chi:'吃',kong:'槓',tenpai:'聽牌'};
     if(sayMap[type]) setTimeout(()=>Snd.say(sayMap[type]),80);
     if(isWin){
-      this._winFx(type,p,sub,payer,big); // 胡／自摸音效在演出停格後才播（見 _winFx）
-      setTimeout(()=>this.speakWin(p,type==='zimo'),550);
+      const slamAt=this._winFx(type,p,sub,payer,big); // 胡／自摸音效在演出停格後才播（見 _winFx）
+      setTimeout(()=>this.speakWin(p,type==='zimo'),(slamAt||250)+300); // 語音對齊大字砸下
     } else this._meldFx(type,p,sub);
     // 連線：房主廣播給客戶端，客戶端各自轉成本機視角播放（房主視角 p/payer = 絕對座位）
     if(this._online&&this._isHost&&type!=='tenpai'&&typeof MahjongNetwork!=='undefined'){
       MahjongNetwork.broadcast({type:'ann',kind:type,p,sub,payer,big});
     }
   },
-  // 胡／自摸演出（墨韻）：停格 0.25 秒 → 潑墨＋色帶＋大字砸下＋合成重擊音；放槍者頭像紅框＋「放槍」標籤
+  // 胡／自摸演出（墨韻）：停格 0.25 秒 → 潑墨＋色帶＋大字砸下＋合成重擊音。
+  // 放槍胡先加 F1 天雷擊牌（約 1.85 秒）：天雷劈中牌河裡被放槍的那張 → 牌泛紅裂開 → 紅色電弧竄向放槍者，觸電＋「放槍」章。
+  // 回傳大字砸下的時間（ms），並設定 _winFxUntil 讓 showWin 等演出結束才跳結算。
   _winFx(type,p,sub,payer,big){
-    const hud=document.querySelector('.hud');if(!hud)return;
+    const hud=document.querySelector('.hud');if(!hud)return 250;
     const zimo=type==='zimo', color=zimo?'#ffcf4a':'#ff4d3d', txt=zimo?'自摸':'胡';
     const add=(cls,html='')=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;hud.appendChild(d);return d;};
     const els=[add('mfx-dark')];
-    if(payer>=0){
-      const pp=document.getElementById('hud-pp'+payer);
-      if(pp){pp.classList.add('mfx-payer');const tag=document.createElement('span');tag.className='mfx-ptag';tag.textContent='放槍';pp.appendChild(tag);
-        setTimeout(()=>{pp.classList.remove('mfx-payer');tag.remove();},3200);}
-    }
+    const L=(!zimo&&payer>=0)?this._dealInFx(hud,payer,els):0; // 雷擊段長度
+    const end=L+(big?3400:2600);
+    this._winFxUntil=performance.now()+end-300;
     setTimeout(()=>{
       Snd.winFx(zimo,big);
       [document.getElementById('scene'),hud].forEach(el=>{if(!el)return;el.classList.remove('fx-shake1','fx-shake2','fx-shake3');void el.offsetWidth;el.classList.add('fx-shake3');});
@@ -8130,8 +8161,77 @@ const Game={
       // sub 可能來自連線封包 → 跳脫後才放進 innerHTML
       const s=sub?`<span class="mfx-s">${String(sub).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';')}</span>`:'';
       els.push(add('mfx-slam',`<span class="mfx-wg" style="text-shadow:0 0 40px ${color},0 8px 0 rgba(0,0,0,.6)">${txt}</span>${s}`));
+    },L+250);
+    setTimeout(()=>{els.forEach(e=>e.classList.add('mfx-out'));setTimeout(()=>els.forEach(e=>e.remove()),350);},end);
+    return L+250;
+  },
+  // F1 天雷擊牌：目標＝放槍者牌河最後一張 3D 牌的螢幕位置（找不到就用牌河中心）；元素加進 els 由 _winFx 統一收尾。回傳演出長度 ms
+  _dealInFx(hud,payer,els){
+    const NS='http://www.w3.org/2000/svg',hr=hud.getBoundingClientRect(),k=hr.width/1920||1;
+    const toHud=(sx,sy)=>[(sx-hr.left)/k,(sy-hr.top)/k];
+    // 目標牌螢幕框（用 camera.matrixWorld 反矩陣投影，見 _placeSidePanels 說明）
+    let tile=null;
+    try{
+      const g=Groups.discards[payer];let mesh=null;
+      g?.children.forEach(m=>{if(m.isMesh&&m.geometry.type==='BoxGeometry')mesh=m;});
+      if(mesh){
+        const cr=document.getElementById('scene').getBoundingClientRect();camera.updateMatrixWorld();
+        const inv=new THREE.Matrix4().copy(camera.matrixWorld).invert(),v=new THREE.Vector3();
+        if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
+        const b=mesh.geometry.boundingBox;let l=1e9,t=1e9,r=-1e9,bt=-1e9;
+        for(const x of[b.min.x,b.max.x])for(const y of[b.min.y,b.max.y])for(const z of[b.min.z,b.max.z]){
+          v.set(x,y,z).applyMatrix4(mesh.matrixWorld).applyMatrix4(inv).applyMatrix4(camera.projectionMatrix);
+          const [hx,hy]=toHud(cr.left+(v.x+1)/2*cr.width,cr.top+(1-v.y)/2*cr.height);
+          l=Math.min(l,hx);r=Math.max(r,hx);t=Math.min(t,hy);bt=Math.max(bt,hy);
+        }
+        tile={l,t,r,b:bt,x:(l+r)/2,y:(t+bt)/2};
+      }
+    }catch(e){}
+    if(!tile)tile={x:960,y:[700,540,300,540][payer]??500,l:930,r:990,t:470,b:530};
+    const pp=document.getElementById('hud-pp'+payer);
+    let tx=960,ty=540;
+    if(pp){const r=pp.getBoundingClientRect();[tx,ty]=toHud((r.left+r.right)/2,(r.top+r.bottom)/2);}
+    const add=(cls,html='')=>{const d=document.createElement('div');d.className=cls;d.innerHTML=html;hud.appendChild(d);els.push(d);return d;};
+    // 閃電路徑：中點位移法
+    const path=(x1,y1,x2,y2,disp,depth)=>{if(!depth)return[[x1,y1],[x2,y2]];const nx=-(y2-y1),ny=x2-x1,len=Math.hypot(nx,ny)||1,o=(Math.random()-.5)*disp;
+      const mx=(x1+x2)/2+nx/len*o,my=(y1+y2)/2+ny/len*o;return[...path(x1,y1,mx,my,disp/2,depth-1),...path(mx,my,x2,y2,disp/2,depth-1).slice(1)];};
+    const svg=()=>{const s=document.createElementNS(NS,'svg');s.setAttribute('class','mfx-boltsvg');s.setAttribute('viewBox','0 0 1920 1080');hud.appendChild(s);els.push(s);return s;};
+    const stroke=(s,pts,c,w,branches)=>{const line=(p,ww,cc,blur)=>{const pl=document.createElementNS(NS,'polyline');pl.setAttribute('points',p.map(q=>q.join(',')).join(' '));
+        pl.setAttribute('stroke',cc);pl.setAttribute('stroke-width',ww);if(blur)pl.style.filter=`drop-shadow(0 0 10px ${c}) drop-shadow(0 0 22px ${c})`;s.appendChild(pl);};
+      line(pts,w,c,true);line(pts,w/3,'#fff',false);
+      for(let i=0;i<branches;i++){const st=pts[2+~~(Math.random()*Math.max(1,pts.length-5))];line(path(st[0],st[1],st[0]+(Math.random()-.5)*300,st[1]+70+Math.random()*160,100,4),w/2.5,c,true);}};
+    const sparks=(x,y,n,c)=>{for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,d=70+Math.random()*180;
+      const sp=add('mfx-spark');sp.style.cssText=`left:${x}px;top:${y}px;--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d}px;--c:${c}`;}};
+    const shake=()=>[document.getElementById('scene'),hud].forEach(el=>{if(!el)return;el.classList.remove('fx-shake1','fx-shake2','fx-shake3');void el.offsetWidth;el.classList.add('fx-shake3');});
+    // 250ms：天雷劈下（兩道）＋白閃＋火花；被放槍的牌泛紅＋裂痕
+    setTimeout(()=>{
+      Snd.thunderFx();shake();const wf=add('mfx-whiteflash');setTimeout(()=>wf.remove(),400); // 不靠動畫淡出（背景分頁動畫暫停時會卡白）
+      const s1=svg();stroke(s1,path(tile.x+(Math.random()-.5)*240,-40,tile.x,tile.y,260,7),'#9fd8ff',14,3);
+      setTimeout(()=>{const s2=svg();stroke(s2,path(tile.x-140,-40,tile.x,tile.y,230,7),'#c8a2ff',10,2);setTimeout(()=>s2.remove(),300);},130);
+      setTimeout(()=>s1.remove(),420);
+      sparks(tile.x,tile.y,26,'#8fd3ff');
+      const w=Math.max(30,tile.r-tile.l),h=Math.max(40,tile.b-tile.t);
+      const hot=add('mfx-hot');hot.style.cssText=`left:${tile.x}px;top:${tile.y}px;width:${w+10}px;height:${h+10}px`;
+      const ck=document.createElementNS(NS,'svg');ck.setAttribute('class','mfx-crack');ck.setAttribute('viewBox','0 0 52 72');ck.setAttribute('preserveAspectRatio','none');
+      ck.style.cssText=`left:${tile.x}px;top:${tile.y}px;width:${w}px;height:${h}px`;
+      ck.innerHTML='<polyline points="26,0 22,18 30,30 20,44 28,58 24,72"/><polyline points="30,30 44,36 52,34"/><polyline points="20,44 8,50 0,48"/>';
+      setTimeout(()=>{hud.appendChild(ck);els.push(ck);},120);
     },250);
-    setTimeout(()=>{els.forEach(e=>e.classList.add('mfx-out'));setTimeout(()=>els.forEach(e=>e.remove()),350);},big?3400:2600);
+    // 750ms：紅色電弧從牌竄向放槍者（每 45ms 重畫產生竄動）
+    setTimeout(()=>{
+      Snd.buzzFx(.9);const s=svg(),t0=performance.now();
+      const tick=()=>{while(s.firstChild)s.firstChild.remove();stroke(s,path(tile.x,tile.y,tx,ty,120,6),'#ff3b30',9,1);
+        if(performance.now()-t0<700)setTimeout(tick,45);else s.remove();};tick();
+    },750);
+    // 1050ms：放槍者觸電；1500ms：蓋「放槍」章＋變灰；全部在 2900ms 後復原
+    setTimeout(()=>{if(pp){pp.classList.add('mfx-zap');sparks(tx,ty,18,'#ff6a5a');}},1050);
+    setTimeout(()=>{
+      if(!pp)return;
+      pp.classList.add('mfx-shocked');Snd._sweep(160,50,.35,.7);
+      const seal=document.createElement('span');seal.className='mfx-seal'+(payer===2?' below':'');seal.textContent='放槍';pp.appendChild(seal);els.push(seal);
+      setTimeout(()=>{pp.classList.remove('mfx-zap','mfx-shocked');seal.remove();},2900);
+    },1500);
+    return 1850;
   },
   // 鳴牌反饋：吃碰槓＝印章（鳴牌者旁）；震動分級 0/3/5px（胡／自摸改走 _winFx）
   _meldFx(type,p,sub){
