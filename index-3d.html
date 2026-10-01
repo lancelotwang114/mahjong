@@ -1232,6 +1232,7 @@ body.in-lobby .hud { visibility:hidden; }
   #lobby{background:#040814} /* 不透明：直向時底下的「請轉橫向」提示不透出 */
   #lobby .lcard{width:100%;border-right:none;padding:20px 16px;display:flex;flex-direction:column}
   #lobby .lcard > .lside{position:static;width:auto;margin:16px 0 0;order:99} /* 主要按鈕優先，戰績放最後 */
+  #lobby .sgrid{grid-template-columns:1fr 1fr!important} /* 四欄下拉在手機會截字（$200/台、$10,000） */
 }
 
 /* ── AI setup cards ──────────────────────────────────────── */
@@ -2377,7 +2378,7 @@ async function loadAllTextures() {
     sliceSprite(cssHonor  || 'assets/honor.png',  7, cssHonor  ? mkOpts('honor')  : { maskTop:0.20 }),
     sliceSprite(cssFlower || 'assets/flower.png', 8, cssFlower ? mkOpts('flower') : { maskTop:0    }),
     loadTex('assets/tile-back-style2.png'),
-    loadTex('assets/table.png'),
+    loadTex('assets/table.jpg'),   // 原 table.png 1.6MB（無透明度）→ JPG 約 90KB
   ]);
   for (let i = 1; i <= 9; i++) { TEX[`man-${i}`]=man[i-1]; TEX[`pin-${i}`]=pin[i-1]; TEX[`sou-${i}`]=sou[i-1]; }
   ['東','南','西','北','中','發','白'].forEach((ch, i) => TEX[`honor-${ch}`] = honor[i]);
@@ -2496,7 +2497,7 @@ function _buildTilebackSwatches(){
     w.className = 'tileback-swatch'; w.dataset.id = b.id; w.title = b.name;
     w.style.cssText = 'cursor:pointer;padding:3px;border-radius:7px;border:2px solid transparent;transition:border-color .12s,transform .12s';
     const img = document.createElement('img');
-    img.src = 'assets/tilebacks/back-'+b.id+'.png'; img.alt = b.name;
+    img.src = 'assets/tilebacks/thumbs/back-'+b.id+'.webp'; img.alt = b.name; // 96px 縮圖；原圖選了才載（applyTileBack）
     img.style.cssText = 'width:38px;height:44px;border-radius:5px;display:block';
     w.appendChild(img);
     w.addEventListener('click', ()=>applyTileBack(b.id));
@@ -5371,6 +5372,7 @@ const Game={
   },
 
   doDiscard(p,tileId){
+    if(p===0&&this._riichiCands)this._endRiichiSelect(); // 任何出牌（含逾時代打）都結束聽牌選牌狀態
     DbgLog.log('DISCARD',`p${p} tileId=${tileId} isDisc=${this._isDiscarding} host=${!!this._isHost}`);
     // Online non-host: send action to host instead of processing locally
     if(this._online&&!this._isHost&&p===0){
@@ -7169,6 +7171,12 @@ const Game={
           case 'skip-riichi': document.getElementById('ht0')?.classList.add('my-turn');break;
           case 'riichi': this.startRiichiSelect();break;
           case 'stop-riichi': this.stopRiichi();break;
+          case 'cancel-riichi':
+            this._endRiichiSelect();
+            document.getElementById('ht0')?.classList.add('my-turn');
+            this.showBtns([{type:'riichi',label:'聽牌',cls:'riichi'}]);
+            this.startTimer(0);
+            break;
         }
       };
       ap.appendChild(b);
@@ -7757,7 +7765,18 @@ const Game={
         el.onclick=null;el.style.cursor='default';
       }
     });
-    this.showBtns([{type:'skip',label:'取消聽牌',cls:'ask'}]);
+    // 3D 手牌：候選牌浮起（沿用鳴牌候選的浮起效果），點 3D 牌也能選（見 setupRaycast）
+    this._riichiCands=candIds;this._meldFocus=candIds;
+    if(typeof render3D==='function')render3D();
+    // 原本用 type 'skip' → nextTurn()：沒出牌就跳過自己回合 → 相公
+    this.showBtns([{type:'cancel-riichi',label:'取消聽牌',cls:'ask'}]);
+    this.startTimer(0); // 選牌期間照常倒數，逾時代打（doDiscard 會結束選牌狀態）
+  },
+  _endRiichiSelect(){
+    document.getElementById('riichi-select-panel')?.remove();
+    if(!this._riichiCands)return;
+    this._riichiCands=null;this._meldFocus=null;
+    if(typeof render3D==='function')render3D();
   },
 
   _showRiichiPanel(candidates, s){
@@ -7794,7 +7813,7 @@ const Game={
       // Discard tile display
       const discEl=mkTile(discTile,'sm');discEl.style.cursor='pointer';
       const arrow=document.createElement('span');
-      arrow.style.cssText='color:rgba(255,255,255,.4);font-size:.9rem';
+      arrow.style.cssText='color:rgba(255,255,255,.8);font-size:.95rem;font-weight:700';
       arrow.textContent='→ 聽';
 
       // Waiting tiles with counts
@@ -7809,7 +7828,7 @@ const Game={
         entry.style.cssText='display:flex;flex-direction:column;align-items:center;gap:1px';
         const te=mkTile({...wt,id:88888},'ti');te.style.cursor='pointer';
         const cnt=document.createElement('span');
-        cnt.style.cssText=`font-size:.6rem;color:${rem===0?'#e74c3c':rem<=2?'#e67e22':'#2ecc71'}`;
+        cnt.style.cssText=`font-size:.75rem;font-weight:700;color:${rem===0?'#e74c3c':rem<=2?'#e67e22':'#2ecc71'}`;
         cnt.textContent=`剩${rem}`;
         entry.appendChild(te);entry.appendChild(cnt);
         waitRow.appendChild(entry);
@@ -7833,8 +7852,7 @@ const Game={
     // v1.6.27【防競爭條件】計時器代打已啟動時，忽略玩家對聽牌選牌面板的點擊，
     // 避免 riichiMode=true 被設定後卻沒有真正出牌，導致下回合卡在聽牌模式
     if(this._isDiscarding)return;
-    // Remove riichi select panel
-    const p=document.getElementById('riichi-select-panel');if(p)p.remove();
+    this._endRiichiSelect();
     const s=this.st;
     // Calculate waiting tiles BEFORE discarding
     const afterHand=s.hands[0].filter(x=>!x.fl&&x.id!==tile.id);
@@ -8789,6 +8807,12 @@ function setupRaycast() {
     const hitMesh = hits[0].object;
     const entry = _p0HandMeshes.find(m => m.mesh === hitMesh);
     if (!entry) return;
+
+    // 聽牌選牌中：只接受候選牌（點了等同在面板選該張），其他牌不動作
+    if (Game._riichiCands) {
+      if (Game._riichiCands.has(entry.tileId)) Game.confirmRiichi(entry.tile);
+      return;
+    }
 
     // 鳴牌候選處理
     const cmap = Game._candidateMap;
@@ -10485,6 +10509,11 @@ if (Game) {
     const s = this.st;
     const myName = s?.names?.[0] || '玩家';
     this._addChatMsg('self', myName, txt);
+    // 連線：廣播給其他玩家（原本覆蓋版漏了這段，連線聊天只有自己看得到）
+    if (this._online && typeof MahjongNetwork !== 'undefined') {
+      MahjongNetwork.broadcast({ type: 'chat', from: myName, text: txt });
+      return;
+    }
     // 單機模式：隨機選一個 AI 回應
     const respondP = 1 + Math.floor(Math.random() * 3);
     const aiName = s?.names?.[respondP] || `電腦${respondP}`;
@@ -10541,6 +10570,9 @@ if (Game) {
     const myName = s?.names?.[0] || '玩家';
     this._addChatMsg('voice', myName, `🔊 ${txt}`);
     this._sayChatTTS(txt);
+    if (this._online && typeof MahjongNetwork !== 'undefined') {
+      MahjongNetwork.broadcast({ type: 'voice_chat', from: myName, text: txt });
+    }
   };
   // TTS:用 SpeechSynthesis 念出聊天文字
   Game._sayChatTTS = function(text) {
@@ -11392,13 +11424,20 @@ window.Online = {
         }
         break;
       case 'chat':
-        if(data.from&&data.text) Game._addChatMsg('peer',data.from,data.text);
+        if(data.from&&data.text){
+          const _ct=String(data.text).slice(0,60); // 與輸入框上限一致
+          Game._addChatMsg('peer',String(data.from).slice(0,8),_ct);
+          // 星狀連線：客人只連房主 → 房主轉發給其他客人，否則 3 位以上真人時彼此看不到
+          if(MahjongNetwork.isHost) MahjongNetwork.connections.forEach(c=>{if(c.open&&c.peer!==peerId)c.send({type:'chat',from:data.from,text:_ct});});
+        }
         break;
       case 'voice_chat':
         // v1.6.18: 收到語音聊天 — 顯示訊息並播放 TTS
         if(data.from&&data.text){
-          Game._addChatMsg('voice',data.from,`🔊 ${data.text}`);
-          Game._sayChatTTS(data.text);
+          const _vt=[...String(data.text)].slice(0,3).join(''); // 對方也只能念 3 字（防長文洗版念不停）
+          Game._addChatMsg('voice',data.from,`🔊 ${_vt}`);
+          Game._sayChatTTS(_vt);
+          if(MahjongNetwork.isHost) MahjongNetwork.connections.forEach(c=>{if(c.open&&c.peer!==peerId)c.send({type:'voice_chat',from:data.from,text:_vt});});
         }
         break;
     }
