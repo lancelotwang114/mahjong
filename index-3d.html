@@ -833,8 +833,11 @@ body::before {
 .mdice-zhuang { position:absolute; width:58px; height:58px; border-radius:50%; transform:translate(-50%,-50%);
   background:radial-gradient(circle at 35% 30%,#ff8a5b,#c8261c); border:3px solid #f5cc6a; color:#fff; font:900 30px 'Noto Serif TC',serif;
   display:grid; place-items:center; box-shadow:0 0 22px rgba(255,90,60,.9); transition:left .7s cubic-bezier(.3,1.3,.5,1), top .7s cubic-bezier(.3,1.3,.5,1); }
-.mdice-hint { position:absolute; left:960px; top:760px; transform:translateX(-50%); color:#e5d49a; font:500 18px 'Noto Sans TC',sans-serif; text-shadow:0 2px 6px #000; }
-#hud-center-pill.mdice-dim { opacity:.12; transition:opacity .3s; }
+.mdice-hint { position:absolute; left:960px; top:410px; transform:translateX(-50%); color:#e5d49a; font:500 18px 'Noto Sans TC',sans-serif; text-shadow:0 2px 6px #000; }
+#hud-center-pill.mdice-dim { opacity:0; transition:opacity .3s; }
+/* 開局：骰子落定前不顯示門風與莊家標記（莊家由骰子決定，先顯示會劇透／顯示錯的風） */
+.pp .windbadge { transition:opacity .35s, transform .45s cubic-bezier(.2,1.6,.4,1); }
+.hud.seat-hidden .pp .windbadge { opacity:0; transform:scale(.3); }
 
 /* ══ 出牌倒數（T1＋T3）：#tbadge 只當邏輯旗標（其他程式靠它判斷），畫面改由自己頭像環＋桌心圓顯示 ══ */
 #tbadge { position:absolute !important; visibility:hidden !important; pointer-events:none; }
@@ -2543,6 +2546,15 @@ const Groups = {
 let _p0HandMeshes = [];  // [{mesh, tileId, tile}]
 // v1.7.x: 候選/摸牌浮動動畫清單，tick() 每幀做 ease-in 升起 + sine 上下浮動
 let _floatTiles = [];
+// 開局儀式（砌牌→擲骰→發牌→補花）期間的顯示覆寫；null = 正常顯示 Game.st
+//   stacks: 已從開門處拿走的疊數（0..32）；dealt[p]: 該家已發到的張數；faceUp: 自家手牌是否翻正
+//   flowerSeats: 只顯示這些座位的花牌（補花動畫逐家亮出），null = 全部顯示
+let _dealView = null;
+// 簡易補間：{obj, from, to, t0, dur, arc, rx, done}，tick() 每幀推進
+let _tweens = [];
+function tween3D(obj, to, dur, opt = {}) {
+  _tweens.push({ obj, from: obj.position.clone(), to: to.clone(), t0: performance.now(), dur, arc: opt.arc || 0, rx: opt.rx, done: opt.done });
+}
 
 // 摸牌光暈用的 sprite texture（canvas radial gradient，整個專案共用一份）
 let _glowTexture = null;
@@ -2582,7 +2594,7 @@ const SEAT_DIST = {
 /* ============================================================
    三D 場景建構函數
    ============================================================ */
-function buildWall3D(side, deckLen, wallBreak, wallTailDrawn) {
+function buildWall3D(side, deckLen, wallBreak, wallTailDrawn, dealtStacks = 32) {
   // v1.7.10: 牌墩按「頭尾邏輯」渲染（移植 2D _renderWall 算法）
   //   - 4 家牌墩構成 closed loop（72 物理疊，4×18），每疊 2 張，total 144 張
   //   - wallBreak = 開門位置（在 south wall 的 offset 0-17）
@@ -2619,7 +2631,8 @@ function buildWall3D(side, deckLen, wallBreak, wallTailDrawn) {
   const headPhys = (wallBreak || 0) % TOTAL;
   function physToStackCnt(phys) {
     const linear = (phys - headPhys + TOTAL) % TOTAL;
-    if (linear < 32) return 0;  // 已發牌位置
+    if (linear < dealtStacks) return 0;  // 已發牌位置（開局發牌動畫期間 < 32）
+    if (linear < 32) return 2;           // 發牌動畫中尚未發出的疊
     return stackCnt(linear - 32);
   }
 
@@ -2632,6 +2645,7 @@ function buildWall3D(side, deckLen, wallBreak, wallTailDrawn) {
       const tile = makeWallTile3D();
       const x = -len/2 + i*(TW+GAP) + TW/2;
       tile.position.set(x, TD/2 + layer*(TD+0.015), 0);
+      tile.userData.linear = (phys - headPhys + TOTAL) % TOTAL; // 發牌動畫用：找出被拿走的疊
       group.add(tile);
     }
   }
@@ -3141,8 +3155,9 @@ function render3D() {
   const wallBreak = s.wallBreak || 0;
   const wallTailDrawn = s.wallTailDrawn || 0;
   const wallGroup = new THREE.Group();
+  const dv = _dealView;
   ['south','east','north','west'].forEach(sd =>
-    wallGroup.add(buildWall3D(sd, deckLen, wallBreak, wallTailDrawn))
+    wallGroup.add(dv && dv.dealt ? buildWall3D(sd, 80, wallBreak, 0, dv.stacks) : buildWall3D(sd, deckLen, wallBreak, wallTailDrawn))
   );
   scene.add(wallGroup);
   Groups.wall = wallGroup;
@@ -3154,8 +3169,9 @@ function render3D() {
 
     // 手牌
     const drawnId = isSelf ? s.drawnId : null;
-    const handTiles = (s.hands[pi] || []).map(tile => ({
-      texKey: isSelf ? tileTexKey(tile) : 'back',
+    const handSrc = dv && dv.dealt ? (s.hands[pi] || []).slice(0, dv.dealt[pi]) : (s.hands[pi] || []);
+    const handTiles = handSrc.map(tile => ({
+      texKey: isSelf && (!dv || !dv.dealt || dv.faceUp) ? tileTexKey(tile) : 'back',
       tileId: tile.id,
       tile,
       // 自家摸到的牌標記，給 buildHand3D 做「右側拉開間距 + 抬高 + 金邊」視覺
@@ -3189,7 +3205,7 @@ function render3D() {
 
     // 花牌
     const flowerData = (s.flowers[pi] || []).map(t => ({ texKey: tileTexKey(t) }));
-    if (flowerData.length > 0) {
+    if (flowerData.length > 0 && (!dv || (dv.flowerSeats && dv.flowerSeats.has(pi)))) {
       const fg = buildFlowers3D(side, flowerData);
       scene.add(fg); Groups.flowers[pi] = fg;
     }
@@ -3300,7 +3316,8 @@ function updateHUD(s) {
     const isDealer = pi === (s.dealer ?? 0);
 
     const nameEl = document.getElementById(`hud-name${pi}`);
-    if (nameEl) nameEl.textContent = (isDealer ? '🎯 ' : '') + name;
+    const seatHidden = document.querySelector('.hud')?.classList.contains('seat-hidden');
+    if (nameEl) nameEl.textContent = (isDealer && !seatHidden ? '🎯 ' : '') + name;
 
     const scoreEl = document.getElementById(`hud-score${pi}`);
     if (scoreEl) {
@@ -4769,6 +4786,7 @@ const Game={
       if(this.st){this.st.dice=[d1,d2];this.st.wallBreak=((d1+d2)+(this.st.dealer||0)*18)%22;}
       const dov=document.getElementById('dov');if(dov)dov.style.display='none';
       if(this.st)this.st.phase='playing';
+      _dealView=null;document.querySelector('.hud')?.classList.remove('seat-hidden'); // 上局儀式中途離開的殘留
       this.render();
       this.closeDice();
       return;
@@ -4782,6 +4800,10 @@ const Game={
     const hud=document.querySelector('.hud');
     if(!hud){this.st.phase='playing';this.render();this.closeDice();return;}
     const pill=document.getElementById('hud-center-pill');pill?.classList.add('mdice-dim'); // 讓出桌心給骰子
+    // 開局儀式：先砌好 144 張牌牆、手牌全空、門風隱藏 → 擲骰 → 開門發牌
+    hud.classList.add('seat-hidden');
+    _dealView={stacks:0,dealt:[0,0,0,0],faceUp:false,flowerSeats:new Set()};
+    this.render();
     const sc=document.createElement('div');sc.className='mdice-scene';hud.appendChild(sc);
     const PIPS={1:[[50,50]],2:[[28,28],[72,72]],3:[[25,25],[50,50],[75,75]],4:[[28,28],[72,28],[28,72],[72,72]],5:[[26,26],[74,26],[50,50],[26,74],[74,74]],6:[[28,24],[72,24],[28,50],[72,50],[28,76],[72,76]]};
     const face=v=>PIPS[v].map(([x,y])=>`<i class="mdice-pip${v===1||v===4?' red':''}${v===1?' big':''}" style="left:${x}%;top:${y}%"></i>`).join('');
@@ -4794,7 +4816,11 @@ const Game={
     plan.forEach(p=>{p.sh=document.createElement('div');p.sh.className='mdice-sh';sc.appendChild(p.sh);p.c=cube(p.v);sc.appendChild(p.c);});
     Snd.dice();
     let done=false,settled=false;
-    const finish=()=>{if(done)return;done=true;sc.classList.add('mfx-out');pill?.classList.remove('mdice-dim');setTimeout(()=>sc.remove(),350);this.closeDice();};
+    const finish=()=>{if(done)return;done=true;sc.classList.add('mfx-out');pill?.classList.remove('mdice-dim');setTimeout(()=>sc.remove(),350);
+      this._dealTok=(this._dealTok||0)+1; // 點畫面跳過：中止發牌動畫並清掉飛行中的牌
+      (this._dealGhosts||[]).forEach(g=>scene.remove(g));this._dealGhosts=[];
+      hud.classList.remove('seat-hidden');_dealView={flowerSeats:new Set()};this.render(); // 花牌先藏著，補花動畫逐家亮出
+      this.closeDice();};
     sc.onclick=finish;
     const pose=k=>{const e=1-Math.pow(1-k,3);
       plan.forEach(p=>{const x=p.x0+(p.x1-p.x0)*e,y=p.y0+(p.y1-p.y0)*e,h=Math.abs(Math.sin(k*Math.PI*3))*(1-k)**1.5*180,r=1-e;
@@ -4802,7 +4828,7 @@ const Game={
         p.sh.style.left=x+'px';p.sh.style.top=(y+42)+'px';p.sh.style.opacity=.3+.4*(1-h/180);});};
     const land=()=>{
       if(settled)return;settled=true;pose(1);
-      this.st.phase='playing';this.render();
+      this.st.phase='playing';hud.classList.remove('seat-hidden');this.render(); // 莊家確定才亮出門風
       Snd.play(880,.22,'sine',.2);setTimeout(()=>Snd.play(1100,.15,'sine',.15),120);
       const di=this.st.dealer??0,esc=v=>String(v).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
       const res=document.createElement('div');res.className='mdice-res';
@@ -4811,8 +4837,13 @@ const Game={
       const z=document.createElement('div');z.className='mdice-zhuang';z.textContent='莊';z.style.left='960px';z.style.top='450px';sc.appendChild(z);
       const pp=document.getElementById('hud-pp'+di),hr=hud.getBoundingClientRect(),k=hr.width/1920;
       if(pp){const r=pp.getBoundingClientRect();setTimeout(()=>{z.style.left=((r.left+r.right)/2-hr.left)/k+'px';z.style.top=(r.top-hr.top)/k-10+'px';},350);}
-      const hint=document.createElement('div');hint.className='mdice-hint';hint.textContent='點畫面可直接開始';sc.appendChild(hint);
-      setTimeout(finish,2200);
+      const hint=document.createElement('div');hint.className='mdice-hint';hint.textContent='點畫面可跳過';sc.appendChild(hint);
+      // 看完點數後骰子與結果淡出，開門發牌（發完自動開局）
+      setTimeout(()=>{
+        if(done)return;
+        [res,...plan.flatMap(p=>[p.c,p.sh])].forEach(el=>{el.style.transition='opacity .4s';el.style.opacity=0;});
+        this._dealAnim(finish);
+      },1300);
     };
     const t0=performance.now(),D=1400;let landSnd=false;
     const step=()=>{if(settled||done)return;const k=Math.min(1,(performance.now()-t0)/D);pose(k);
@@ -4822,11 +4853,62 @@ const Game={
     setTimeout(land,D+800); // 保底：分頁在背景時 rAF 暫停，仍會落定並開局（連線時不卡住其他人）
   },
 
+  // 開門發牌動畫：從開門處依序拿 2 疊（4 張）飛給莊家起逆時針各家，4 輪共 16 張；發完自家手牌翻正 → done()
+  //   純視覺：牌早在 initRound 發好，這裡只靠 _dealView 逐步揭露（連線時各端各自播，不影響同步）
+  _dealAnim(done){
+    const s=this.st,dv=_dealView,tok=this._dealTok=(this._dealTok||0)+1,STEP=110,FLY=300;
+    if(!dv||!Groups.wall){done();return;}
+    this._dealGhosts=[];
+    const alive=()=>tok===this._dealTok&&_dealView===dv;
+    // 開門標示：骰子點數決定的開門牌墩亮金光，停一下再開始拿牌
+    const gate=new THREE.Sprite(new THREE.SpriteMaterial({map:getGlowTexture(),transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));
+    gate.scale.set(3.2,3.2,1);
+    Groups.wall.updateMatrixWorld(true);
+    Groups.wall.traverse(m=>{if(m.isMesh&&m.userData.linear===0)m.getWorldPosition(gate.position);});
+    scene.add(gate);this._dealGhosts.push(gate);
+    let i=0;
+    const next=()=>{
+      if(!alive())return;
+      if(i>=16){
+        scene.remove(gate);
+        setTimeout(()=>{
+          if(!alive())return;
+          dv.faceUp=true;render3D();
+          Snd.play(520,.12,'sine',.15);
+          (Groups.hands[0]?.children||[]).forEach((m,j)=>{
+            if(!m.isMesh)return;
+            const rx=m.rotation.x;m.rotation.x=rx-Math.PI;
+            tween3D(m,m.position,240+j*14,{rx:[rx-Math.PI,rx],arc:.5});
+          });
+          setTimeout(()=>{if(alive())done();},700);
+        },FLY);
+        return;
+      }
+      const p=((s.dealer??0)+i)%4,lin=[2*i,2*i+1];
+      const to=new THREE.Vector3();Groups.hands[p]?.getWorldPosition(to);to.y+=TH*.5;
+      Groups.wall.updateMatrixWorld(true);
+      Groups.wall.traverse(m=>{
+        if(!m.isMesh||!lin.includes(m.userData.linear))return;
+        const g=makeWallTile3D();g.castShadow=false;
+        m.getWorldPosition(g.position);m.getWorldQuaternion(g.quaternion);
+        scene.add(g);this._dealGhosts.push(g);
+        tween3D(g,to,FLY,{arc:1.6,done:()=>scene.remove(g)});
+      });
+      // 牌牆立刻少兩疊；手牌在飛行結束時才長出來
+      dv.stacks=2*i+2;render3D();
+      setTimeout(()=>{if(alive()){dv.dealt[p]+=4;render3D();}},FLY);
+      Snd.play(300+i*6,.05,'triangle',.08);
+      i++;setTimeout(next,STEP);
+    };
+    setTimeout(next,450);
+  },
+
   // Flower replacement: plays out on the board, each player in turn order
   // Flowers go to discard zone; replacement tile drawn from deck
   _doFlowerReplacement(done){
     const s=this.st;
     const total=s.pending.reduce((a,b)=>a+b,0);
+    const dv=_dealView;_dealView=null; // 開局儀式的花牌隱藏只在下方動畫中沿用
     if(total===0){ done(); return; }
     // Batch: all players draw replacements instantly
     let hadFlowers=false;
@@ -4852,6 +4934,35 @@ const Game={
       s.hands[p]=sortH(s.hands[p]);
     }
     if(this._checkFlowerWin(-1))return; // 初始補花後檢查八仙/七搶一
+    if(hadFlowers&&dv&&dv.flowerSeats){
+      // 開局補花動畫：莊家起逆時針，每家花牌從手牌飛到花牌區，最後一次性收尾
+      _dealView=dv;
+      const seats=[0,1,2,3].map(k=>(_flrDealer+k)%4).filter(p=>s.flowers[p].length);
+      let j=0;
+      const nextSeat=()=>{
+        if(_dealView!==dv)return; // 被中止（離開牌局等）
+        if(j>=seats.length){
+          _dealView=null;
+          try { Snd.say('補花'); } catch(e){}
+          try { this.render(); } catch(e){ console.warn('[補花後 render throw]',e); }
+          setTimeout(done,300);
+          return;
+        }
+        const p=seats[j++];
+        dv.flowerSeats.add(p);
+        try {
+          render3D();
+          const from=new THREE.Vector3();Groups.hands[p]?.getWorldPosition(from);
+          const fg=Groups.flowers[p];
+          fg?.updateMatrixWorld(true);
+          (fg?.children||[]).forEach((m,n)=>{const to=m.position.clone();fg.worldToLocal(m.position.copy(from));tween3D(m,to,380+n*70,{arc:1.2});});
+          Snd.play(660,.12,'sine',.14);
+        } catch(e){ console.warn('[補花動畫 throw]',e); }
+        setTimeout(nextSeat,520);
+      };
+      nextSeat();
+      return;
+    }
     if(hadFlowers){
       // 防禦：Snd.say / toast / render 若任一 throw，必須仍把 done 排上，
       // 否則 closeDice → doTurn 整條鏈會斷,遊戲卡在「補花完成不開始」
@@ -4868,6 +4979,7 @@ const Game={
     const _dov=document.getElementById('dov');if(_dov)_dov.style.display='none';
     // Online non-host: don't run local game logic — wait for authoritative game_state from host
     if(this._online&&!this._isHost){
+      _dealView=null; // 補花由房主算完廣播，客戶端不播補花動畫
       if(this.st){this.st.phase='playing';this.render();}
       return;
     }
@@ -10136,6 +10248,18 @@ function tick(ts) {
       f.mesh.position.y = y;
       if (f.sprite) f.sprite.position.y = y;
     }
+  }
+  if (_tweens.length) {
+    const now = performance.now();
+    _tweens = _tweens.filter(w => {
+      const k = Math.min(1, (now - w.t0) / w.dur), e = k < .5 ? 2*k*k : 1 - Math.pow(-2*k + 2, 2) / 2; // easeInOutQuad
+      w.obj.position.lerpVectors(w.from, w.to, e);
+      w.obj.position.y += Math.sin(k * Math.PI) * w.arc;
+      if (w.rx) w.obj.rotation.x = w.rx[0] + (w.rx[1] - w.rx[0]) * e;
+      if (k < 1) return true;
+      w.done?.();
+      return false;
+    });
   }
   renderer.render(scene, camera);
 }
