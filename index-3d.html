@@ -1205,6 +1205,35 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 .lcard::before{top:10px;left:10px}
 .lcard::after{bottom:10px;right:10px;transform:rotate(180deg)}
 
+/* ══ 大廳 V3：左側欄＋背景直接是 3D 牌桌（tick 內相機環繞） ══ */
+body.in-lobby .hud { visibility:hidden; }
+#lobby{
+  background:linear-gradient(90deg,rgba(4,8,20,.96) 0,rgba(4,8,20,.85) 440px,rgba(4,8,20,0) 760px);
+  justify-content:flex-start;align-items:stretch;padding:0;
+}
+#lobby .lcard{
+  display:block;width:440px;max-width:100vw;max-height:none;min-height:100%;overflow:visible;
+  border:none;border-right:1px solid rgba(212,168,67,.3);border-radius:0;
+  background:transparent;box-shadow:none;padding:28px 34px;text-align:left;
+}
+#lobby .lcard::before,#lobby .lcard::after{display:none}
+#lobby .lcard > .lside{
+  position:fixed;right:28px;bottom:24px;width:440px;
+  background:rgba(4,10,24,.72);backdrop-filter:blur(8px);
+  border:1px solid rgba(212,168,67,.15);border-radius:12px;padding:14px;
+}
+#lobby .ltitle,#lobby .lsub,#lobby .lver,#lobby .ldeco{text-align:left}
+#tileback-picker > div{text-align:left!important;justify-content:flex-start!important;margin-left:0!important}
+.mode-hero-btn{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;text-align:left;padding:14px 18px;background:rgba(255,255,255,.035)}
+.mode-hero-btn svg{grid-row:1 / 3}
+.mode-hero-btn small{font:500 .72rem 'Noto Sans TC',sans-serif;opacity:.65;letter-spacing:.04em}
+/* 手機直向／窄螢幕：側欄改全寬，戰績回到內文 */
+@media (max-width:759px){
+  #lobby{background:#040814} /* 不透明：直向時底下的「請轉橫向」提示不透出 */
+  #lobby .lcard{width:100%;border-right:none;padding:20px 16px;display:flex;flex-direction:column}
+  #lobby .lcard > .lside{position:static;width:auto;margin:16px 0 0;order:99} /* 主要按鈕優先，戰績放最後 */
+}
+
 /* ── AI setup cards ──────────────────────────────────────── */
 .ai-setup-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:6px 0}
 .ai-card{background:rgba(255,255,255,.04);border:1px solid rgba(212,168,67,.15);border-radius:10px;padding:8px 6px;text-align:center;display:flex;flex-direction:column;gap:5px;align-items:center}
@@ -1644,7 +1673,7 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
 <!-- ── 大廳（原 2D 版）── -->
 <div id="lobby">
   <div class="lcard">
-    <div class="ldeco">🀇🀙🀅</div>
+    <div class="ldeco"><svg width="64" height="40" viewBox="0 0 64 40" aria-hidden="true"><g fill="#f3ecdc" stroke="#d4a843" stroke-width="1.2"><rect x="4" y="6" width="17" height="26" rx="3"/><rect x="23.5" y="4" width="17" height="26" rx="3"/><rect x="43" y="6" width="17" height="26" rx="3"/></g><text x="32" y="22" font-size="13" text-anchor="middle" fill="#b3150b" font-family="Noto Serif TC" font-weight="900">中</text></svg></div>
     <div class="ltitle">麻將</div>
     <div class="lsub">TAIWAN MAHJONG ONLINE</div>
     <div class="lver">v1.7.1</div>
@@ -1673,8 +1702,8 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
         <input class="fi" id="pname" value="玩家" maxlength="8" placeholder="輸入暱稱">
       </div>
       <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
-        <button class="mode-hero-btn" onclick="Lobby.showSolo()">🎮 單機對戰（AI）</button>
-        <button class="mode-hero-btn online" onclick="Lobby.showOnline()">🌐 連線對戰（開房間）</button>
+        <button class="mode-hero-btn" onclick="Lobby.showSolo()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="2"/><path d="M12 8v8M8 12h8"/></svg><span>單機對戰</span><small>對手為電腦</small></button>
+        <button class="mode-hero-btn online" onclick="Lobby.showOnline()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span>連線對戰</span><small>開房間邀朋友</small></button>
       </div>
       <div id="tileback-picker" style="margin-top:16px">
         <div style="text-align:center;color:var(--gold);font-size:.8rem;font-weight:700;margin-bottom:8px">🀫 牌背樣式</div>
@@ -1754,13 +1783,13 @@ select.fi option{background:#0d2b16;color:#f5ecd7}
       <div class="sec-title">🏁 選擇局數</div>
       <div class="mode-cards">
         <button class="mode-card" onclick="Game.start('east')">
-          <div class="mode-card-icon">🌅</div>
+          <div class="mode-card-icon"><svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><circle cx="19" cy="19" r="17" fill="none" stroke="#d4a843" stroke-width="1.5"/><text x="19" y="25.5" font-size="18" text-anchor="middle" fill="#f5cc6a" font-family="Noto Serif TC" font-weight="900">東</text></svg></div>
           <div class="mode-card-title">東風局</div>
           <div class="mode-card-desc">4 局 · 快打</div>
           <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;letter-spacing:.06em">▶ 點擊開始</div>
         </button>
         <button class="mode-card" onclick="Game.start('south')">
-          <div class="mode-card-icon">🌄</div>
+          <div class="mode-card-icon"><svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true"><circle cx="19" cy="19" r="17" fill="none" stroke="#d4a843" stroke-width="1.5"/><text x="19" y="25.5" font-size="18" text-anchor="middle" fill="#f5cc6a" font-family="Noto Serif TC" font-weight="900">南</text></svg></div>
           <div class="mode-card-title">南風局</div>
           <div class="mode-card-desc">8 局 · 全場</div>
           <div style="font-size:.62rem;color:rgba(212,168,67,.4);margin-top:4px;letter-spacing:.06em">▶ 點擊開始</div>
@@ -3134,6 +3163,7 @@ function buildMelds3D(side, melds) {
 function render3D() {
   const s = Game && Game.st;
   if (!s || !TEX['wood-back']) return; // 素材未載入完成
+  if (_lobbyVisible()) { _lobbyTex = null; return; } // 大廳顯示中：保持大廳牌桌（tick 會重建）
 
   _p0HandMeshes = [];
   _floatTiles = [];
@@ -10228,11 +10258,50 @@ Object.assign(window, { THREE, renderer, scene, camera, Groups, SEAT_DIST, _edge
    ============================================================ */
 // v1.7.8: 不再需要 syncHudOverlays / syncMelds3D — 所有元素都用 CSS / 世界座標寫死
 let _lastFrameTs = 0;
+// 大廳背景直接是 3D 牌桌：完整牌牆＋相機緩慢環繞；離開大廳時相機俯衝回牌局視角
+let _lobbyTex = null, _camFly = null, _wasLobby = false;
+function _lobbyVisible() { const el = document.getElementById('lobby'); return !!el && el.style.display !== 'none'; }
+function buildLobbyScene() {
+  for (const k of ['hands', 'discards', 'melds', 'flowers']) for (let i = 0; i < 4; i++) { clearGroup(Groups[k][i]); Groups[k][i] = null; }
+  clearGroup(Groups.wall);
+  _floatTiles = [];
+  const g = new THREE.Group();
+  ['south', 'east', 'north', 'west'].forEach(sd => g.add(buildWall3D(sd, 80, 0, 0, 0)));
+  scene.add(g); Groups.wall = g;
+  _lobbyTex = TEX['wood-back']; // 換牌背時貼圖物件改變 → tick 會重建，大廳即時預覽牌背
+  renderer.shadowMap.needsUpdate = true;
+}
+function _lobbyCamera(now) {
+  const inLobby = _lobbyVisible();
+  if (inLobby !== _wasLobby) document.body.classList.toggle('in-lobby', inLobby);
+  const wasLobby = _wasLobby;
+  _wasLobby = inLobby;
+  if (inLobby) {
+    if (TEX['wood-back'] && _lobbyTex !== TEX['wood-back']) buildLobbyScene();
+    const a = now * 2 * Math.PI / 120000; // 120 秒繞一圈
+    camera.position.set(Math.sin(a) * 26, 17, Math.cos(a) * 26);
+    camera.lookAt(0, 0, 0);
+    _camFly = null;
+    return;
+  }
+  if (wasLobby) { // 剛離開大廳：重建牌局場景（有些路徑在大廳關閉前就 render 了）＋開始俯衝
+    _lobbyTex = null; // 下次回大廳時重建大廳牌桌
+    if (Game && Game.st) render3D();
+    _camFly = { from: camera.position.clone(), t0: now };
+  }
+  if (_camFly) {
+    const k = Math.min(1, (now - _camFly.t0) / 1000), e = k < .5 ? 4*k*k*k : 1 - Math.pow(-2*k + 2, 3) / 2;
+    camera.position.lerpVectors(_camFly.from, new THREE.Vector3(CAMERA_CONFIG.posX, CAMERA_CONFIG.posY, CAMERA_CONFIG.posZ), e);
+    camera.lookAt(CAMERA_CONFIG.lookX, CAMERA_CONFIG.lookY, CAMERA_CONFIG.lookZ);
+    if (k >= 1) { _camFly = null; applyCamera(); }
+  }
+}
 function tick(ts) {
   requestAnimationFrame(tick);
   // v1.7.x: 影格上限 ~30fps（回合制不需 60fps 連續重繪），CPU 再省約一半
   if (ts !== undefined && ts - _lastFrameTs < 32) return;
   _lastFrameTs = ts || 0;
+  _lobbyCamera(performance.now());
   // v1.7.x: 候選/摸牌浮動動畫 — ease-in 升起 + sine 上下浮動（取代靜態瞬間抬起）
   if (_floatTiles.length) {
     const now = (typeof performance!=='undefined' ? performance.now() : Date.now());
