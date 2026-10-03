@@ -67,3 +67,6 @@ meld-corner-preview.html
 reform-preview.html
 square-layout-preview.html
 square-preview.html
+
+# 宣傳影片（體積大，不進 repo）
+*.mp4
